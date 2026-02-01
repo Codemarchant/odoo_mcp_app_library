@@ -1,0 +1,689 @@
+﻿"name","description","data_code","global_state_code","shared_components","shared_styles","router_mode","tailwind_enabled","cdn_dependencies","custom_imports","page_ids/name","page_ids/route_path","page_ids/page_title","page_ids/sequence","page_ids/data_code","page_ids/component_code","endpoint_ids/name","endpoint_ids/endpoint_path","endpoint_ids/method","endpoint_ids/handler_code"
+"Snake Game 🐍","Classic Snake game built with React","","{ highScore: 0, gameHistory: [], totalGames: 0, totalScore: 0 }","","
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.game-grid {
+  display: grid;
+  gap: 1px;
+  background-color: #1a1a1a;
+  border: 3px solid #4ade80;
+  box-shadow: 0 0 20px rgba(74, 222, 128, 0.3);
+  transition: border-color 1s ease, box-shadow 1s ease;
+}
+
+.cell {
+  aspect-ratio: 1;
+  transition: all 0.1s ease;
+}
+
+.snake-head {
+  background: linear-gradient(135deg, #4ade80, #22c55e);
+  border-radius: 20%;
+  box-shadow: 0 0 10px rgba(74, 222, 128, 0.6);
+}
+
+.snake-body {
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  border-radius: 15%;
+}
+
+.food {
+  background: radial-gradient(circle, #ef4444, #dc2626);
+  border-radius: 50%;
+  animation: pulse 0.5s ease-in-out infinite;
+  box-shadow: 0 0 15px rgba(239, 68, 68, 0.8);
+}
+
+.score-display {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.game-page {
+  transition: background 1.5s ease;
+}
+
+button:active {
+  transform: scale(0.95);
+}","Hash Router","True","{""chart.js"": ""https://esm.sh/chart.js@4.4.1"", ""react-chartjs-2"":
+  ""https://esm.sh/react-chartjs-2@5.2.0?external=react,react-dom&deps=chart.js@4.4.1""}","import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Title, Tooltip, Legend, Filler } from 'chart.js';
+import { Line, Bar, Pie, Doughnut } from 'react-chartjs-2';
+
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Title, Tooltip, Legend, Filler);","Snake Game","/","Snake Game 🐍","10","","function SnakeGamePage({ storage }) {
+  const GRID_SIZE = 20;
+  const CELL_SIZE = 25;
+  const INITIAL_SNAKE = [{ x: 10, y: 10 }];
+  const INITIAL_DIRECTION = { x: 1, y: 0 };
+
+  const SPEED_SETTINGS = {
+    slow: { label: '🐢 Slow', ms: 150, color: 'green' },
+    normal: { label: '🐍 Normal', ms: 100, color: 'yellow' },
+    fast: { label: '🐇 Fast', ms: 65, color: 'orange' },
+    insane: { label: '⚡ Insane', ms: 40, color: 'red' }
+  };
+
+  const STAGES = [
+    { bg: 'linear-gradient(135deg, #111827 0%, #1f2937 50%, #000000 100%)', border: '#4ade80', glow: 'rgba(74,222,128,0.3)', label: '' },
+    { bg: 'linear-gradient(135deg, #041f1a 0%, #064e3b 50%, #000000 100%)', border: '#2dd4bf', glow: 'rgba(45,212,191,0.4)', label: 'GROWING' },
+    { bg: 'linear-gradient(135deg, #0c1a3a 0%, #1e3a5f 50%, #000000 100%)', border: '#38bdf8', glow: 'rgba(56,189,248,0.4)', label: 'HUNGRY' },
+    { bg: 'linear-gradient(135deg, #1a0533 0%, #4c1d95 50%, #000000 100%)', border: '#a78bfa', glow: 'rgba(167,139,250,0.5)', label: 'DANGER NOODLE' },
+    { bg: 'linear-gradient(135deg, #1a1000 0%, #78350f 50%, #000000 100%)', border: '#fbbf24', glow: 'rgba(251,191,36,0.5)', label: 'MEGA SNAKE' },
+    { bg: 'linear-gradient(135deg, #2e0509 0%, #7f1d1d 40%, #78350f 70%, #1a0533 100%)', border: '#f59e0b', glow: 'rgba(245,158,11,0.6)', label: 'LEGENDARY' }
+  ];
+
+  const getStage = (len) => {
+    if (len >= 26) return 5;
+    if (len >= 21) return 4;
+    if (len >= 16) return 3;
+    if (len >= 11) return 2;
+    if (len >= 6) return 1;
+    return 0;
+  };
+
+  const generateFood = (currentSnake) => {
+    let newFood;
+    do {
+      newFood = { x: Math.floor(Math.random() * GRID_SIZE), y: Math.floor(Math.random() * GRID_SIZE) };
+    } while (currentSnake.some(seg => seg.x === newFood.x && seg.y === newFood.y));
+    return newFood;
+  };
+
+  const [snake, setSnake] = useState(INITIAL_SNAKE);
+  const [food, setFood] = useState({ x: 15, y: 15 });
+  const [gameOver, setGameOver] = useState(false);
+  const [score, setScore] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  const [startTime, setStartTime] = useState(null);
+  const [soundOn, setSoundOn] = useState(true);
+  const [speed, setSpeed] = useState('normal');
+
+  const [highScore, setHighScore] = useState(0);
+  const [totalGames, setTotalGames] = useState(0);
+  const [totalScore, setTotalScore] = useState(0);
+  const [isLoadingStats, setIsLoadingStats] = useState(true);
+
+  const dirQueueRef = useRef([]);
+  const currentDirRef = useRef(INITIAL_DIRECTION);
+  const soundOnRef = useRef(soundOn);
+  const prevStageRef = useRef(0);
+  useEffect(() => { soundOnRef.current = soundOn; }, [soundOn]);
+
+  const audioCtxRef = useRef(null);
+  const getAudioCtx = () => {
+    if (!audioCtxRef.current) audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtxRef.current.state === 'suspended') audioCtxRef.current.resume();
+    return audioCtxRef.current;
+  };
+
+  const playTone = (freq, duration, type, volume) => {
+    try {
+      const ctx = getAudioCtx();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = type || 'sine';
+      osc.frequency.setValueAtTime(freq, ctx.currentTime);
+      gain.gain.setValueAtTime(volume || 0.12, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + duration);
+    } catch (e) {}
+  };
+
+  const sfx = {
+    eat: () => { playTone(880, 0.07, 'square', 0.1); setTimeout(() => playTone(1200, 0.1, 'sine', 0.08), 60); },
+    die: () => { [0, 120, 240].forEach((d, i) => setTimeout(() => playTone(300 - i * 80, 0.25, 'sawtooth', 0.08), d)); },
+    milestone: () => { [0, 70, 140, 210].forEach((d, i) => setTimeout(() => playTone(600 + i * 150, 0.12, 'sine', 0.1), d)); },
+    stageUp: () => { [0, 60, 120].forEach((d, i) => setTimeout(() => playTone(500 + i * 200, 0.1, 'sine', 0.1), d)); }
+  };
+
+  useEffect(() => {
+    const loadStats = async () => {
+      try {
+        const [savedHighScore, savedTotalGames, savedTotalScore] = await Promise.all([
+          storage.get('highScore', 0), storage.get('totalGames', 0), storage.get('totalScore', 0)
+        ]);
+        setHighScore(savedHighScore); setTotalGames(savedTotalGames); setTotalScore(savedTotalScore);
+      } catch (error) { console.error('Error loading stats:', error); }
+      finally { setIsLoadingStats(false); }
+    };
+    loadStats();
+  }, [storage]);
+
+  const resetGame = () => {
+    currentDirRef.current = INITIAL_DIRECTION;
+    dirQueueRef.current = [];
+    prevStageRef.current = 0;
+    setSnake(INITIAL_SNAKE);
+    setFood(generateFood(INITIAL_SNAKE));
+    setGameOver(false);
+    setScore(0);
+    setIsPlaying(true);
+    setIsPaused(false);
+    setStartTime(Date.now());
+  };
+
+  const togglePause = () => { if (isPlaying && !gameOver) setIsPaused(!isPaused); };
+
+  const saveGameStats = async (finalScore) => {
+    try {
+      const duration = startTime ? Math.floor((Date.now() - startTime) / 1000) : 0;
+      const newGame = { score: finalScore, duration, speed, timestamp: new Date().toISOString() };
+      const newHighScore = Math.max(highScore, finalScore);
+      if (newHighScore > highScore) { await storage.set('highScore', newHighScore); setHighScore(newHighScore); }
+      const newTotalGames = totalGames + 1;
+      const newTotalScore = totalScore + finalScore;
+      await Promise.all([storage.set('totalGames', newTotalGames), storage.set('totalScore', newTotalScore)]);
+      setTotalGames(newTotalGames); setTotalScore(newTotalScore);
+      const currentHistory = await storage.get('gameHistory', []);
+      await storage.set('gameHistory', [...currentHistory, newGame]);
+    } catch (error) { console.error('Error saving game stats:', error); }
+  };
+
+  useEffect(() => {
+    const handleKeyPress = (e) => {
+      if (e.key === ' ') { e.preventDefault(); if (!gameOver) togglePause(); return; }
+      if (!isPlaying || isPaused) return;
+      const lastDir = dirQueueRef.current.length > 0 ? dirQueueRef.current[dirQueueRef.current.length - 1] : currentDirRef.current;
+      let newDir = null;
+      if ((e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') && lastDir.y === 0) newDir = { x: 0, y: -1 };
+      else if ((e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') && lastDir.y === 0) newDir = { x: 0, y: 1 };
+      else if ((e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') && lastDir.x === 0) newDir = { x: -1, y: 0 };
+      else if ((e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') && lastDir.x === 0) newDir = { x: 1, y: 0 };
+      if (newDir && dirQueueRef.current.length < 3) dirQueueRef.current.push(newDir);
+    };
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [isPlaying, isPaused, gameOver]);
+
+  useEffect(() => {
+    if (!isPlaying || gameOver || isPaused) return;
+    const gameLoop = setInterval(() => {
+      const nextDir = dirQueueRef.current.length > 0 ? dirQueueRef.current.shift() : currentDirRef.current;
+      currentDirRef.current = nextDir;
+      setSnake(prevSnake => {
+        const head = prevSnake[0];
+        const newHead = { x: head.x + nextDir.x, y: head.y + nextDir.y };
+        if (newHead.x < 0 || newHead.x >= GRID_SIZE || newHead.y < 0 || newHead.y >= GRID_SIZE) {
+          setGameOver(true); setIsPlaying(false);
+          if (soundOnRef.current) sfx.die();
+          setScore(s => { saveGameStats(s); return s; });
+          return prevSnake;
+        }
+        if (prevSnake.some(seg => seg.x === newHead.x && seg.y === newHead.y)) {
+          setGameOver(true); setIsPlaying(false);
+          if (soundOnRef.current) sfx.die();
+          setScore(s => { saveGameStats(s); return s; });
+          return prevSnake;
+        }
+        const newSnake = [newHead, ...prevSnake];
+        if (newHead.x === food.x && newHead.y === food.y) {
+          const newStage = getStage(newSnake.length);
+          if (newStage !== prevStageRef.current) {
+            prevStageRef.current = newStage;
+            if (soundOnRef.current) sfx.stageUp();
+          }
+          setScore(prev => {
+            const ns = prev + 10;
+            if (soundOnRef.current) { if (ns > 0 && ns % 50 === 0) sfx.milestone(); else sfx.eat(); }
+            return ns;
+          });
+          setFood(generateFood(newSnake));
+          return newSnake;
+        }
+        newSnake.pop();
+        return newSnake;
+      });
+    }, SPEED_SETTINGS[speed].ms);
+    return () => clearInterval(gameLoop);
+  }, [isPlaying, gameOver, food, isPaused, speed]);
+
+  const getCellClass = (x, y) => {
+    if (snake[0]?.x === x && snake[0]?.y === y) return 'cell snake-head';
+    if (snake.slice(1).some(seg => seg.x === x && seg.y === y)) return 'cell snake-body';
+    if (food.x === x && food.y === y) return 'cell food';
+    return 'cell bg-gray-800';
+  };
+
+  const handleDirectionButton = (newDir) => {
+    if (!isPlaying || isPaused) return;
+    const lastDir = dirQueueRef.current.length > 0 ? dirQueueRef.current[dirQueueRef.current.length - 1] : currentDirRef.current;
+    if ((newDir.x !== 0 && lastDir.x === 0) || (newDir.y !== 0 && lastDir.y === 0)) {
+      if (dirQueueRef.current.length < 3) dirQueueRef.current.push(newDir);
+    }
+  };
+
+  if (isLoadingStats) {
+    return (
+      <div className=""min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black flex items-center justify-center"">
+        <div className=""text-center""><div className=""text-6xl mb-4 animate-pulse"">🐍</div><div className=""text-xl text-gray-400"">Loading your stats...</div></div>
+      </div>
+    );
+  }
+
+  const stage = STAGES[getStage(snake.length)];
+
+  return (
+    <div className=""min-h-screen flex items-center justify-center p-4 game-page"" style={{ background: stage.bg }}>
+      <div className=""w-full max-w-6xl"">
+        <div className=""text-center mb-6"">
+          <h1 className=""text-5xl font-bold text-green-400 mb-1"">🐍 SNAKE</h1>
+          <p className=""text-gray-400"">Arrow Keys / WASD to move • Space to pause</p>
+        </div>
+
+        <div className=""flex flex-col lg:flex-row gap-6 justify-center items-start"">
+          {/* Left: Game Board */}
+          <div className=""flex-shrink-0"">
+            <div className=""game-grid"" style={{
+              gridTemplateColumns: 'repeat(' + GRID_SIZE + ', ' + CELL_SIZE + 'px)',
+              gridTemplateRows: 'repeat(' + GRID_SIZE + ', ' + CELL_SIZE + 'px)',
+              borderColor: stage.border,
+              boxShadow: '0 0 25px ' + stage.glow
+            }}>
+              {Array.from({ length: GRID_SIZE * GRID_SIZE }).map((_, idx) => {
+                const x = idx % GRID_SIZE;
+                const y = Math.floor(idx / GRID_SIZE);
+                return <div key={idx} className={getCellClass(x, y)} />;
+              })}
+            </div>
+            <div className=""mt-4 lg:hidden"">
+              <div className=""flex flex-col items-center gap-2"">
+                <button onClick={() => handleDirectionButton({ x: 0, y: -1 })} disabled={!isPlaying || isPaused} className=""w-14 h-14 bg-gray-700 hover:bg-gray-600 text-white rounded-lg text-xl disabled:opacity-50"">⬆️</button>
+                <div className=""flex gap-2"">
+                  <button onClick={() => handleDirectionButton({ x: -1, y: 0 })} disabled={!isPlaying || isPaused} className=""w-14 h-14 bg-gray-700 hover:bg-gray-600 text-white rounded-lg text-xl disabled:opacity-50"">⬅️</button>
+                  <button onClick={() => handleDirectionButton({ x: 0, y: 1 })} disabled={!isPlaying || isPaused} className=""w-14 h-14 bg-gray-700 hover:bg-gray-600 text-white rounded-lg text-xl disabled:opacity-50"">⬇️</button>
+                  <button onClick={() => handleDirectionButton({ x: 1, y: 0 })} disabled={!isPlaying || isPaused} className=""w-14 h-14 bg-gray-700 hover:bg-gray-600 text-white rounded-lg text-xl disabled:opacity-50"">➡️</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Right: Sidebar */}
+          <div className=""w-full lg:w-64 flex flex-col gap-4"">
+            <div className=""bg-gray-800 rounded-lg p-4 border-2 border-green-500"">
+              <div className=""text-gray-400 text-xs uppercase tracking-wider mb-1"">Score</div>
+              <div className=""text-4xl font-bold text-green-400"">{score}</div>
+            </div>
+
+            <div className=""bg-gray-800 rounded-lg p-4 border-2 border-yellow-500"">
+              <div className=""text-gray-400 text-xs uppercase tracking-wider mb-1"">High Score</div>
+              <div className=""text-4xl font-bold text-yellow-400"">{highScore}</div>
+            </div>
+
+            {/* Stage badge */}
+            <div className=""rounded-lg p-3 text-center border transition-all duration-500"" style={{
+              borderColor: stage.label ? stage.border : 'transparent',
+              background: stage.label ? 'rgba(0,0,0,0.4)' : 'rgba(0,0,0,0.1)',
+              opacity: stage.label ? 1 : 0
+            }}>
+              <div className=""text-sm font-bold"" style={{ color: stage.border }}>{stage.label || '\u200b'}</div>
+              <div className=""text-xs text-gray-400 mt-1"">Length: {snake.length}</div>
+            </div>
+
+            {/* Speed */}
+            <div className=""bg-gray-800 rounded-lg p-4"">
+              <div className=""text-gray-400 text-xs uppercase tracking-wider mb-3"">Speed</div>
+              <div className=""grid grid-cols-2 gap-2"">
+                {Object.entries(SPEED_SETTINGS).map(([key, val]) => (
+                  <button key={key} onClick={() => { if (!isPlaying) setSpeed(key); }}
+                    className={'px-3 py-2 rounded-lg text-sm font-semibold transition-all ' + (speed === key ? ('bg-' + val.color + '-500 text-white') : (isPlaying ? 'bg-gray-700 text-gray-600 cursor-default' : 'bg-gray-700 text-gray-400 hover:bg-gray-600'))}>
+                    {val.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Status area */}
+            <div className=""rounded-lg p-4 text-center min-h-[88px] flex items-center justify-center transition-all duration-300"" style={{
+              background: gameOver ? 'rgba(239,68,68,0.12)' : isPaused ? 'rgba(59,130,246,0.12)' : 'rgba(75,85,99,0.15)',
+              border: gameOver ? '2px solid rgba(239,68,68,0.6)' : isPaused ? '2px solid rgba(59,130,246,0.6)' : '2px solid rgba(75,85,99,0.3)'
+            }}>
+              {gameOver ? (
+                <div>
+                  <div className=""text-2xl font-bold text-red-400 mb-1"">GAME OVER!</div>
+                  <div className=""text-gray-300 text-sm"">Final Score: {score}</div>
+                  {score >= highScore && score > 0 && <div className=""text-yellow-400 mt-1 text-xs"">🎉 New High Score!</div>}
+                </div>
+              ) : isPaused ? (
+                <div className=""text-xl font-bold text-blue-400"">⏸ PAUSED</div>
+              ) : isPlaying ? (
+                <div className=""text-gray-500 text-sm"">Game in progress...</div>
+              ) : (
+                <div className=""text-gray-500 text-sm"">Press Start to play!</div>
+              )}
+            </div>
+
+            {/* Buttons */}
+            <div className=""flex flex-col gap-2"">
+              <button onClick={isPlaying ? togglePause : resetGame}
+                className={'w-full px-6 py-3 text-white font-bold rounded-lg transition-all ' + (isPlaying ? 'bg-blue-500 hover:bg-blue-600' : 'bg-green-500 hover:bg-green-600 text-lg')}>
+                {isPlaying ? (isPaused ? '▶️ Resume' : '⏸ Pause') : (gameOver ? '🔄 Play Again' : '▶️ Start Game')}
+              </button>
+              <button onClick={resetGame}
+                className={'w-full px-6 py-3 text-white font-bold rounded-lg transition-all ' + (isPlaying ? 'bg-yellow-500 hover:bg-yellow-600' : 'bg-gray-700 text-gray-500 cursor-default')}
+                disabled={!isPlaying}>
+                🔄 Restart
+              </button>
+            </div>
+
+            <button onClick={() => setSoundOn(s => !s)} className={'w-full px-4 py-2 rounded-lg font-semibold text-sm transition-all ' + (soundOn ? 'bg-green-600 hover:bg-green-700 text-white' : 'bg-gray-700 hover:bg-gray-600 text-gray-400')}>
+              {soundOn ? '🔊 Sound ON' : '🔇 Sound OFF'}
+            </button>
+
+            <Link to=""/stats"" className=""w-full px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white font-semibold rounded-lg transition-all text-center text-sm"">
+              📊 View Statistics
+            </Link>
+
+            {totalGames > 0 && (
+              <div className=""bg-gray-800 rounded-lg px-4 py-3 border border-gray-700 text-center"">
+                <div className=""text-gray-400 text-xs"">
+                  Games: <span className=""text-white font-semibold"">{totalGames}</span> •
+                  Avg: <span className=""text-white font-semibold"">{(totalScore / totalGames).toFixed(1)}</span>
+                </div>
+                <div className=""text-xs text-gray-500 mt-1"">💾 Auto-saved</div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}","","","",""
+"","","","","","","","","","","Statistics","/stats","Game Statistics 📊","20","","function StatisticsPage({ storage }) {
+  const [stats, setStats] = useState({
+    highScore: 0,
+    totalGames: 0,
+    totalScore: 0,
+    gameHistory: []
+  });
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Load all stats from persistent storage
+  useEffect(() => {
+    const loadStats = async () => {
+      try {
+        const [highScore, totalGames, totalScore, gameHistory] = await Promise.all([
+          storage.get('highScore', 0),
+          storage.get('totalGames', 0),
+          storage.get('totalScore', 0),
+          storage.get('gameHistory', [])
+        ]);
+        setStats({ highScore, totalGames, totalScore, gameHistory });
+      } catch (error) {
+        console.error('Error loading stats:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadStats();
+  }, [storage]);
+
+  const { highScore, totalGames, totalScore, gameHistory } = stats;
+  const avgScore = totalGames > 0 ? (totalScore / totalGames).toFixed(1) : 0;
+
+  // Clear all stats
+  const clearStats = async () => {
+    if (confirm('Are you sure you want to clear all statistics? This cannot be undone.')) {
+      try {
+        await Promise.all([
+          storage.delete('highScore'),
+          storage.delete('totalGames'),
+          storage.delete('totalScore'),
+          storage.delete('gameHistory')
+        ]);
+        setStats({ highScore: 0, totalGames: 0, totalScore: 0, gameHistory: [] });
+        alert('✅ All statistics cleared!');
+      } catch (error) {
+        console.error('Error clearing stats:', error);
+        alert('❌ Error clearing statistics');
+      }
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className=""min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-black flex items-center justify-center"">
+        <div className=""text-center"">
+          <div className=""text-6xl mb-4 animate-pulse"">📊</div>
+          <div className=""text-xl text-gray-400"">Loading statistics...</div>
+        </div>
+      </div>
+    );
+  }
+
+  // Prepare data for recent games chart
+  const recentGames = gameHistory.slice(-10);
+  const recentGamesData = {
+    labels: recentGames.map((game, idx) => `#${Math.max(1, gameHistory.length - 9) + idx}`),
+    datasets: [{
+      label: 'Score',
+      data: recentGames.map(g => g.score || 0),
+      borderColor: 'rgb(34, 197, 94)',
+      backgroundColor: 'rgba(34, 197, 94, 0.2)',
+      fill: true,
+      tension: 0.4
+    }]
+  };
+
+  // Score distribution data
+  const scoreRanges = [
+    { range: '0-50', count: 0, color: 'rgb(239, 68, 68)' },
+    { range: '51-100', count: 0, color: 'rgb(249, 115, 22)' },
+    { range: '101-200', count: 0, color: 'rgb(234, 179, 8)' },
+    { range: '201-300', count: 0, color: 'rgb(132, 204, 22)' },
+    { range: '301+', count: 0, color: 'rgb(34, 197, 94)' }
+  ];
+
+  gameHistory.forEach(game => {
+    const score = game.score || 0;
+    if (score <= 50) scoreRanges[0].count++;
+    else if (score <= 100) scoreRanges[1].count++;
+    else if (score <= 200) scoreRanges[2].count++;
+    else if (score <= 300) scoreRanges[3].count++;
+    else scoreRanges[4].count++;
+  });
+
+  const distributionData = {
+    labels: scoreRanges.map(r => r.range),
+    datasets: [{
+      label: 'Games',
+      data: scoreRanges.map(r => r.count),
+      backgroundColor: scoreRanges.map(r => r.color),
+      borderColor: scoreRanges.map(r => r.color),
+      borderWidth: 1
+    }]
+  };
+
+  // Pie chart data
+  const pieData = {
+    labels: scoreRanges.filter(r => r.count > 0).map(r => r.range),
+    datasets: [{
+      data: scoreRanges.filter(r => r.count > 0).map(r => r.count),
+      backgroundColor: scoreRanges.filter(r => r.count > 0).map(r => r.color),
+      borderWidth: 2,
+      borderColor: '#1f2937'
+    }]
+  };
+
+  // Performance trend
+  const trendData = {
+    labels: gameHistory.slice(-20).map((g, idx) => `${idx + 1}`),
+    datasets: [{
+      label: 'Score',
+      data: gameHistory.slice(-20).map(g => g.score || 0),
+      borderColor: 'rgb(139, 92, 246)',
+      backgroundColor: 'rgba(139, 92, 246, 0.1)',
+      borderWidth: 3,
+      pointRadius: 4,
+      pointBackgroundColor: 'rgb(139, 92, 246)'
+    }]
+  };
+
+  const chartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        labels: { color: '#9ca3af' }
+      }
+    },
+    scales: {
+      x: { ticks: { color: '#9ca3af' }, grid: { color: '#374151' } },
+      y: { ticks: { color: '#9ca3af' }, grid: { color: '#374151' } }
+    }
+  };
+
+  const pieOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'right',
+        labels: { color: '#9ca3af', padding: 15 }
+      }
+    }
+  };
+
+  return (
+    <div className=""min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-black p-4"">
+      <div className=""max-w-7xl mx-auto"">
+        {/* Header */}
+        <div className=""text-center mb-8"">
+          <h1 className=""text-5xl font-bold text-purple-400 mb-2"">📊 Game Statistics</h1>
+          <p className=""text-gray-400"">Track your Snake game performance</p>
+          <div className=""flex justify-center gap-4 mt-4"">
+            <Link to=""/"" className=""inline-block px-6 py-2 bg-green-500 hover:bg-green-600 text-white font-semibold rounded-lg transition-all"">
+              ← Back to Game
+            </Link>
+            {totalGames > 0 && (
+              <button
+                onClick={clearStats}
+                className=""inline-block px-6 py-2 bg-red-500 hover:bg-red-600 text-white font-semibold rounded-lg transition-all""
+              >
+                🗑️ Clear Stats
+              </button>
+            )}
+          </div>
+          {totalGames > 0 && (
+            <div className=""text-xs text-gray-500 mt-2"">💾 All stats are saved permanently</div>
+          )}
+        </div>
+
+        {/* Summary Cards */}
+        <div className=""grid grid-cols-1 md:grid-cols-4 gap-6 mb-8"">
+          <div className=""bg-gradient-to-br from-yellow-500 to-orange-500 rounded-lg p-6 shadow-lg"">
+            <div className=""text-white text-sm uppercase tracking-wider mb-1"">High Score</div>
+            <div className=""text-4xl font-bold text-white"">{highScore}</div>
+          </div>
+          <div className=""bg-gradient-to-br from-blue-500 to-purple-500 rounded-lg p-6 shadow-lg"">
+            <div className=""text-white text-sm uppercase tracking-wider mb-1"">Total Games</div>
+            <div className=""text-4xl font-bold text-white"">{totalGames}</div>
+          </div>
+          <div className=""bg-gradient-to-br from-green-500 to-teal-500 rounded-lg p-6 shadow-lg"">
+            <div className=""text-white text-sm uppercase tracking-wider mb-1"">Avg Score</div>
+            <div className=""text-4xl font-bold text-white"">{avgScore}</div>
+          </div>
+          <div className=""bg-gradient-to-br from-pink-500 to-red-500 rounded-lg p-6 shadow-lg"">
+            <div className=""text-white text-sm uppercase tracking-wider mb-1"">Total Points</div>
+            <div className=""text-4xl font-bold text-white"">{totalScore}</div>
+          </div>
+        </div>
+
+        {gameHistory.length === 0 ? (
+          <div className=""bg-gray-800 rounded-lg p-12 text-center"">
+            <div className=""text-6xl mb-4"">🎮</div>
+            <h2 className=""text-2xl font-bold text-gray-300 mb-2"">No Games Played Yet</h2>
+            <p className=""text-gray-400 mb-6"">Start playing to see your statistics!</p>
+            <Link to=""/"" className=""inline-block px-8 py-3 bg-green-500 hover:bg-green-600 text-white font-bold rounded-lg transition-all"">
+              Play Now
+            </Link>
+          </div>
+        ) : (
+          <div className=""space-y-8"">
+            {/* Recent Performance Area Chart */}
+            <div className=""bg-gray-800 rounded-lg p-6 shadow-lg"">
+              <h2 className=""text-2xl font-bold text-white mb-4"">📈 Recent Performance (Last 10 Games)</h2>
+              <div className=""text-gray-400 text-sm mb-2"">Showing {recentGames.length} game(s)</div>
+              <div style={{height: '300px'}}>
+                <Line data={recentGamesData} options={chartOptions} />
+              </div>
+            </div>
+
+            {/* Score Distribution & Breakdown */}
+            <div className=""grid grid-cols-1 lg:grid-cols-2 gap-8"">
+              <div className=""bg-gray-800 rounded-lg p-6 shadow-lg"">
+                <h2 className=""text-2xl font-bold text-white mb-4"">🎯 Score Distribution</h2>
+                <div style={{height: '300px'}}>
+                  <Bar data={distributionData} options={chartOptions} />
+                </div>
+              </div>
+
+              <div className=""bg-gray-800 rounded-lg p-6 shadow-lg"">
+                <h2 className=""text-2xl font-bold text-white mb-4"">📊 Score Breakdown</h2>
+                <div style={{height: '300px'}}>
+                  <Pie data={pieData} options={pieOptions} />
+                </div>
+              </div>
+            </div>
+
+            {/* Performance Trend */}
+            {gameHistory.length > 1 && (
+              <div className=""bg-gray-800 rounded-lg p-6 shadow-lg"">
+                <h2 className=""text-2xl font-bold text-white mb-4"">🔥 Performance Trend (Last 20 Games)</h2>
+                <div className=""text-gray-400 text-sm mb-2"">Showing {Math.min(gameHistory.length, 20)} game(s)</div>
+                <div style={{height: '300px'}}>
+                  <Line data={trendData} options={chartOptions} />
+                </div>
+              </div>
+            )}
+
+            {/* Game History Table */}
+            <div className=""bg-gray-800 rounded-lg p-6 shadow-lg"">
+              <h2 className=""text-2xl font-bold text-white mb-4"">🕹️ Recent Games History</h2>
+              <div className=""overflow-x-auto"">
+                <table className=""min-w-full"">
+                  <thead>
+                    <tr className=""border-b border-gray-700"">
+                      <th className=""px-4 py-3 text-left text-gray-400 font-semibold"">#</th>
+                      <th className=""px-4 py-3 text-left text-gray-400 font-semibold"">Score</th>
+                      <th className=""px-4 py-3 text-left text-gray-400 font-semibold"">Duration</th>
+                      <th className=""px-4 py-3 text-left text-gray-400 font-semibold"">Date</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {gameHistory.slice().reverse().slice(0, 10).map((game, idx) => (
+                      <tr key={idx} className=""border-b border-gray-700 hover:bg-gray-700 transition-colors"">
+                        <td className=""px-4 py-3 text-gray-300"">{gameHistory.length - idx}</td>
+                        <td className=""px-4 py-3"">
+                          <span className={`font-bold ${
+                            (game.score || 0) >= 200 ? 'text-green-400' :
+                            (game.score || 0) >= 100 ? 'text-yellow-400' :
+                            'text-gray-300'
+                          }`}>
+                            {game.score || 0}
+                          </span>
+                        </td>
+                        <td className=""px-4 py-3 text-gray-300"">{game.duration || 0}s</td>
+                        <td className=""px-4 py-3 text-gray-400 text-sm"">{new Date(game.timestamp).toLocaleString()}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}","","","",""

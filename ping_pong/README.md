@@ -23,9 +23,9 @@ A classic Ping Pong game with AI opponent, progressive difficulty, dynamic visua
 
 ## Import
 
-1. Download `ping_pong.xlsx` from this folder
+1. Download `ping_pong.csv` from this folder
 2. In Odoo, go to **MCP Server > Web Apps** list view
-3. Import the `.xlsx` file using the standard Odoo import function
+3. Import the `.csv` file using the standard Odoo import function
 
 ## Requirements
 

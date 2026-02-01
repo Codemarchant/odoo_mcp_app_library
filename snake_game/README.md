@@ -12,9 +12,9 @@ A classic Snake game built as an Odoo MCP Studio web application with persistent
 
 ## Import
 
-1. Download `snake_game.xlsx` from this folder
+1. Download `snake_game.csv` from this folder
 2. In Odoo, go to **MCP Server > Web Apps** list view
-3. Import the `.xlsx` file using the standard Odoo import function
+3. Import the `.csv` file using the standard Odoo import function
 
 ## Requirements
 

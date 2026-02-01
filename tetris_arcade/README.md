@@ -49,10 +49,10 @@ A full-featured Tetris game built as an Odoo MCP Studio web application with mul
 
 ## Import
 
-1. Download `Tetris_Arcade.xlsx` from this folder
+1. Download `Tetris_Arcade.csv` from this folder
 2. In Odoo, go to **MCP Server > Web Apps** list view
 3. Click the **gear icon** (Actions) and select **Import records**
-4. Upload the `.xlsx` file and follow the import wizard
+4. Upload the `.csv` file and follow the import wizard
 
 ## Requirements
 

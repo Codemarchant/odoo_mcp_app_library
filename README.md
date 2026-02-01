@@ -15,7 +15,7 @@ Each demo app serves as a working example you can use as-is or as a starting poi
 Each app lives in its own folder and contains:
 
 - `README.md` - Description, screenshots, and usage instructions for the app
-- `.xlsx` - Export file ready to import into Odoo
+- `.csv` - Export file ready to import into Odoo
 
 ### EChart Dashboards
 
@@ -25,10 +25,10 @@ Pre-built dashboard examples demonstrating various Apache ECharts visualization 
 ## How to Import
 
 1. Install [Odoo MCP Studio](https://apps.odoo.com/apps/modules/19.0/odoo_remote_mcp) on your Odoo 19 instance
-2. Download the `.xlsx` file from the demo app you want to import
+2. Download the `.csv` file from the demo app you want to import
 3. In Odoo, navigate to **MCP Server > Web Apps** (or **ECharts** for dashboards) to open the list view
 4. Click the **gear icon** (Actions) and select **Import records**
-5. Upload the downloaded `.xlsx` file and follow the import wizard
+5. Upload the downloaded `.csv` file and follow the import wizard
 6. The app or dashboard will be created and ready to use
 
 ## Repository Structure
@@ -37,10 +37,10 @@ Pre-built dashboard examples demonstrating various Apache ECharts visualization 
 odoo_mcp_app_library/
   app-name/
     README.md
-    app-name.xlsx
+    app-name.csv
   another-app/
     README.md
-    another-app.xlsx
+    another-app.csv
   ...
 ```
 

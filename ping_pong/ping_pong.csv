@@ -1,0 +1,829 @@
+﻿"name","description","data_code","global_state_code","shared_components","shared_styles","router_mode","tailwind_enabled","cdn_dependencies","custom_imports","page_ids/name","page_ids/route_path","page_ids/page_title","page_ids/sequence","page_ids/data_code","page_ids/component_code","endpoint_ids/name","endpoint_ids/endpoint_path","endpoint_ids/method","endpoint_ids/handler_code"
+"Ping Pong 🏓","Classic Ping Pong game with AI opponent","","{}","","@keyframes scoreFlash {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+}
+
+@keyframes ballGlow {
+  0%, 100% { box-shadow: 0 0 10px rgba(255, 255, 255, 0.5); }
+  50% { box-shadow: 0 0 20px rgba(255, 255, 255, 0.9); }
+}
+
+@keyframes stageFlash {
+  0% { opacity: 0.5; transform: scale(1.05); }
+  100% { opacity: 0; transform: scale(1); }
+}
+
+@keyframes pulseLabel {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+.score-animation {
+  animation: scoreFlash 0.3s ease-out;
+}
+
+.ball {
+  animation: ballGlow 1s ease-in-out infinite;
+}
+
+.paddle {
+  transition: top 0.1s linear;
+}
+
+.game-container {
+  user-select: none;
+  -webkit-user-select: none;
+  transition: background 1.5s ease-in-out;
+}
+
+.stage-label {
+  animation: pulseLabel 1.5s ease-in-out infinite;
+}","Hash Router","True","{""chart.js"": ""https://esm.sh/chart.js@4.4.1"", ""react-chartjs-2"": ""https://esm.sh/react-chartjs-2@5.2.0?deps=react@19,chart.js@4.4.1""}","import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Title, Tooltip, Legend, Filler } from 'chart.js';
+import { Bar, Doughnut, Line } from 'react-chartjs-2';
+
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Title, Tooltip, Legend, Filler);","Ping Pong Game","/","","10","","function PingPongGamePage({ storage }) {
+  const CANVAS_WIDTH = 800;
+  const CANVAS_HEIGHT = 400;
+  const PADDLE_WIDTH = 12;
+  const PADDLE_HEIGHT = 80;
+  const BALL_SIZE = 12;
+  const WINNING_SCORE = 6;
+  const MAX_BALL_SPEED = 28;
+  const BASE_SPEED = 7;
+
+  const DIFF_SETTINGS = {
+    easy: { ai: 0.65, hitMult: 1.06, resetScale: 0.25, rallyMult: 1.06 },
+    medium: { ai: 0.85, hitMult: 1.09, resetScale: 0.4, rallyMult: 1.08 },
+    hard: { ai: 0.95, hitMult: 1.14, resetScale: 0.6, rallyMult: 1.12 }
+  };
+
+  const canvasRef = useRef(null);
+  const animationRef = useRef(null);
+  const rallyRef = useRef(0);
+  const particlesRef = useRef([]);
+  const trailRef = useRef([]);
+  const stageFlashRef = useRef(0);
+  const prevStageRef = useRef(0);
+  const audioCtxRef = useRef(null);
+
+  const getAudioCtx = () => {
+    if (!audioCtxRef.current) {
+      audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (audioCtxRef.current.state === 'suspended') {
+      audioCtxRef.current.resume();
+    }
+    return audioCtxRef.current;
+  };
+
+  const playTone = (freq, duration, type, volume) => {
+    try {
+      const ctx = getAudioCtx();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = type || 'sine';
+      osc.frequency.setValueAtTime(freq, ctx.currentTime);
+      gain.gain.setValueAtTime(volume || 0.15, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + duration);
+    } catch (e) {}
+  };
+
+  const sfx = {
+    playerHit: () => playTone(660, 0.08, 'square', 0.1),
+    aiHit: () => playTone(520, 0.08, 'square', 0.1),
+    wall: () => playTone(300, 0.05, 'sine', 0.06),
+    scoreWin: () => { playTone(880, 0.12, 'sine', 0.12); setTimeout(() => playTone(1100, 0.15, 'sine', 0.1), 100); },
+    scoreLose: () => playTone(180, 0.25, 'sawtooth', 0.1),
+    stageUp: () => { playTone(600, 0.1, 'sine', 0.1); setTimeout(() => playTone(800, 0.1, 'sine', 0.1), 80); setTimeout(() => playTone(1000, 0.15, 'sine', 0.1), 160); },
+    gameWin: () => { [0,100,200,300,400].forEach((d,i) => setTimeout(() => playTone(600 + i*100, 0.18, 'sine', 0.12), d)); },
+    gameLose: () => { [0,150,300].forEach((d,i) => setTimeout(() => playTone(400 - i*100, 0.3, 'sawtooth', 0.08), d)); }
+  };
+
+  const STAGE_THEMES = [
+    { canvasBg: '#0a0f1a', centerLine: '#1e3a5f', ballColor: '#ffffff', playerPaddle: '#3b82f6', aiPaddle: '#ef4444', pageBg: 'linear-gradient(135deg, #111827 0%, #1e3a5f 50%, #000000 100%)', label: '', particleColor: 'rgba(59,130,246,0.12)', particleCount: 12, trailAlpha: 0.25 },
+    { canvasBg: '#081418', centerLine: '#1a5f4a', ballColor: '#4ade80', playerPaddle: '#22d3ee', aiPaddle: '#f97316', pageBg: 'linear-gradient(135deg, #111827 0%, #134e4a 50%, #000000 100%)', label: 'HEATING UP', particleColor: 'rgba(34,211,238,0.18)', particleCount: 25, trailAlpha: 0.35 },
+    { canvasBg: '#1a1208', centerLine: '#5f3a1a', ballColor: '#fbbf24', playerPaddle: '#f59e0b', aiPaddle: '#dc2626', pageBg: 'linear-gradient(135deg, #1a0f00 0%, #78350f 50%, #000000 100%)', label: 'INTENSE', particleColor: 'rgba(251,191,36,0.22)', particleCount: 40, trailAlpha: 0.45 },
+    { canvasBg: '#1a0808', centerLine: '#5f1a1a', ballColor: '#ff6b6b', playerPaddle: '#ff6b6b', aiPaddle: '#ff2222', pageBg: 'linear-gradient(135deg, #1a0000 0%, #7f1d1d 50%, #1a0000 100%)', label: 'ON FIRE', particleColor: 'rgba(255,107,107,0.28)', particleCount: 60, trailAlpha: 0.55 },
+    { canvasBg: '#12041a', centerLine: '#6b21a8', ballColor: '#ffd700', playerPaddle: '#a855f7', aiPaddle: '#eab308', pageBg: 'linear-gradient(135deg, #2e1065 0%, #78350f 50%, #1a0533 100%)', label: 'EPIC FINALE', particleColor: 'rgba(255,215,0,0.32)', particleCount: 80, trailAlpha: 0.65 }
+  ];
+
+  const getStage = (totalScore) => {
+    if (totalScore >= 9) return 4;
+    if (totalScore >= 7) return 3;
+    if (totalScore >= 5) return 2;
+    if (totalScore >= 3) return 1;
+    return 0;
+  };
+
+  const [gameState, setGameState] = useState({
+    playerY: CANVAS_HEIGHT / 2 - PADDLE_HEIGHT / 2,
+    aiY: CANVAS_HEIGHT / 2 - PADDLE_HEIGHT / 2,
+    ballX: CANVAS_WIDTH / 2,
+    ballY: CANVAS_HEIGHT / 2,
+    ballVelocityX: BASE_SPEED,
+    ballVelocityY: 3,
+    playerScore: 0,
+    aiScore: 0,
+    isPlaying: false,
+    gameOver: false,
+    winner: null,
+    startTime: null
+  });
+
+  const [mouseY, setMouseY] = useState(CANVAS_HEIGHT / 2);
+  const [difficulty, setDifficulty] = useState('medium');
+  const [stats, setStats] = useState({ wins: 0, losses: 0, totalGames: 0 });
+  const [isLoadingStats, setIsLoadingStats] = useState(true);
+  const [currentStage, setCurrentStage] = useState(0);
+  const [soundOn, setSoundOn] = useState(true);
+
+  useEffect(() => {
+    const loadStats = async () => {
+      try {
+        const [wins, losses, totalGames] = await Promise.all([
+          storage.get('wins', 0),
+          storage.get('losses', 0),
+          storage.get('totalGames', 0)
+        ]);
+        setStats({ wins, losses, totalGames });
+      } catch (error) {
+        console.error('Error loading stats:', error);
+      } finally {
+        setIsLoadingStats(false);
+      }
+    };
+    loadStats();
+  }, [storage]);
+
+  const saveGameResult = async (playerWon) => {
+    try {
+      const duration = gameState.startTime ? Math.floor((Date.now() - gameState.startTime) / 1000) : 0;
+      const gameRecord = {
+        playerScore: gameState.playerScore,
+        aiScore: gameState.aiScore,
+        playerWon,
+        difficulty,
+        duration,
+        timestamp: new Date().toISOString()
+      };
+      const newWins = playerWon ? stats.wins + 1 : stats.wins;
+      const newLosses = playerWon ? stats.losses : stats.losses + 1;
+      const newTotalGames = stats.totalGames + 1;
+      await Promise.all([
+        storage.set('wins', newWins),
+        storage.set('losses', newLosses),
+        storage.set('totalGames', newTotalGames)
+      ]);
+      const currentHistory = await storage.get('gameHistory', []);
+      await storage.set('gameHistory', [...currentHistory, gameRecord]);
+      setStats({ wins: newWins, losses: newLosses, totalGames: newTotalGames });
+    } catch (error) {
+      console.error('Error saving game result:', error);
+    }
+  };
+
+  useEffect(() => {
+    const particles = [];
+    for (let i = 0; i < 80; i++) {
+      particles.push({
+        x: Math.random() * CANVAS_WIDTH,
+        y: Math.random() * CANVAS_HEIGHT,
+        vx: (Math.random() - 0.5) * 0.5,
+        vy: (Math.random() - 0.5) * 0.5,
+        size: Math.random() * 2 + 0.5
+      });
+    }
+    particlesRef.current = particles;
+  }, []);
+
+  const startGame = () => {
+    rallyRef.current = 0;
+    trailRef.current = [];
+    stageFlashRef.current = 0;
+    prevStageRef.current = 0;
+    setCurrentStage(0);
+    setGameState({
+      playerY: CANVAS_HEIGHT / 2 - PADDLE_HEIGHT / 2,
+      aiY: CANVAS_HEIGHT / 2 - PADDLE_HEIGHT / 2,
+      ballX: CANVAS_WIDTH / 2,
+      ballY: CANVAS_HEIGHT / 2,
+      ballVelocityX: BASE_SPEED,
+      ballVelocityY: 3,
+      playerScore: 0,
+      aiScore: 0,
+      isPlaying: true,
+      gameOver: false,
+      winner: null,
+      startTime: Date.now()
+    });
+  };
+
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      if (!gameState.isPlaying) return;
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const rect = canvas.getBoundingClientRect();
+      const scaleY = CANVAS_HEIGHT / rect.height;
+      const y = (e.clientY - rect.top) * scaleY;
+      setMouseY(y);
+    };
+    const canvas = canvasRef.current;
+    if (canvas) {
+      canvas.addEventListener('mousemove', handleMouseMove);
+      return () => canvas.removeEventListener('mousemove', handleMouseMove);
+    }
+  }, [gameState.isPlaying]);
+
+  const soundOnRef = useRef(soundOn);
+  useEffect(() => { soundOnRef.current = soundOn; }, [soundOn]);
+
+  useEffect(() => {
+    if (!gameState.isPlaying || gameState.gameOver) return;
+    const diff = DIFF_SETTINGS[difficulty];
+    const gameLoop = () => {
+      setGameState(prev => {
+        let n = { ...prev };
+        let targetY = mouseY - PADDLE_HEIGHT / 2;
+        n.playerY = Math.max(0, Math.min(CANVAS_HEIGHT - PADDLE_HEIGHT, targetY));
+
+        const aiTarget = n.ballY - PADDLE_HEIGHT / 2;
+        const aiSpeed = 6 * diff.ai;
+        if (n.aiY < aiTarget - 5) n.aiY = Math.min(n.aiY + aiSpeed, CANVAS_HEIGHT - PADDLE_HEIGHT);
+        else if (n.aiY > aiTarget + 5) n.aiY = Math.max(n.aiY - aiSpeed, 0);
+
+        n.ballX += n.ballVelocityX;
+        n.ballY += n.ballVelocityY;
+
+        trailRef.current.push({ x: n.ballX, y: n.ballY });
+        if (trailRef.current.length > 14) trailRef.current.shift();
+
+        if (n.ballY <= 0 || n.ballY >= CANVAS_HEIGHT - BALL_SIZE) {
+          n.ballVelocityY = -n.ballVelocityY;
+          n.ballY = n.ballY <= 0 ? 0 : CANVAS_HEIGHT - BALL_SIZE;
+          if (soundOnRef.current) sfx.wall();
+        }
+
+        if (n.ballX <= PADDLE_WIDTH && n.ballY + BALL_SIZE >= n.playerY && n.ballY <= n.playerY + PADDLE_HEIGHT) {
+          const hitPos = (n.ballY - n.playerY) / PADDLE_HEIGHT - 0.5;
+          rallyRef.current++;
+          let speed = Math.abs(n.ballVelocityX) * diff.hitMult;
+          if (rallyRef.current > 0 && rallyRef.current % 4 === 0) speed *= diff.rallyMult;
+          n.ballVelocityX = Math.min(speed, MAX_BALL_SPEED);
+          n.ballVelocityY += hitPos * 5;
+          n.ballX = PADDLE_WIDTH;
+          if (soundOnRef.current) sfx.playerHit();
+        }
+
+        if (n.ballX + BALL_SIZE >= CANVAS_WIDTH - PADDLE_WIDTH && n.ballY + BALL_SIZE >= n.aiY && n.ballY <= n.aiY + PADDLE_HEIGHT) {
+          const hitPos = (n.ballY - n.aiY) / PADDLE_HEIGHT - 0.5;
+          rallyRef.current++;
+          let speed = Math.abs(n.ballVelocityX) * diff.hitMult;
+          if (rallyRef.current > 0 && rallyRef.current % 4 === 0) speed *= diff.rallyMult;
+          n.ballVelocityX = -Math.min(speed, MAX_BALL_SPEED);
+          n.ballVelocityY += hitPos * 5;
+          n.ballX = CANVAS_WIDTH - PADDLE_WIDTH - BALL_SIZE;
+          if (soundOnRef.current) sfx.aiHit();
+        }
+
+        if (n.ballX < 0) {
+          n.aiScore++;
+          rallyRef.current = 0;
+          trailRef.current = [];
+          const resetSpd = Math.min(BASE_SPEED + (n.playerScore + n.aiScore) * diff.resetScale, 15);
+          n.ballX = CANVAS_WIDTH / 2;
+          n.ballY = CANVAS_HEIGHT / 2;
+          n.ballVelocityX = resetSpd;
+          n.ballVelocityY = (Math.random() - 0.5) * 4;
+          if (soundOnRef.current) sfx.scoreLose();
+        } else if (n.ballX > CANVAS_WIDTH) {
+          n.playerScore++;
+          rallyRef.current = 0;
+          trailRef.current = [];
+          const resetSpd = Math.min(BASE_SPEED + (n.playerScore + n.aiScore) * diff.resetScale, 15);
+          n.ballX = CANVAS_WIDTH / 2;
+          n.ballY = CANVAS_HEIGHT / 2;
+          n.ballVelocityX = -resetSpd;
+          n.ballVelocityY = (Math.random() - 0.5) * 4;
+          if (soundOnRef.current) sfx.scoreWin();
+        }
+
+        const newStage = getStage(n.playerScore + n.aiScore);
+        if (newStage !== prevStageRef.current) {
+          prevStageRef.current = newStage;
+          stageFlashRef.current = 30;
+          setCurrentStage(newStage);
+          if (soundOnRef.current) sfx.stageUp();
+        }
+        if (stageFlashRef.current > 0) stageFlashRef.current--;
+
+        if (n.playerScore >= WINNING_SCORE) {
+          n.gameOver = true;
+          n.isPlaying = false;
+          n.winner = 'player';
+          if (soundOnRef.current) sfx.gameWin();
+          saveGameResult(true);
+        } else if (n.aiScore >= WINNING_SCORE) {
+          n.gameOver = true;
+          n.isPlaying = false;
+          n.winner = 'ai';
+          if (soundOnRef.current) sfx.gameLose();
+          saveGameResult(false);
+        }
+        return n;
+      });
+      animationRef.current = requestAnimationFrame(gameLoop);
+    };
+    animationRef.current = requestAnimationFrame(gameLoop);
+    return () => { if (animationRef.current) cancelAnimationFrame(animationRef.current); };
+  }, [gameState.isPlaying, gameState.gameOver, mouseY, difficulty, stats]);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const totalScore = gameState.playerScore + gameState.aiScore;
+    const stage = getStage(totalScore);
+    const theme = STAGE_THEMES[stage];
+
+    ctx.fillStyle = theme.canvasBg;
+    ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+    const activeCount = theme.particleCount;
+    particlesRef.current.forEach((p, i) => {
+      if (i >= activeCount) return;
+      p.x += p.vx;
+      p.y += p.vy;
+      if (p.x < 0) p.x = CANVAS_WIDTH;
+      if (p.x > CANVAS_WIDTH) p.x = 0;
+      if (p.y < 0) p.y = CANVAS_HEIGHT;
+      if (p.y > CANVAS_HEIGHT) p.y = 0;
+      ctx.fillStyle = theme.particleColor;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    if (stageFlashRef.current > 0) {
+      const alpha = (stageFlashRef.current / 30) * 0.35;
+      ctx.fillStyle = 'rgba(255,255,255,' + alpha + ')';
+      ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+    }
+
+    ctx.strokeStyle = theme.centerLine;
+    ctx.lineWidth = 2;
+    ctx.setLineDash([10, 10]);
+    ctx.beginPath();
+    ctx.moveTo(CANVAS_WIDTH / 2, 0);
+    ctx.lineTo(CANVAS_WIDTH / 2, CANVAS_HEIGHT);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    const trail = trailRef.current;
+    trail.forEach((pos, i) => {
+      const pct = (i + 1) / trail.length;
+      const alpha = pct * theme.trailAlpha;
+      const size = BALL_SIZE * pct;
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = theme.ballColor;
+      ctx.fillRect(pos.x + (BALL_SIZE - size) / 2, pos.y + (BALL_SIZE - size) / 2, size, size);
+    });
+    ctx.globalAlpha = 1;
+
+    ctx.shadowColor = theme.playerPaddle;
+    ctx.shadowBlur = 10 + stage * 5;
+    ctx.fillStyle = theme.playerPaddle;
+    ctx.fillRect(0, gameState.playerY, PADDLE_WIDTH, PADDLE_HEIGHT);
+    ctx.shadowColor = theme.aiPaddle;
+    ctx.fillStyle = theme.aiPaddle;
+    ctx.fillRect(CANVAS_WIDTH - PADDLE_WIDTH, gameState.aiY, PADDLE_WIDTH, PADDLE_HEIGHT);
+    ctx.shadowBlur = 0;
+
+    ctx.shadowColor = theme.ballColor;
+    ctx.shadowBlur = 15 + stage * 6;
+    ctx.fillStyle = theme.ballColor;
+    ctx.fillRect(gameState.ballX, gameState.ballY, BALL_SIZE, BALL_SIZE);
+    ctx.shadowBlur = 0;
+
+    ctx.font = 'bold 48px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.globalAlpha = 0.3;
+    ctx.fillStyle = theme.playerPaddle;
+    ctx.fillText(gameState.playerScore, CANVAS_WIDTH / 4, 60);
+    ctx.fillStyle = theme.aiPaddle;
+    ctx.fillText(gameState.aiScore, (CANVAS_WIDTH * 3) / 4, 60);
+    ctx.globalAlpha = 1;
+
+    if (theme.label && gameState.isPlaying) {
+      ctx.font = 'bold 18px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = theme.ballColor;
+      ctx.globalAlpha = 0.5 + Math.sin(Date.now() / 400) * 0.2;
+      ctx.fillText(theme.label, CANVAS_WIDTH / 2, CANVAS_HEIGHT - 12);
+      ctx.globalAlpha = 1;
+    }
+
+    if (rallyRef.current >= 3 && gameState.isPlaying) {
+      ctx.font = 'bold 14px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = theme.ballColor;
+      ctx.globalAlpha = 0.5;
+      ctx.fillText('Rally: ' + rallyRef.current, CANVAS_WIDTH / 2, 22);
+      ctx.globalAlpha = 1;
+    }
+
+    if (gameState.isPlaying) {
+      const speed = Math.abs(gameState.ballVelocityX);
+      const speedPct = Math.min((speed / MAX_BALL_SPEED) * 100, 100);
+      ctx.fillStyle = theme.centerLine;
+      ctx.fillRect(CANVAS_WIDTH / 2 - 50, CANVAS_HEIGHT - 4, 100, 3);
+      ctx.fillStyle = speedPct > 75 ? '#ef4444' : speedPct > 50 ? '#fbbf24' : '#22c55e';
+      ctx.fillRect(CANVAS_WIDTH / 2 - 50, CANVAS_HEIGHT - 4, speedPct, 3);
+    }
+  }, [gameState]);
+
+  const theme = STAGE_THEMES[currentStage];
+
+  if (isLoadingStats) {
+    return (
+      <div className=""min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-black flex items-center justify-center"">
+        <div className=""text-center"">
+          <div className=""text-6xl mb-4 animate-pulse"">🏓</div>
+          <div className=""text-xl text-gray-400"">Loading stats...</div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className=""min-h-screen flex items-center justify-center p-4 game-container"" style={{ background: theme.pageBg }}>
+      <div className=""max-w-5xl w-full"">
+        <div className=""text-center mb-6"">
+          <h1 className=""text-6xl font-bold text-blue-400 mb-2"">🏓 PING PONG</h1>
+          <p className=""text-gray-400"">Move your mouse to control the paddle</p>
+          <div className=""flex justify-center gap-3 mt-3"">
+            <Link to=""/stats"" className=""px-5 py-2 bg-purple-500 hover:bg-purple-600 text-white font-semibold rounded-lg transition-all"">
+              📊 Statistics
+            </Link>
+            <button onClick={() => setSoundOn(s => !s)} className={'px-5 py-2 font-semibold rounded-lg transition-all ' + (soundOn ? 'bg-green-600 hover:bg-green-700 text-white' : 'bg-gray-700 hover:bg-gray-600 text-gray-400')}>
+              {soundOn ? '🔊 Sound ON' : '🔇 Sound OFF'}
+            </button>
+          </div>
+        </div>
+
+        <div className=""grid grid-cols-3 gap-4 mb-6"">
+          <div className=""bg-gray-800 bg-opacity-80 rounded-lg p-4 border-2 border-green-500"">
+            <div className=""text-gray-400 text-sm uppercase tracking-wider mb-1"">Wins</div>
+            <div className=""text-3xl font-bold text-green-400"">{stats.wins}</div>
+          </div>
+          <div className=""bg-gray-800 bg-opacity-80 rounded-lg p-4 border-2 border-red-500"">
+            <div className=""text-gray-400 text-sm uppercase tracking-wider mb-1"">Losses</div>
+            <div className=""text-3xl font-bold text-red-400"">{stats.losses}</div>
+          </div>
+          <div className=""bg-gray-800 bg-opacity-80 rounded-lg p-4 border-2 border-blue-500"">
+            <div className=""text-gray-400 text-sm uppercase tracking-wider mb-1"">Win Rate</div>
+            <div className=""text-3xl font-bold text-blue-400"">
+              {stats.totalGames > 0 ? ((stats.wins / stats.totalGames) * 100).toFixed(0) : 0}%
+            </div>
+          </div>
+        </div>
+
+        {!gameState.isPlaying && (
+          <div className=""bg-gray-800 bg-opacity-80 rounded-lg p-4 mb-6 text-center"">
+            <div className=""text-gray-400 text-sm uppercase tracking-wider mb-3"">Select Difficulty</div>
+            <div className=""flex justify-center gap-3"">
+              <button onClick={() => setDifficulty('easy')} className={'px-6 py-2 rounded-lg font-semibold transition-all ' + (difficulty === 'easy' ? 'bg-green-500 text-white' : 'bg-gray-700 text-gray-400 hover:bg-gray-600')}>😊 Easy</button>
+              <button onClick={() => setDifficulty('medium')} className={'px-6 py-2 rounded-lg font-semibold transition-all ' + (difficulty === 'medium' ? 'bg-yellow-500 text-white' : 'bg-gray-700 text-gray-400 hover:bg-gray-600')}>🤔 Medium</button>
+              <button onClick={() => setDifficulty('hard')} className={'px-6 py-2 rounded-lg font-semibold transition-all ' + (difficulty === 'hard' ? 'bg-red-500 text-white' : 'bg-gray-700 text-gray-400 hover:bg-gray-600')}>😈 Hard</button>
+            </div>
+          </div>
+        )}
+
+        {gameState.isPlaying && theme.label && (
+          <div className=""text-center mb-3"">
+            <span className=""stage-label inline-block px-6 py-2 rounded-full text-lg font-bold"" style={{ color: theme.ballColor, border: '2px solid ' + theme.ballColor, background: 'rgba(0,0,0,0.5)' }}>{theme.label}</span>
+          </div>
+        )}
+
+        <div className=""bg-gray-800 bg-opacity-80 rounded-lg p-6 shadow-2xl mb-6"">
+          <div className=""flex justify-center"">
+            <canvas ref={canvasRef} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} className=""border-4 border-gray-700 rounded-lg"" style={{ maxWidth: '100%', height: 'auto' }} />
+          </div>
+        </div>
+
+        {gameState.gameOver && (
+          <div className=""text-center mb-6"">
+            <div className={'bg-opacity-20 border-2 rounded-lg p-6 inline-block ' + (gameState.winner === 'player' ? 'bg-green-500 border-green-500' : 'bg-red-500 border-red-500')}>
+              <div className={'text-4xl font-bold mb-2 ' + (gameState.winner === 'player' ? 'text-green-400' : 'text-red-400')}>
+                {gameState.winner === 'player' ? '🎉 YOU WIN!' : '😔 YOU LOSE'}
+              </div>
+              <div className=""text-xl text-gray-300"">Final Score: {gameState.playerScore} - {gameState.aiScore}</div>
+            </div>
+          </div>
+        )}
+
+        <div className=""flex justify-center gap-4"">
+          {!gameState.isPlaying && (
+            <button onClick={startGame} className=""px-8 py-4 bg-blue-500 hover:bg-blue-600 text-white font-bold text-xl rounded-lg transition-all transform hover:scale-105 shadow-lg"">
+              {gameState.gameOver ? '🔄 Play Again' : '▶️ Start Game'}
+            </button>
+          )}
+        </div>
+
+        <div className=""mt-6 text-center"">
+          <div className=""inline-block bg-gray-800 bg-opacity-80 rounded-lg px-6 py-3 border border-gray-700"">
+            <div className=""text-gray-400 text-sm"">
+              🎯 First to {WINNING_SCORE} points wins! • 💾 Stats saved automatically • 🔥 Ball gets faster every rally!
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}","","","",""
+"","","","","","","","","","","Statistics","/stats","","20","","function StatisticsPage({ storage }) {
+  const [stats, setStats] = useState({
+    wins: 0,
+    losses: 0,
+    totalGames: 0,
+    gameHistory: []
+  });
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const loadStats = async () => {
+      try {
+        const [wins, losses, totalGames, gameHistory] = await Promise.all([
+          storage.get('wins', 0),
+          storage.get('losses', 0),
+          storage.get('totalGames', 0),
+          storage.get('gameHistory', [])
+        ]);
+        setStats({ wins, losses, totalGames, gameHistory });
+      } catch (error) {
+        console.error('Error loading stats:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadStats();
+  }, [storage]);
+
+  const clearStats = async () => {
+    if (confirm('Are you sure you want to clear all statistics? This cannot be undone.')) {
+      try {
+        await Promise.all([
+          storage.delete('wins'),
+          storage.delete('losses'),
+          storage.delete('totalGames'),
+          storage.delete('gameHistory')
+        ]);
+        setStats({ wins: 0, losses: 0, totalGames: 0, gameHistory: [] });
+        alert('✅ All statistics cleared!');
+      } catch (error) {
+        console.error('Error clearing stats:', error);
+        alert('❌ Error clearing statistics');
+      }
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className=""min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-black flex items-center justify-center"">
+        <div className=""text-center"">
+          <div className=""text-6xl mb-4 animate-pulse"">📊</div>
+          <div className=""text-xl text-gray-400"">Loading statistics...</div>
+        </div>
+      </div>
+    );
+  }
+
+  const { wins, losses, totalGames, gameHistory } = stats;
+  const winRate = totalGames > 0 ? ((wins / totalGames) * 100).toFixed(1) : 0;
+
+  // Win/Loss chart
+  const winLossData = {
+    labels: ['Wins', 'Losses'],
+    datasets: [{
+      data: [wins, losses],
+      backgroundColor: ['rgb(34, 197, 94)', 'rgb(239, 68, 68)'],
+      borderWidth: 2,
+      borderColor: '#1f2937'
+    }]
+  };
+
+  // Performance by difficulty
+  const difficultyStats = { easy: { wins: 0, losses: 0 }, medium: { wins: 0, losses: 0 }, hard: { wins: 0, losses: 0 } };
+  gameHistory.forEach(game => {
+    const diff = game.difficulty || 'medium';
+    if (game.playerWon) {
+      difficultyStats[diff].wins++;
+    } else {
+      difficultyStats[diff].losses++;
+    }
+  });
+
+  const difficultyData = {
+    labels: ['Easy', 'Medium', 'Hard'],
+    datasets: [
+      {
+        label: 'Wins',
+        data: [difficultyStats.easy.wins, difficultyStats.medium.wins, difficultyStats.hard.wins],
+        backgroundColor: 'rgba(34, 197, 94, 0.7)',
+        borderColor: 'rgb(34, 197, 94)',
+        borderWidth: 1
+      },
+      {
+        label: 'Losses',
+        data: [difficultyStats.easy.losses, difficultyStats.medium.losses, difficultyStats.hard.losses],
+        backgroundColor: 'rgba(239, 68, 68, 0.7)',
+        borderColor: 'rgb(239, 68, 68)',
+        borderWidth: 1
+      }
+    ]
+  };
+
+  // Recent games trend
+  const recentGames = gameHistory.slice(-15);
+  const trendData = {
+    labels: recentGames.map((g, idx) => `#${Math.max(1, gameHistory.length - 14) + idx}`),
+    datasets: [{
+      label: 'Player Score',
+      data: recentGames.map(g => g.playerScore || 0),
+      borderColor: 'rgb(59, 130, 246)',
+      backgroundColor: 'rgba(59, 130, 246, 0.2)',
+      fill: true,
+      tension: 0.4
+    }, {
+      label: 'AI Score',
+      data: recentGames.map(g => g.aiScore || 0),
+      borderColor: 'rgb(239, 68, 68)',
+      backgroundColor: 'rgba(239, 68, 68, 0.2)',
+      fill: true,
+      tension: 0.4
+    }]
+  };
+
+  const chartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        labels: { color: '#9ca3af' }
+      }
+    },
+    scales: {
+      x: { ticks: { color: '#9ca3af' }, grid: { color: '#374151' } },
+      y: { ticks: { color: '#9ca3af' }, grid: { color: '#374151' } }
+    }
+  };
+
+  const doughnutOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'bottom',
+        labels: { color: '#9ca3af', padding: 20, font: { size: 14 } }
+      }
+    }
+  };
+
+  return (
+    <div className=""min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-black p-4"">
+      <div className=""max-w-7xl mx-auto"">
+        <div className=""text-center mb-8"">
+          <h1 className=""text-5xl font-bold text-blue-400 mb-2"">📊 Game Statistics</h1>
+          <p className=""text-gray-400"">Track your Ping Pong performance</p>
+          <div className=""flex justify-center gap-4 mt-4"">
+            <Link to=""/"" className=""inline-block px-6 py-2 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-lg transition-all"">
+              ← Back to Game
+            </Link>
+            {totalGames > 0 && (
+              <button
+                onClick={clearStats}
+                className=""inline-block px-6 py-2 bg-red-500 hover:bg-red-600 text-white font-semibold rounded-lg transition-all""
+              >
+                🗑️ Clear Stats
+              </button>
+            )}
+          </div>
+          {totalGames > 0 && (
+            <div className=""text-xs text-gray-500 mt-2"">💾 All stats are saved permanently</div>
+          )}
+        </div>
+
+        {/* Summary Cards */}
+        <div className=""grid grid-cols-1 md:grid-cols-4 gap-6 mb-8"">
+          <div className=""bg-gradient-to-br from-green-500 to-emerald-500 rounded-lg p-6 shadow-lg"">
+            <div className=""text-white text-sm uppercase tracking-wider mb-1"">Wins</div>
+            <div className=""text-4xl font-bold text-white"">{wins}</div>
+          </div>
+          <div className=""bg-gradient-to-br from-red-500 to-rose-500 rounded-lg p-6 shadow-lg"">
+            <div className=""text-white text-sm uppercase tracking-wider mb-1"">Losses</div>
+            <div className=""text-4xl font-bold text-white"">{losses}</div>
+          </div>
+          <div className=""bg-gradient-to-br from-blue-500 to-cyan-500 rounded-lg p-6 shadow-lg"">
+            <div className=""text-white text-sm uppercase tracking-wider mb-1"">Win Rate</div>
+            <div className=""text-4xl font-bold text-white"">{winRate}%</div>
+          </div>
+          <div className=""bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg p-6 shadow-lg"">
+            <div className=""text-white text-sm uppercase tracking-wider mb-1"">Total Games</div>
+            <div className=""text-4xl font-bold text-white"">{totalGames}</div>
+          </div>
+        </div>
+
+        {gameHistory.length === 0 ? (
+          <div className=""bg-gray-800 rounded-lg p-12 text-center"">
+            <div className=""text-6xl mb-4"">🏓</div>
+            <h2 className=""text-2xl font-bold text-gray-300 mb-2"">No Games Played Yet</h2>
+            <p className=""text-gray-400 mb-6"">Start playing to see your statistics!</p>
+            <Link to=""/"" className=""inline-block px-8 py-3 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-lg transition-all"">
+              Play Now
+            </Link>
+          </div>
+        ) : (
+          <div className=""space-y-8"">
+            {/* Win/Loss & Difficulty Charts */}
+            <div className=""grid grid-cols-1 lg:grid-cols-2 gap-8"">
+              <div className=""bg-gray-800 rounded-lg p-6 shadow-lg"">
+                <h2 className=""text-2xl font-bold text-white mb-4"">🎯 Win/Loss Record</h2>
+                <div style={{height: '300px'}}>
+                  <Doughnut data={winLossData} options={doughnutOptions} />
+                </div>
+              </div>
+
+              <div className=""bg-gray-800 rounded-lg p-6 shadow-lg"">
+                <h2 className=""text-2xl font-bold text-white mb-4"">💪 Performance by Difficulty</h2>
+                <div style={{height: '300px'}}>
+                  <Bar data={difficultyData} options={chartOptions} />
+                </div>
+              </div>
+            </div>
+
+            {/* Recent Games Trend */}
+            {gameHistory.length > 0 && (
+              <div className=""bg-gray-800 rounded-lg p-6 shadow-lg"">
+                <h2 className=""text-2xl font-bold text-white mb-4"">📈 Recent Performance (Last 15 Games)</h2>
+                <div className=""text-gray-400 text-sm mb-2"">Showing {recentGames.length} game(s)</div>
+                <div style={{height: '300px'}}>
+                  <Line data={trendData} options={chartOptions} />
+                </div>
+              </div>
+            )}
+
+            {/* Game History Table */}
+            <div className=""bg-gray-800 rounded-lg p-6 shadow-lg"">
+              <h2 className=""text-2xl font-bold text-white mb-4"">🕹️ Recent Games History</h2>
+              <div className=""overflow-x-auto"">
+                <table className=""min-w-full"">
+                  <thead>
+                    <tr className=""border-b border-gray-700"">
+                      <th className=""px-4 py-3 text-left text-gray-400 font-semibold"">#</th>
+                      <th className=""px-4 py-3 text-left text-gray-400 font-semibold"">Result</th>
+                      <th className=""px-4 py-3 text-left text-gray-400 font-semibold"">Score</th>
+                      <th className=""px-4 py-3 text-left text-gray-400 font-semibold"">Difficulty</th>
+                      <th className=""px-4 py-3 text-left text-gray-400 font-semibold"">Duration</th>
+                      <th className=""px-4 py-3 text-left text-gray-400 font-semibold"">Date</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {gameHistory.slice().reverse().slice(0, 15).map((game, idx) => (
+                      <tr key={idx} className=""border-b border-gray-700 hover:bg-gray-700 transition-colors"">
+                        <td className=""px-4 py-3 text-gray-300"">{gameHistory.length - idx}</td>
+                        <td className=""px-4 py-3"">
+                          <span className={`font-bold ${game.playerWon ? 'text-green-400' : 'text-red-400'}`}>
+                            {game.playerWon ? '✅ WIN' : '❌ LOSS'}
+                          </span>
+                        </td>
+                        <td className=""px-4 py-3 text-gray-300"">
+                          {game.playerScore} - {game.aiScore}
+                        </td>
+                        <td className=""px-4 py-3"">
+                          <span className={`px-2 py-1 rounded text-xs font-semibold ${
+                            game.difficulty === 'easy' ? 'bg-green-500 text-white' :
+                            game.difficulty === 'hard' ? 'bg-red-500 text-white' :
+                            'bg-yellow-500 text-white'
+                          }`}>
+                            {(game.difficulty || 'medium').toUpperCase()}
+                          </span>
+                        </td>
+                        <td className=""px-4 py-3 text-gray-300"">{game.duration || 0}s</td>
+                        <td className=""px-4 py-3 text-gray-400 text-sm"">{new Date(game.timestamp).toLocaleString()}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}","","","",""

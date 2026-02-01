@@ -1,0 +1,1307 @@
+﻿"name","description","data_code","global_state_code","shared_components","shared_styles","router_mode","tailwind_enabled","cdn_dependencies","custom_imports","page_ids/name","page_ids/route_path","page_ids/page_title","page_ids/sequence","page_ids/data_code","page_ids/component_code","endpoint_ids/name","endpoint_ids/endpoint_path","endpoint_ids/method","endpoint_ids/handler_code"
+"Tetris Arcade","Full-featured Tetris game with multiple modes, sound effects, progressive backgrounds, and persistent user stats","","{ currentMode: 'classic', soundEnabled: true, musicEnabled: false, musicTrack: null }","// Sound Manager using Web Audio API
+const SoundManager = (() => {
+  let audioContext = null;
+  let musicPlaying = false;
+  let currentTrack = null;
+  let musicInterval = null;
+  let musicGain = null;
+  
+  const getContext = () => {
+    if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    return audioContext;
+  };
+  
+  const playTone = (frequency, duration, type = 'square', volume = 0.3) => {
+    try {
+      const ctx = getContext();
+      const oscillator = ctx.createOscillator();
+      const gainNode = ctx.createGain();
+      oscillator.connect(gainNode);
+      gainNode.connect(ctx.destination);
+      oscillator.frequency.value = frequency;
+      oscillator.type = type;
+      gainNode.gain.setValueAtTime(volume, ctx.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + duration);
+      oscillator.start(ctx.currentTime);
+      oscillator.stop(ctx.currentTime + duration);
+    } catch(e) {}
+  };
+
+  // Music tracks with better compositions
+  const TRACKS = {
+    classic: {
+      name: 'Korobeiniki',
+      bpm: 150,
+      sequence: [
+        // Main theme - A section
+        { n: 'E5', d: 1 }, { n: 'B4', d: 0.5 }, { n: 'C5', d: 0.5 }, { n: 'D5', d: 1 }, { n: 'C5', d: 0.5 }, { n: 'B4', d: 0.5 },
+        { n: 'A4', d: 1 }, { n: 'A4', d: 0.5 }, { n: 'C5', d: 0.5 }, { n: 'E5', d: 1 }, { n: 'D5', d: 0.5 }, { n: 'C5', d: 0.5 },
+        { n: 'B4', d: 1.5 }, { n: 'C5', d: 0.5 }, { n: 'D5', d: 1 }, { n: 'E5', d: 1 },
+        { n: 'C5', d: 1 }, { n: 'A4', d: 1 }, { n: 'A4', d: 2 },
+        // B section
+        { n: 'D5', d: 1 }, { n: 'F5', d: 0.5 }, { n: 'A5', d: 1 }, { n: 'G5', d: 0.5 }, { n: 'F5', d: 0.5 },
+        { n: 'E5', d: 1.5 }, { n: 'C5', d: 0.5 }, { n: 'E5', d: 1 }, { n: 'D5', d: 0.5 }, { n: 'C5', d: 0.5 },
+        { n: 'B4', d: 1 }, { n: 'B4', d: 0.5 }, { n: 'C5', d: 0.5 }, { n: 'D5', d: 1 }, { n: 'E5', d: 1 },
+        { n: 'C5', d: 1 }, { n: 'A4', d: 1 }, { n: 'A4', d: 2 }
+      ],
+      type: 'square'
+    },
+    synthwave: {
+      name: 'Synthwave',
+      bpm: 120,
+      sequence: [
+        { n: 'A3', d: 0.5 }, { n: 'E4', d: 0.5 }, { n: 'A4', d: 0.5 }, { n: 'E4', d: 0.5 },
+        { n: 'B3', d: 0.5 }, { n: 'F#4', d: 0.5 }, { n: 'B4', d: 0.5 }, { n: 'F#4', d: 0.5 },
+        { n: 'G3', d: 0.5 }, { n: 'D4', d: 0.5 }, { n: 'G4', d: 0.5 }, { n: 'D4', d: 0.5 },
+        { n: 'F3', d: 0.5 }, { n: 'C4', d: 0.5 }, { n: 'F4', d: 0.5 }, { n: 'C4', d: 0.5 },
+        { n: 'A3', d: 1 }, { n: 'C4', d: 0.5 }, { n: 'E4', d: 0.5 }, { n: 'A4', d: 1 }, { n: 'G4', d: 0.5 }, { n: 'E4', d: 0.5 },
+        { n: 'F4', d: 1 }, { n: 'E4', d: 0.5 }, { n: 'D4', d: 0.5 }, { n: 'E4', d: 2 }
+      ],
+      type: 'sawtooth'
+    },
+    chiptune: {
+      name: 'Chiptune',
+      bpm: 160,
+      sequence: [
+        { n: 'C5', d: 0.25 }, { n: 'E5', d: 0.25 }, { n: 'G5', d: 0.25 }, { n: 'E5', d: 0.25 },
+        { n: 'C5', d: 0.25 }, { n: 'E5', d: 0.25 }, { n: 'G5', d: 0.5 },
+        { n: 'B4', d: 0.25 }, { n: 'D5', d: 0.25 }, { n: 'G5', d: 0.25 }, { n: 'D5', d: 0.25 },
+        { n: 'B4', d: 0.25 }, { n: 'D5', d: 0.25 }, { n: 'G5', d: 0.5 },
+        { n: 'A4', d: 0.25 }, { n: 'C5', d: 0.25 }, { n: 'E5', d: 0.5 }, { n: 'E5', d: 0.25 }, { n: 'D5', d: 0.25 }, { n: 'C5', d: 0.25 }, { n: 'D5', d: 0.25 },
+        { n: 'E5', d: 0.5 }, { n: 'G5', d: 0.5 }, { n: 'A5', d: 0.5 }, { n: 'G5', d: 0.5 },
+        { n: 'E5', d: 0.25 }, { n: 'D5', d: 0.25 }, { n: 'C5', d: 0.5 }, { n: 'C5', d: 1 }
+      ],
+      type: 'square'
+    },
+    ambient: {
+      name: 'Ambient',
+      bpm: 70,
+      sequence: [
+        { n: 'C4', d: 2 }, { n: 'E4', d: 2 }, { n: 'G4', d: 2 }, { n: 'B4', d: 2 },
+        { n: 'A4', d: 2 }, { n: 'E4', d: 2 }, { n: 'F4', d: 2 }, { n: 'G4', d: 2 },
+        { n: 'D4', d: 2 }, { n: 'F4', d: 2 }, { n: 'A4', d: 2 }, { n: 'C5', d: 2 },
+        { n: 'G4', d: 2 }, { n: 'B4', d: 2 }, { n: 'D5', d: 2 }, { n: 'C5', d: 2 }
+      ],
+      type: 'sine'
+    },
+    techno: {
+      name: 'Techno',
+      bpm: 140,
+      sequence: [
+        { n: 'E2', d: 0.25 }, { n: 'E3', d: 0.25 }, { n: 'E2', d: 0.25 }, { n: 'E3', d: 0.25 },
+        { n: 'E2', d: 0.25 }, { n: 'G3', d: 0.25 }, { n: 'E2', d: 0.25 }, { n: 'E3', d: 0.25 },
+        { n: 'A2', d: 0.25 }, { n: 'A3', d: 0.25 }, { n: 'A2', d: 0.25 }, { n: 'C4', d: 0.25 },
+        { n: 'A2', d: 0.25 }, { n: 'A3', d: 0.25 }, { n: 'G2', d: 0.25 }, { n: 'G3', d: 0.25 },
+        { n: 'E3', d: 0.5 }, { n: 'G3', d: 0.5 }, { n: 'A3', d: 0.5 }, { n: 'B3', d: 0.5 },
+        { n: 'C4', d: 0.5 }, { n: 'B3', d: 0.25 }, { n: 'A3', d: 0.25 }, { n: 'G3', d: 0.5 }, { n: 'E3', d: 0.5 }
+      ],
+      type: 'sawtooth'
+    },
+    jazz: {
+      name: 'Jazz',
+      bpm: 100,
+      sequence: [
+        { n: 'C4', d: 0.75 }, { n: 'E4', d: 0.25 }, { n: 'G4', d: 0.5 }, { n: 'Bb4', d: 0.5 },
+        { n: 'A4', d: 0.75 }, { n: 'G4', d: 0.25 }, { n: 'F4', d: 0.5 }, { n: 'E4', d: 0.5 },
+        { n: 'D4', d: 0.75 }, { n: 'F4', d: 0.25 }, { n: 'A4', d: 0.5 }, { n: 'C5', d: 0.5 },
+        { n: 'B4', d: 0.75 }, { n: 'A4', d: 0.25 }, { n: 'G4', d: 1 },
+        { n: 'E4', d: 0.5 }, { n: 'G4', d: 0.5 }, { n: 'C5', d: 1 }, { n: 'B4', d: 0.5 }, { n: 'A4', d: 0.5 },
+        { n: 'G4', d: 1 }, { n: 'F4', d: 0.5 }, { n: 'E4', d: 0.5 }, { n: 'C4', d: 1 }
+      ],
+      type: 'triangle'
+    }
+  };
+
+  // Note to frequency conversion
+  const noteFreq = (note) => {
+    const notes = { 'C': 0, 'C#': 1, 'Db': 1, 'D': 2, 'D#': 3, 'Eb': 3, 'E': 4, 'F': 5, 'F#': 6, 'Gb': 6, 'G': 7, 'G#': 8, 'Ab': 8, 'A': 9, 'A#': 10, 'Bb': 10, 'B': 11 };
+    const match = note.match(/([A-G]#?b?)(\d)/);
+    if (!match) return 440;
+    const semitone = notes[match[1]];
+    const octave = parseInt(match[2]);
+    return 440 * Math.pow(2, (semitone - 9) / 12 + (octave - 4));
+  };
+  
+  const playMusic = (trackId) => {
+    stopMusic();
+    const track = TRACKS[trackId];
+    if (!track) return;
+    
+    currentTrack = trackId;
+    musicPlaying = true;
+    let noteIndex = 0;
+    const ctx = getContext();
+    const beatDuration = 60 / track.bpm;
+    
+    const playNote = () => {
+      if (!musicPlaying) return;
+      const noteData = track.sequence[noteIndex];
+      const freq = noteFreq(noteData.n);
+      const duration = noteData.d * beatDuration;
+      
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.frequency.value = freq;
+      osc.type = track.type;
+      
+      const vol = track.type === 'sawtooth' ? 0.06 : (track.type === 'sine' ? 0.12 : 0.08);
+      gain.gain.setValueAtTime(vol, ctx.currentTime);
+      gain.gain.setValueAtTime(vol, ctx.currentTime + duration * 0.7);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration * 0.95);
+      
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + duration);
+      
+      noteIndex = (noteIndex + 1) % track.sequence.length;
+      
+      if (musicPlaying) {
+        musicInterval = setTimeout(playNote, duration * 1000);
+      }
+    };
+    
+    playNote();
+  };
+  
+  const stopMusic = () => {
+    musicPlaying = false;
+    currentTrack = null;
+    if (musicInterval) {
+      clearTimeout(musicInterval);
+      musicInterval = null;
+    }
+  };
+  
+  return {
+    move: () => playTone(200, 0.05, 'square', 0.1),
+    rotate: () => playTone(300, 0.08, 'square', 0.15),
+    drop: () => playTone(150, 0.1, 'square', 0.2),
+    lineClear: (lines) => {
+      const freqs = [523, 659, 784, 1047];
+      freqs.slice(0, lines).forEach((f, i) => setTimeout(() => playTone(f, 0.15, 'sine', 0.3), i * 80));
+    },
+    tetris: () => {
+      [523, 659, 784, 1047, 1319].forEach((f, i) => setTimeout(() => playTone(f, 0.2, 'sine', 0.4), i * 100));
+    },
+    gameOver: () => {
+      [400, 350, 300, 250].forEach((f, i) => setTimeout(() => playTone(f, 0.3, 'sawtooth', 0.2), i * 150));
+    },
+    levelUp: () => {
+      [440, 554, 659, 880].forEach((f, i) => setTimeout(() => playTone(f, 0.15, 'sine', 0.3), i * 100));
+    },
+    playMusic,
+    stopMusic,
+    isPlaying: () => musicPlaying,
+    getCurrentTrack: () => currentTrack,
+    getTracks: () => TRACKS
+  };
+})();
+
+// Background themes
+const BACKGROUNDS = [
+  { name: 'Starfield', gradient: 'linear-gradient(180deg, #0a0a2e 0%, #1a1a4e 50%, #0a0a2e 100%)', particles: 'stars' },
+  { name: 'Ocean Deep', gradient: 'linear-gradient(180deg, #001830 0%, #003060 50%, #001830 100%)', particles: 'bubbles' },
+  { name: 'Neon City', gradient: 'linear-gradient(180deg, #120458 0%, #000000 50%, #120458 100%)', particles: 'neon' },
+  { name: 'Aurora', gradient: 'linear-gradient(180deg, #0f0c29 0%, #302b63 50%, #24243e 100%)', particles: 'aurora' },
+  { name: 'Volcanic', gradient: 'linear-gradient(180deg, #1a0000 0%, #4a0000 50%, #1a0000 100%)', particles: 'embers' },
+  { name: 'Matrix', gradient: 'linear-gradient(180deg, #000000 0%, #001a00 50%, #000000 100%)', particles: 'matrix' },
+  { name: 'Cosmic', gradient: 'linear-gradient(180deg, #0d0221 0%, #2d1b4e 50%, #0d0221 100%)', particles: 'cosmic' },
+  { name: 'Ice Cave', gradient: 'linear-gradient(180deg, #0a1628 0%, #1a3a5c 50%, #0a1628 100%)', particles: 'ice' },
+  { name: 'Sunset', gradient: 'linear-gradient(180deg, #1a0a2e 0%, #4a1a3e 50%, #1a0a2e 100%)', particles: 'sunset' },
+  { name: 'Ultimate', gradient: 'linear-gradient(180deg, #000000 0%, #1a1a1a 25%, #4a0080 50%, #1a1a1a 75%, #000000 100%)', particles: 'ultimate' }
+];
+
+function GameBackground({ level }) {
+  const bgIndex = Math.min(Math.floor(level / 2), BACKGROUNDS.length - 1);
+  const bg = BACKGROUNDS[bgIndex];
+  const canvasRef = useRef(null);
+  
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    let animationId;
+    let particles = [];
+    
+    const resize = () => {
+      canvas.width = canvas.offsetWidth;
+      canvas.height = canvas.offsetHeight;
+    };
+    resize();
+    window.addEventListener('resize', resize);
+    
+    const initParticles = () => {
+      particles = [];
+      const count = bg.particles === 'matrix' ? 50 : 60;
+      for (let i = 0; i < count; i++) {
+        particles.push({
+          x: Math.random() * canvas.width,
+          y: Math.random() * canvas.height,
+          size: Math.random() * 3 + 1,
+          speed: Math.random() * 2 + 0.5,
+          opacity: Math.random() * 0.8 + 0.2,
+          hue: Math.random() * 60
+        });
+      }
+    };
+    initParticles();
+    
+    const animate = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      particles.forEach(p => {
+        ctx.beginPath();
+        if (bg.particles === 'stars') {
+          ctx.fillStyle = `rgba(255, 255, 255, ${p.opacity})`;
+          ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+          p.opacity = 0.2 + Math.sin(Date.now() * 0.003 + p.x) * 0.5;
+        } else if (bg.particles === 'bubbles') {
+          ctx.fillStyle = `rgba(100, 200, 255, ${p.opacity * 0.5})`;
+          ctx.arc(p.x, p.y, p.size * 2, 0, Math.PI * 2);
+          p.y -= p.speed * 0.5;
+          p.x += Math.sin(Date.now() * 0.002 + p.y * 0.01) * 0.5;
+          if (p.y < -10) p.y = canvas.height + 10;
+        } else if (bg.particles === 'neon') {
+          const colors = ['#ff00ff', '#00ffff', '#ff0080', '#80ff00'];
+          ctx.fillStyle = colors[Math.floor(p.hue / 15) % colors.length];
+          ctx.shadowBlur = 10;
+          ctx.shadowColor = ctx.fillStyle;
+          ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+          p.y += Math.sin(Date.now() * 0.001 + p.x * 0.01) * 0.5;
+        } else if (bg.particles === 'embers') {
+          ctx.fillStyle = `rgba(255, ${100 + p.hue}, 0, ${p.opacity})`;
+          ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+          p.y -= p.speed;
+          p.x += Math.sin(Date.now() * 0.005 + p.y * 0.02) * 1;
+          if (p.y < -10) { p.y = canvas.height + 10; p.x = Math.random() * canvas.width; }
+        } else if (bg.particles === 'matrix') {
+          ctx.fillStyle = `rgba(0, 255, 0, ${p.opacity})`;
+          ctx.font = `${p.size * 4}px monospace`;
+          ctx.fillText(String.fromCharCode(0x30A0 + Math.random() * 96), p.x, p.y);
+          p.y += p.speed * 3;
+          if (p.y > canvas.height) { p.y = -20; p.x = Math.random() * canvas.width; }
+        } else {
+          ctx.fillStyle = `hsla(${(Date.now() * 0.05 + p.hue * 6) % 360}, 80%, 60%, ${p.opacity * 0.6})`;
+          ctx.arc(p.x, p.y, p.size * 1.5, 0, Math.PI * 2);
+          p.y += Math.sin(Date.now() * 0.001 + p.x * 0.01) * 0.3;
+          p.x += Math.cos(Date.now() * 0.001 + p.y * 0.01) * 0.3;
+        }
+        ctx.fill();
+        ctx.shadowBlur = 0;
+      });
+      animationId = requestAnimationFrame(animate);
+    };
+    animate();
+    
+    return () => {
+      cancelAnimationFrame(animationId);
+      window.removeEventListener('resize', resize);
+    };
+  }, [bg]);
+  
+  return (
+    <div className=""absolute inset-0 overflow-hidden"" style={{ background: bg.gradient }}>
+      <canvas ref={canvasRef} className=""absolute inset-0 w-full h-full"" />
+    </div>
+  );
+}
+
+function StatsCard({ title, value, icon }) {
+  return (
+    <div className=""bg-gray-800/70 backdrop-blur rounded-lg p-4 border border-cyan-500/30"">
+      <div className=""text-cyan-300 text-sm flex items-center gap-2"">
+        <span>{icon}</span>
+        <span>{title}</span>
+      </div>
+      <div className=""text-2xl font-bold text-white mt-1"">{value}</div>
+    </div>
+  );
+}
+
+function ModeCard({ mode, title, description, icon, bestScore, onClick, selected }) {
+  return (
+    <div 
+      onClick={onClick}
+      className={`cursor-pointer p-6 rounded-xl border-2 transition-all duration-300 ${
+        selected 
+          ? 'border-cyan-400 bg-cyan-500/20 scale-105 shadow-lg shadow-cyan-500/30' 
+          : 'border-cyan-700/50 bg-gray-800/70 hover:border-cyan-500 hover:bg-gray-700/70'
+      }`}
+    >
+      <div className=""text-4xl mb-3"">{icon}</div>
+      <h3 className={`text-xl font-bold mb-2 ${selected ? 'text-cyan-300' : 'text-white'}`}>{title}</h3>
+      <p className={`text-sm mb-3 ${selected ? 'text-cyan-100' : 'text-gray-300'}`}>{description}</p>
+      {bestScore !== undefined && (
+        <div className={`text-sm font-semibold ${selected ? 'text-yellow-300' : 'text-cyan-400'}`}>
+          Best: {bestScore.toLocaleString()}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MusicSelector({ currentTrack, onSelect, musicEnabled, onToggle }) {
+  const tracks = SoundManager.getTracks();
+  const [isOpen, setIsOpen] = useState(false);
+  
+  return (
+    <div className=""relative"">
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className={`flex items-center gap-2 px-4 py-2 rounded-lg transition ${musicEnabled ? 'bg-purple-600 hover:bg-purple-500' : 'bg-gray-700 hover:bg-gray-600'}`}
+      >
+        <span>{musicEnabled ? '🎵' : '🎵'}</span>
+        <span className=""text-white text-sm"">{musicEnabled && currentTrack ? tracks[currentTrack]?.name : 'Music Off'}</span>
+        <span className=""text-white/60"">&#9662;</span>
+      </button>
+      
+      {isOpen && (
+        <div className=""absolute top-full mt-2 right-0 bg-gray-800 border border-gray-600 rounded-lg shadow-xl z-50 min-w-[200px]"">
+          <button
+            onClick={() => { onToggle(false); setIsOpen(false); }}
+            className={`w-full px-4 py-3 text-left hover:bg-gray-700 transition flex items-center gap-2 ${!musicEnabled ? 'text-cyan-400' : 'text-gray-300'}`}
+          >
+            <span>🔇</span> Music Off
+          </button>
+          <div className=""border-t border-gray-700""></div>
+          {Object.entries(tracks).map(([id, track]) => (
+            <button
+              key={id}
+              onClick={() => { onSelect(id); setIsOpen(false); }}
+              className={`w-full px-4 py-3 text-left hover:bg-gray-700 transition flex items-center gap-2 ${musicEnabled && currentTrack === id ? 'text-cyan-400' : 'text-gray-300'}`}
+            >
+              <span>🎵</span> {track.name}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}","@keyframes pulse-glow { 0%, 100% { box-shadow: 0 0 20px rgba(0, 255, 255, 0.3); } 50% { box-shadow: 0 0 40px rgba(0, 255, 255, 0.6); } }
+.glow-pulse { animation: pulse-glow 2s ease-in-out infinite; }
+@keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+.shake { animation: shake 0.3s ease-in-out; }","Hash Router","True","","","Home","/","Tetris Arcade - Home","10","","function HomePage({ storage, globalState, setGlobalState, user }) {
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const loadStats = async () => {
+      const savedStats = await storage.get('tetrisStats', {
+        gamesPlayed: 0,
+        totalLines: 0,
+        totalScore: 0,
+        highScores: { classic: 0, marathon: 0, sprint: 0, zen: 0 },
+        maxLevel: 1,
+        tetrisCount: 0,
+        playTime: 0
+      });
+      setStats(savedStats);
+      setLoading(false);
+    };
+    loadStats();
+  }, [storage]);
+
+  // Handle music state
+  useEffect(() => {
+    if (globalState.musicEnabled && globalState.musicTrack) {
+      SoundManager.playMusic(globalState.musicTrack);
+    } else {
+      SoundManager.stopMusic();
+    }
+    return () => SoundManager.stopMusic();
+  }, [globalState.musicEnabled, globalState.musicTrack]);
+
+  const handleMusicSelect = (trackId) => {
+    setGlobalState(s => ({ ...s, musicEnabled: true, musicTrack: trackId }));
+  };
+
+  const handleMusicToggle = (enabled) => {
+    setGlobalState(s => ({ ...s, musicEnabled: enabled }));
+  };
+
+  const modes = [
+    { id: 'classic', title: 'Classic', icon: '🎮', description: 'Traditional Tetris. Clear lines, increase speed, chase high scores!' },
+    { id: 'marathon', title: 'Marathon', icon: '🏃', description: 'Endurance mode. How many lines can you clear before game over?' },
+    { id: 'sprint', title: 'Sprint', icon: '⚡', description: 'Race against time! Clear 40 lines as fast as possible.' },
+    { id: 'zen', title: 'Zen', icon: '🧘', description: 'No pressure. Relaxing mode with no game over. Practice and chill.' }
+  ];
+
+  const startGame = (mode) => {
+    setGlobalState(s => ({ ...s, currentMode: mode }));
+    navigate('/play');
+  };
+
+  if (loading) {
+    return (
+      <div className=""min-h-screen bg-gray-900 flex items-center justify-center"">
+        <div className=""text-cyan-400 text-2xl"">Loading...</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className=""min-h-screen bg-gradient-to-br from-gray-900 via-indigo-900/30 to-gray-900 text-white"">
+      {/* Header */}
+      <header className=""p-6 border-b border-cyan-500/20 bg-black/30"">
+        <div className=""max-w-6xl mx-auto flex justify-between items-center"">
+          <h1 className=""text-4xl font-bold bg-gradient-to-r from-cyan-400 via-purple-400 to-pink-400 bg-clip-text text-transparent"">
+            TETRIS ARCADE
+          </h1>
+          <div className=""flex items-center gap-4"">
+            <MusicSelector
+              currentTrack={globalState.musicTrack}
+              onSelect={handleMusicSelect}
+              musicEnabled={globalState.musicEnabled}
+              onToggle={handleMusicToggle}
+            />
+            <button
+              onClick={() => setGlobalState(s => ({ ...s, soundEnabled: !s.soundEnabled }))}
+              className={`p-2 px-4 rounded-lg transition ${globalState.soundEnabled ? 'bg-cyan-600 hover:bg-cyan-500' : 'bg-gray-700 hover:bg-gray-600'}`}
+              title=""Sound Effects""
+            >
+              {globalState.soundEnabled ? '🔊 SFX' : '🔇 SFX'}
+            </button>
+            <div className=""text-cyan-300 font-medium"">
+              {user.is_public ? '👤 Guest' : `👤 ${user.name}`}
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main className=""max-w-6xl mx-auto p-6"">
+        {/* Stats Overview */}
+        <section className=""mb-10"">
+          <h2 className=""text-2xl font-bold mb-4 text-cyan-300"">Your Stats</h2>
+          <div className=""grid grid-cols-2 md:grid-cols-4 gap-4"">
+            <StatsCard title=""Games Played"" value={stats.gamesPlayed} icon=""🎮"" />
+            <StatsCard title=""Total Lines"" value={stats.totalLines.toLocaleString()} icon=""📊"" />
+            <StatsCard title=""Max Level"" value={stats.maxLevel} icon=""⭐"" />
+            <StatsCard title=""Tetrises"" value={stats.tetrisCount} icon=""💎"" />
+          </div>
+        </section>
+
+        {/* Game Modes */}
+        <section className=""mb-10"">
+          <h2 className=""text-2xl font-bold mb-4 text-cyan-300"">Select Mode</h2>
+          <div className=""grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4"">
+            {modes.map(mode => (
+              <ModeCard
+                key={mode.id}
+                mode={mode.id}
+                title={mode.title}
+                description={mode.description}
+                icon={mode.icon}
+                bestScore={stats.highScores[mode.id]}
+                selected={globalState.currentMode === mode.id}
+                onClick={() => startGame(mode.id)}
+              />
+            ))}
+          </div>
+        </section>
+
+        {/* High Scores */}
+        <section>
+          <h2 className=""text-2xl font-bold mb-4 text-cyan-300"">High Scores</h2>
+          <div className=""bg-gray-800/70 backdrop-blur rounded-xl p-6 border border-cyan-500/30"">
+            <div className=""grid grid-cols-2 md:grid-cols-4 gap-6"">
+              {modes.map(mode => (
+                <div key={mode.id} className=""text-center"">
+                  <div className=""text-3xl mb-2"">{mode.icon}</div>
+                  <div className=""text-cyan-300 text-sm font-medium"">{mode.title}</div>
+                  <div className=""text-2xl font-bold text-white"">
+                    {(stats.highScores[mode.id] || 0).toLocaleString()}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Controls Help */}
+        <section className=""mt-10"">
+          <h2 className=""text-2xl font-bold mb-4 text-cyan-300"">Controls</h2>
+          <div className=""bg-gray-800/70 backdrop-blur rounded-xl p-6 border border-cyan-500/30"">
+            <div className=""grid grid-cols-2 md:grid-cols-5 gap-4 text-center"">
+              <div>
+                <div className=""text-2xl mb-1"">⬅️ ➡️</div>
+                <div className=""text-white font-medium"">Move</div>
+                <div className=""text-cyan-400 text-sm"">or A / D</div>
+              </div>
+              <div>
+                <div className=""text-2xl mb-1"">⬆️</div>
+                <div className=""text-white font-medium"">Rotate</div>
+                <div className=""text-cyan-400 text-sm"">or W</div>
+              </div>
+              <div>
+                <div className=""text-2xl mb-1"">⬇️</div>
+                <div className=""text-white font-medium"">Soft Drop</div>
+                <div className=""text-cyan-400 text-sm"">or S</div>
+              </div>
+              <div>
+                <div className=""text-2xl mb-1"">Space</div>
+                <div className=""text-white font-medium"">Hard Drop</div>
+              </div>
+              <div>
+                <div className=""text-2xl mb-1"">P / Esc</div>
+                <div className=""text-white font-medium"">Pause</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* View Stats Link */}
+        <div className=""mt-8 text-center"">
+          <Link to=""/stats"" className=""text-cyan-400 hover:text-cyan-300 underline transition"">
+            View Detailed Statistics →
+          </Link>
+        </div>
+      </main>
+    </div>
+  );
+}","","","",""
+"","","","","","","","","","","Play","/play","Tetris - Playing","10","","function PlayPage({ storage, globalState, setGlobalState }) {
+  const navigate = useNavigate();
+  const mode = globalState.currentMode || 'classic';
+  const soundEnabled = globalState.soundEnabled;
+
+  const COLS = 10;
+  const ROWS = 20;
+  const BLOCK_SIZE = 36;
+  const LINES_PER_LEVEL = 10;
+  const QUEUE_SIZE = 5;
+  
+  const SHAPES = {
+    I: { shape: [[1,1,1,1]], color: '#00f5ff' },
+    O: { shape: [[1,1],[1,1]], color: '#ffeb3b' },
+    T: { shape: [[0,1,0],[1,1,1]], color: '#9c27b0' },
+    S: { shape: [[0,1,1],[1,1,0]], color: '#4caf50' },
+    Z: { shape: [[1,1,0],[0,1,1]], color: '#f44336' },
+    J: { shape: [[1,0,0],[1,1,1]], color: '#2196f3' },
+    L: { shape: [[0,0,1],[1,1,1]], color: '#ff9800' }
+  };
+
+  const [board, setBoard] = useState(() => Array(ROWS).fill(null).map(() => Array(COLS).fill(null)));
+  const [currentPiece, setCurrentPiece] = useState(null);
+  const [pieceQueue, setPieceQueue] = useState([]);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [score, setScore] = useState(0);
+  const [lines, setLines] = useState(0);
+  const [level, setLevel] = useState(1);
+  const [gameOver, setGameOver] = useState(false);
+  const [paused, setPaused] = useState(false);
+  const [gameStarted, setGameStarted] = useState(false);
+  const [combo, setCombo] = useState(0);
+  const [sprintTime, setSprintTime] = useState(0);
+  const [lastClear, setLastClear] = useState(null);
+  const [levelTimer, setLevelTimer] = useState(0);
+  const [showMusicMenu, setShowMusicMenu] = useState(false);
+
+  const gameRef = useRef({ board, position, currentPiece, gameOver, paused, pieceQueue });
+  const timerRef = useRef(null);
+  const sprintTimerRef = useRef(null);
+  const levelTimerRef = useRef(null);
+
+  const linesUntilNextLevel = LINES_PER_LEVEL - (lines % LINES_PER_LEVEL);
+  const getCurrentSpeed = (lvl) => Math.max(100, 800 - (lvl - 1) * 70);
+
+  useEffect(() => {
+    if (globalState.musicEnabled && globalState.musicTrack && gameStarted && !gameOver && !paused) {
+      SoundManager.playMusic(globalState.musicTrack);
+    } else if (paused || gameOver || !gameStarted) {
+      SoundManager.stopMusic();
+    }
+    return () => SoundManager.stopMusic();
+  }, [globalState.musicEnabled, globalState.musicTrack, gameStarted, gameOver, paused]);
+
+  useEffect(() => {
+    if (!gameStarted || gameOver || paused) {
+      if (levelTimerRef.current) clearInterval(levelTimerRef.current);
+      return;
+    }
+    levelTimerRef.current = setInterval(() => setLevelTimer(t => t + 1), 1000);
+    return () => clearInterval(levelTimerRef.current);
+  }, [gameStarted, gameOver, paused]);
+
+  useEffect(() => { setLevelTimer(0); }, [level]);
+
+  // Update ref synchronously to avoid race conditions
+  useEffect(() => {
+    gameRef.current = { board, position, currentPiece, gameOver, paused, pieceQueue };
+  }, [board, position, currentPiece, gameOver, paused, pieceQueue]);
+
+  const bagRef = useRef([]);
+  const getRandomPiece = useCallback(() => {
+    if (bagRef.current.length === 0) {
+      bagRef.current = Object.keys(SHAPES).sort(() => Math.random() - 0.5);
+    }
+    const type = bagRef.current.pop();
+    return { type, ...SHAPES[type] };
+  }, []);
+
+  const fillQueue = useCallback(() => {
+    const newQueue = [];
+    for (let i = 0; i < QUEUE_SIZE; i++) {
+      newQueue.push(getRandomPiece());
+    }
+    return newQueue;
+  }, [getRandomPiece]);
+
+  const getNextFromQueue = useCallback(() => {
+    const { pieceQueue: queue } = gameRef.current;
+    if (queue.length === 0) return getRandomPiece();
+    const next = queue[0];
+    const newQueue = [...queue.slice(1), getRandomPiece()];
+    setPieceQueue(newQueue);
+    return next;
+  }, [getRandomPiece]);
+
+  // Collision check - only checks board cells that are in bounds
+  const checkCollision = useCallback((piece, pos, boardState) => {
+    if (!piece || !piece.shape) return false;
+    for (let y = 0; y < piece.shape.length; y++) {
+      for (let x = 0; x < piece.shape[y].length; x++) {
+        if (piece.shape[y][x]) {
+          const newX = pos.x + x;
+          const newY = pos.y + y;
+          // Horizontal bounds
+          if (newX < 0 || newX >= COLS) return true;
+          // Bottom bound
+          if (newY >= ROWS) return true;
+          // Board collision (only for visible cells)
+          if (newY >= 0 && boardState[newY] && boardState[newY][newX]) return true;
+        }
+      }
+    }
+    return false;
+  }, []);
+
+  const rotatePiece = useCallback((piece) => {
+    const rotated = piece.shape[0].map((_, i) => piece.shape.map(row => row[i]).reverse());
+    return { ...piece, shape: rotated };
+  }, []);
+
+  const handleGameEnd = useCallback(async (isWin = false) => {
+    setGameOver(true);
+    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+    if (sprintTimerRef.current) { clearInterval(sprintTimerRef.current); sprintTimerRef.current = null; }
+    if (levelTimerRef.current) { clearInterval(levelTimerRef.current); levelTimerRef.current = null; }
+    if (soundEnabled && !isWin) SoundManager.gameOver();
+
+    const currentStats = await storage.get('tetrisStats', {
+      gamesPlayed: 0, totalLines: 0, totalScore: 0,
+      highScores: { classic: 0, marathon: 0, sprint: 0, zen: 0 },
+      maxLevel: 1, tetrisCount: 0, playTime: 0
+    });
+    const finalScore = mode === 'sprint' ? (isWin ? 999999 - sprintTime : 0) : score;
+    const newStats = {
+      ...currentStats,
+      gamesPlayed: currentStats.gamesPlayed + 1,
+      totalLines: currentStats.totalLines + lines,
+      totalScore: currentStats.totalScore + score,
+      maxLevel: Math.max(currentStats.maxLevel, level),
+      highScores: { ...currentStats.highScores, [mode]: Math.max(currentStats.highScores[mode] || 0, finalScore) }
+    };
+    await storage.set('tetrisStats', newStats);
+  }, [storage, mode, score, lines, level, sprintTime, soundEnabled]);
+
+  const lockPiece = useCallback(() => {
+    const { board: currentBoard, currentPiece: piece, position: pos, pieceQueue: queue } = gameRef.current;
+    if (!piece) return;
+
+    // Place piece on board
+    const newBoard = currentBoard.map(row => [...row]);
+    let lockedAboveVisible = false;
+    
+    for (let y = 0; y < piece.shape.length; y++) {
+      for (let x = 0; x < piece.shape[y].length; x++) {
+        if (piece.shape[y][x]) {
+          const boardY = pos.y + y;
+          const boardX = pos.x + x;
+          if (boardY < 0) {
+            // Block would be placed above visible area - this means topped out
+            lockedAboveVisible = true;
+          } else if (boardY < ROWS && boardX >= 0 && boardX < COLS) {
+            newBoard[boardY][boardX] = piece.color;
+          }
+        }
+      }
+    }
+
+    // If any block locked above visible area, game over (unless zen mode)
+    if (lockedAboveVisible && mode !== 'zen') {
+      handleGameEnd(false);
+      return;
+    }
+
+    // Clear completed lines
+    let clearedLines = 0;
+    const finalBoard = newBoard.filter(row => {
+      const full = row.every(cell => cell !== null);
+      if (full) clearedLines++;
+      return !full;
+    });
+    while (finalBoard.length < ROWS) finalBoard.unshift(Array(COLS).fill(null));
+
+    // Update score
+    if (clearedLines > 0) {
+      const lineScores = [0, 100, 300, 500, 800];
+      const baseScore = lineScores[clearedLines] * level;
+      const comboBonus = combo * 50 * level;
+      if (soundEnabled) {
+        if (clearedLines === 4) SoundManager.tetris();
+        else SoundManager.lineClear(clearedLines);
+      }
+      setScore(s => s + baseScore + comboBonus);
+      setLines(l => {
+        const newLines = l + clearedLines;
+        const newLevel = Math.floor(newLines / LINES_PER_LEVEL) + 1;
+        if (newLevel > level) {
+          setLevel(newLevel);
+          if (soundEnabled) SoundManager.levelUp();
+        }
+        return newLines;
+      });
+      setCombo(c => c + 1);
+      setLastClear({ lines: clearedLines, isTetris: clearedLines === 4 });
+      setTimeout(() => setLastClear(null), 1000);
+    } else {
+      setCombo(0);
+    }
+
+    setBoard(finalBoard);
+    
+    // Check sprint win
+    if (mode === 'sprint' && lines + clearedLines >= 40) {
+      handleGameEnd(true);
+      return;
+    }
+
+    // Spawn next piece
+    const next = queue.length > 0 ? queue[0] : getRandomPiece();
+    const newQueue = queue.length > 0 ? [...queue.slice(1), getRandomPiece()] : [];
+    
+    // Standard spawn position at top of visible field
+    const startX = Math.floor((COLS - next.shape[0].length) / 2);
+    const startY = 0; // Spawn at y=0 (top of visible board)
+    const startPos = { x: startX, y: startY };
+    
+    // Check if new piece can spawn - if collision at spawn point, game over
+    if (checkCollision(next, startPos, finalBoard)) {
+      if (mode !== 'zen') {
+        handleGameEnd(false);
+        return;
+      }
+    }
+    
+    // Update queue and spawn piece
+    setPieceQueue(newQueue);
+    setCurrentPiece(next);
+    setPosition(startPos);
+    
+    // Update ref immediately to prevent race condition
+    gameRef.current = { 
+      ...gameRef.current, 
+      board: finalBoard, 
+      currentPiece: next, 
+      position: startPos,
+      pieceQueue: newQueue
+    };
+  }, [level, combo, mode, lines, soundEnabled, checkCollision, getRandomPiece, handleGameEnd]);
+
+  const moveDown = useCallback(() => {
+    const { position: pos, currentPiece: piece, board: currentBoard, gameOver: isOver, paused: isPaused } = gameRef.current;
+    if (!piece || isOver || isPaused) return;
+    const newPos = { ...pos, y: pos.y + 1 };
+    if (checkCollision(piece, newPos, currentBoard)) {
+      lockPiece();
+    } else {
+      setPosition(newPos);
+      gameRef.current.position = newPos; // Update ref immediately
+    }
+  }, [checkCollision, lockPiece]);
+
+  const startGame = useCallback(() => {
+    // Clear any existing timers
+    if (timerRef.current) clearInterval(timerRef.current);
+    if (sprintTimerRef.current) clearInterval(sprintTimerRef.current);
+    if (levelTimerRef.current) clearInterval(levelTimerRef.current);
+    
+    bagRef.current = [];
+    const queue = fillQueue();
+    const piece = getRandomPiece();
+    const startX = Math.floor((COLS - piece.shape[0].length) / 2);
+    const startPos = { x: startX, y: 0 };
+    const newBoard = Array(ROWS).fill(null).map(() => Array(COLS).fill(null));
+    
+    setBoard(newBoard);
+    setPieceQueue(queue);
+    setCurrentPiece(piece);
+    setPosition(startPos);
+    setScore(0); setLines(0); setLevel(1);
+    setGameOver(false); setPaused(false); setGameStarted(true);
+    setCombo(0); setSprintTime(0); setLevelTimer(0);
+    
+    // Update ref immediately
+    gameRef.current = {
+      board: newBoard,
+      position: startPos,
+      currentPiece: piece,
+      gameOver: false,
+      paused: false,
+      pieceQueue: queue
+    };
+    
+    if (mode === 'sprint') {
+      sprintTimerRef.current = setInterval(() => setSprintTime(t => t + 1), 1000);
+    }
+  }, [getRandomPiece, fillQueue, mode]);
+
+  useEffect(() => {
+    if (!gameStarted || gameOver || paused) {
+      if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+      return;
+    }
+    const speed = getCurrentSpeed(level);
+    timerRef.current = setInterval(moveDown, speed);
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  }, [gameStarted, gameOver, paused, level, moveDown]);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      const { gameOver: isOver } = gameRef.current;
+      if (isOver || !gameStarted) {
+        if (e.code === 'Space' || e.code === 'Enter') { e.preventDefault(); startGame(); }
+        return;
+      }
+      if (e.code === 'Escape' || e.code === 'KeyP') { setPaused(p => !p); return; }
+      if (paused) return;
+      
+      const { position: pos, currentPiece: piece, board: currentBoard } = gameRef.current;
+      if (!piece) return;
+      
+      switch (e.code) {
+        case 'ArrowLeft': case 'KeyA': {
+          e.preventDefault();
+          const newPos = { ...pos, x: pos.x - 1 };
+          if (!checkCollision(piece, newPos, currentBoard)) {
+            setPosition(newPos);
+            gameRef.current.position = newPos;
+            if (soundEnabled) SoundManager.move();
+          }
+          break;
+        }
+        case 'ArrowRight': case 'KeyD': {
+          e.preventDefault();
+          const newPos = { ...pos, x: pos.x + 1 };
+          if (!checkCollision(piece, newPos, currentBoard)) {
+            setPosition(newPos);
+            gameRef.current.position = newPos;
+            if (soundEnabled) SoundManager.move();
+          }
+          break;
+        }
+        case 'ArrowUp': case 'KeyW': case 'KeyX': {
+          e.preventDefault();
+          const rotated = rotatePiece(piece);
+          if (!checkCollision(rotated, pos, currentBoard)) {
+            setCurrentPiece(rotated);
+            gameRef.current.currentPiece = rotated;
+            if (soundEnabled) SoundManager.rotate();
+          }
+          break;
+        }
+        case 'ArrowDown': case 'KeyS': {
+          e.preventDefault();
+          const newPos = { ...pos, y: pos.y + 1 };
+          if (!checkCollision(piece, newPos, currentBoard)) {
+            setPosition(newPos);
+            gameRef.current.position = newPos;
+            setScore(s => s + 1);
+          }
+          break;
+        }
+        case 'Space': {
+          e.preventDefault();
+          let dropPos = { ...pos };
+          let dropScore = 0;
+          while (!checkCollision(piece, { ...dropPos, y: dropPos.y + 1 }, currentBoard)) {
+            dropPos.y++;
+            dropScore += 2;
+          }
+          setPosition(dropPos);
+          setScore(s => s + dropScore);
+          gameRef.current.position = dropPos;
+          if (soundEnabled) SoundManager.drop();
+          // Lock piece after a short delay
+          setTimeout(() => lockPiece(), 50);
+          break;
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [gameStarted, paused, soundEnabled, checkCollision, rotatePiece, lockPiece, startGame]);
+
+  const ghostPosition = useMemo(() => {
+    if (!currentPiece || gameOver) return null;
+    let ghostY = position.y;
+    while (!checkCollision(currentPiece, { x: position.x, y: ghostY + 1 }, board)) ghostY++;
+    return { x: position.x, y: ghostY };
+  }, [currentPiece, position, board, checkCollision, gameOver]);
+
+  const renderBoard = () => {
+    const display = board.map(row => [...row]);
+    if (ghostPosition && currentPiece && !gameOver) {
+      for (let y = 0; y < currentPiece.shape.length; y++) {
+        for (let x = 0; x < currentPiece.shape[y].length; x++) {
+          if (currentPiece.shape[y][x]) {
+            const boardY = ghostPosition.y + y, boardX = ghostPosition.x + x;
+            if (boardY >= 0 && boardY < ROWS && boardX >= 0 && boardX < COLS && !display[boardY][boardX]) display[boardY][boardX] = 'ghost';
+          }
+        }
+      }
+    }
+    if (currentPiece && !gameOver) {
+      for (let y = 0; y < currentPiece.shape.length; y++) {
+        for (let x = 0; x < currentPiece.shape[y].length; x++) {
+          if (currentPiece.shape[y][x]) {
+            const boardY = position.y + y, boardX = position.x + x;
+            if (boardY >= 0 && boardY < ROWS) display[boardY][boardX] = currentPiece.color;
+          }
+        }
+      }
+    }
+    return display.map((row, y) => (
+      <div key={y} className=""flex"">
+        {row.map((cell, x) => (
+          <div key={x} className=""border border-gray-800/50"" style={{
+            width: BLOCK_SIZE, height: BLOCK_SIZE,
+            backgroundColor: cell === 'ghost' ? 'rgba(255,255,255,0.15)' : (cell || 'rgba(0,0,0,0.4)'),
+            boxShadow: cell && cell !== 'ghost' ? `inset 0 0 12px rgba(255,255,255,0.3), 0 0 8px ${cell}` : 'none'
+          }} />
+        ))}
+      </div>
+    ));
+  };
+
+  const renderPiecePreview = (piece, blockSize = 18) => {
+    if (!piece) return null;
+    let minY = piece.shape.length, maxY = 0, minX = piece.shape[0].length, maxX = 0;
+    for (let y = 0; y < piece.shape.length; y++) {
+      for (let x = 0; x < piece.shape[y].length; x++) {
+        if (piece.shape[y][x]) {
+          minY = Math.min(minY, y); maxY = Math.max(maxY, y);
+          minX = Math.min(minX, x); maxX = Math.max(maxX, x);
+        }
+      }
+    }
+    const trimmedShape = [];
+    for (let y = minY; y <= maxY; y++) {
+      trimmedShape.push(piece.shape[y].slice(minX, maxX + 1));
+    }
+    return (
+      <div className=""flex flex-col items-center justify-center"">
+        {trimmedShape.map((row, y) => (
+          <div key={y} className=""flex"">
+            {row.map((cell, x) => (
+              <div key={x} style={{
+                width: blockSize, height: blockSize,
+                backgroundColor: cell ? piece.color : 'transparent',
+                boxShadow: cell ? `0 0 6px ${piece.color}` : 'none',
+                border: cell ? '1px solid rgba(255,255,255,0.2)' : 'none'
+              }} />
+            ))}
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  const tracks = SoundManager.getTracks();
+
+  return (
+    <div className=""min-h-screen relative overflow-hidden"">
+      <GameBackground level={level} />
+      <div className=""relative z-10 min-h-screen flex flex-col"">
+        <header className=""p-3 flex justify-between items-center bg-black/40 backdrop-blur"">
+          <button onClick={() => navigate('/')} className=""text-cyan-400 hover:text-cyan-300 transition font-medium text-lg"">← Menu</button>
+          <h1 className=""text-2xl font-bold text-white capitalize"">{mode} Mode</h1>
+          <div className=""flex items-center gap-3"">
+            <div className=""relative"">
+              <button onClick={() => setShowMusicMenu(!showMusicMenu)} className={`px-4 py-2 rounded-lg transition flex items-center gap-2 ${globalState.musicEnabled ? 'bg-purple-600 hover:bg-purple-500' : 'bg-gray-700 hover:bg-gray-600'}`}>
+                <span>🎵</span>
+                <span className=""text-white"">{globalState.musicEnabled && globalState.musicTrack ? tracks[globalState.musicTrack]?.name : 'Off'}</span>
+                <span className=""text-white/60"">&#9662;</span>
+              </button>
+              {showMusicMenu && (
+                <div className=""absolute top-full mt-1 right-0 bg-gray-800 border border-gray-600 rounded-lg shadow-xl z-50 min-w-[180px]"">
+                  <button onClick={() => { setGlobalState(s => ({ ...s, musicEnabled: false })); setShowMusicMenu(false); }} className={`w-full px-4 py-3 text-left hover:bg-gray-700 transition flex items-center gap-2 ${!globalState.musicEnabled ? 'text-cyan-400' : 'text-gray-300'}`}>🔇 Off</button>
+                  <div className=""border-t border-gray-700""></div>
+                  {Object.entries(tracks).map(([id, track]) => (
+                    <button key={id} onClick={() => { setGlobalState(s => ({ ...s, musicEnabled: true, musicTrack: id })); setShowMusicMenu(false); }} className={`w-full px-4 py-3 text-left hover:bg-gray-700 transition flex items-center gap-2 ${globalState.musicEnabled && globalState.musicTrack === id ? 'text-cyan-400' : 'text-gray-300'}`}>🎵 {track.name}</button>
+                  ))}
+                </div>
+              )}
+            </div>
+            <button onClick={() => setGlobalState(s => ({ ...s, soundEnabled: !s.soundEnabled }))} className={`px-4 py-2 rounded-lg transition text-lg ${soundEnabled ? 'bg-cyan-600 hover:bg-cyan-500' : 'bg-gray-700 hover:bg-gray-600'}`}>
+              {soundEnabled ? '🔊 SFX' : '🔇 SFX'}
+            </button>
+          </div>
+        </header>
+
+        <main className=""flex-1 flex items-center justify-center p-2"">
+          <div className=""flex gap-5 items-start"">
+            <div className=""bg-black/60 backdrop-blur rounded-xl p-5 w-56 border border-cyan-500/30"">
+              <div className=""mb-5"">
+                <h3 className=""text-cyan-400 font-bold text-base mb-3 border-b border-cyan-500/30 pb-2"">CONTROLS</h3>
+                <div className=""text-sm space-y-1.5 text-cyan-100"">
+                  <div className=""flex justify-between""><span>← / A</span><span>Left</span></div>
+                  <div className=""flex justify-between""><span>→ / D</span><span>Right</span></div>
+                  <div className=""flex justify-between""><span>↑ / W</span><span>Rotate</span></div>
+                  <div className=""flex justify-between""><span>↓ / S</span><span>Soft Drop</span></div>
+                  <div className=""flex justify-between""><span>Space</span><span>Hard Drop</span></div>
+                  <div className=""flex justify-between""><span>P / Esc</span><span>Pause</span></div>
+                </div>
+              </div>
+              <div className=""mb-5"">
+                <h3 className=""text-cyan-400 font-bold text-base mb-3 border-b border-cyan-500/30 pb-2"">SCORING</h3>
+                <div className=""text-sm space-y-1.5 text-cyan-100"">
+                  <div className=""flex justify-between""><span>1 Line</span><span>100 × Lvl</span></div>
+                  <div className=""flex justify-between""><span>2 Lines</span><span>300 × Lvl</span></div>
+                  <div className=""flex justify-between""><span>3 Lines</span><span>500 × Lvl</span></div>
+                  <div className=""flex justify-between""><span className=""text-yellow-300"">TETRIS</span><span className=""text-yellow-300"">800 × Lvl</span></div>
+                  <div className=""flex justify-between""><span>Combo</span><span>+50 × n × Lvl</span></div>
+                </div>
+              </div>
+              <div>
+                <h3 className=""text-cyan-400 font-bold text-base mb-2 border-b border-cyan-500/30 pb-2"">{mode.toUpperCase()}</h3>
+                <div className=""text-sm text-cyan-100 leading-relaxed"">
+                  {mode === 'classic' && 'Clear lines to score. Speed increases every level. Game ends when blocks reach the top.'}
+                  {mode === 'marathon' && 'Endless endurance. How many lines can you clear?'}
+                  {mode === 'sprint' && 'Race to clear 40 lines as fast as possible!'}
+                  {mode === 'zen' && 'No game over. Practice and relax.'}
+                </div>
+              </div>
+            </div>
+
+            <div className=""bg-black/60 backdrop-blur rounded-xl p-5 w-44 border border-cyan-500/30"">
+              <div className=""space-y-4"">
+                <div>
+                  <div className=""text-cyan-300 text-sm"">SCORE</div>
+                  <div className=""text-3xl font-bold text-white"">{score.toLocaleString()}</div>
+                </div>
+                <div>
+                  <div className=""text-cyan-300 text-sm"">LEVEL</div>
+                  <div className=""text-3xl font-bold text-purple-400"">{level}</div>
+                </div>
+                <div>
+                  <div className=""text-cyan-300 text-sm"">LINES</div>
+                  <div className=""text-3xl font-bold text-green-400"">{lines}</div>
+                </div>
+                <div className=""pt-3 border-t border-cyan-500/30"">
+                  <div className=""text-cyan-300 text-sm mb-1"">NEXT LEVEL</div>
+                  <div className=""text-lg text-white font-semibold"">{linesUntilNextLevel} lines</div>
+                  <div className=""w-full bg-gray-700 rounded-full h-3 mt-2"">
+                    <div className=""bg-gradient-to-r from-cyan-500 to-purple-500 h-3 rounded-full transition-all duration-300"" style={{ width: `${((LINES_PER_LEVEL - linesUntilNextLevel) / LINES_PER_LEVEL) * 100}%` }} />
+                  </div>
+                </div>
+                <div className=""pt-3 border-t border-cyan-500/30"">
+                  <div className=""text-cyan-300 text-sm mb-1"">SPEED</div>
+                  <div className=""text-xl text-orange-400 font-mono font-bold"">{getCurrentSpeed(level)}ms</div>
+                </div>
+                <div className=""pt-3 border-t border-cyan-500/30"">
+                  <div className=""text-cyan-300 text-sm mb-1"">LEVEL TIME</div>
+                  <div className=""text-2xl font-mono text-yellow-400 font-bold"">{Math.floor(levelTimer / 60)}:{(levelTimer % 60).toString().padStart(2, '0')}</div>
+                </div>
+                {mode === 'sprint' && (
+                  <div className=""pt-3 border-t border-cyan-500/30"">
+                    <div className=""text-cyan-300 text-sm"">RACE TIME</div>
+                    <div className=""text-2xl font-bold font-mono text-yellow-400"">{Math.floor(sprintTime / 60)}:{(sprintTime % 60).toString().padStart(2, '0')}</div>
+                    <div className=""text-sm text-gray-400 mt-1"">{40 - lines} lines to go</div>
+                  </div>
+                )}
+                {combo > 1 && <div className=""text-xl text-orange-400 font-bold animate-pulse text-center pt-2"">{combo}x COMBO!</div>}
+              </div>
+            </div>
+
+            <div className=""relative"">
+              <div className=""rounded-lg overflow-hidden glow-pulse"" style={{ border: '4px solid rgba(0, 255, 255, 0.4)', boxShadow: '0 0 40px rgba(0, 255, 255, 0.3)' }}>
+                {renderBoard()}
+              </div>
+              {lastClear && (
+                <div className=""absolute inset-0 flex items-center justify-center pointer-events-none"">
+                  <div className={`text-5xl font-bold ${lastClear.isTetris ? 'text-yellow-400' : 'text-cyan-400'} animate-bounce drop-shadow-lg`}>
+                    {lastClear.isTetris ? 'TETRIS!' : `+${lastClear.lines} LINE${lastClear.lines > 1 ? 'S' : ''}`}
+                  </div>
+                </div>
+              )}
+              {paused && !gameOver && (
+                <div className=""absolute inset-0 bg-black/85 flex items-center justify-center rounded-lg"">
+                  <div className=""text-center"">
+                    <div className=""text-5xl font-bold text-white mb-4"">PAUSED</div>
+                    <div className=""text-xl text-cyan-300"">Press ESC or P to resume</div>
+                  </div>
+                </div>
+              )}
+              {(!gameStarted || gameOver) && (
+                <div className=""absolute inset-0 bg-black/85 flex items-center justify-center rounded-lg"">
+                  <div className=""text-center"">
+                    {gameOver ? (
+                      <>
+                        <div className=""text-5xl font-bold text-red-400 mb-3"">GAME OVER</div>
+                        <div className=""text-3xl text-white mb-2"">Score: {score.toLocaleString()}</div>
+                        <div className=""text-xl text-cyan-300 mb-6"">Level {level} • {lines} Lines</div>
+                      </>
+                    ) : (
+                      <div className=""text-5xl font-bold text-white mb-6"">READY?</div>
+                    )}
+                    <button onClick={startGame} className=""px-10 py-4 bg-cyan-600 hover:bg-cyan-500 rounded-xl text-white font-bold text-2xl transition shadow-lg shadow-cyan-500/30"">
+                      {gameOver ? 'Play Again' : 'Start Game'}
+                    </button>
+                    <div className=""text-cyan-300 mt-5 text-lg"">Press SPACE or ENTER</div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className=""bg-black/60 backdrop-blur rounded-xl p-5 w-36 border border-cyan-500/30"">
+              <div className=""text-cyan-300 text-sm mb-3 text-center font-bold"">NEXT</div>
+              <div className=""space-y-3"">
+                {pieceQueue.slice(0, 5).map((piece, index) => (
+                  <div key={index} className={`bg-black/50 rounded-lg p-2 flex items-center justify-center transition-all ${index === 0 ? 'border-2 border-cyan-400 min-h-[70px]' : 'min-h-[50px] opacity-70'}`}>
+                    {renderPiecePreview(piece, index === 0 ? 22 : 16)}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+  );
+}","","","",""
+"","","","","","","","","","","Stats","/stats","Tetris - Statistics","10","","function StatsPage({ storage }) {
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const loadStats = async () => {
+      const savedStats = await storage.get('tetrisStats', {
+        gamesPlayed: 0,
+        totalLines: 0,
+        totalScore: 0,
+        highScores: { classic: 0, marathon: 0, sprint: 0, zen: 0 },
+        maxLevel: 1,
+        tetrisCount: 0,
+        playTime: 0
+      });
+      setStats(savedStats);
+      setLoading(false);
+    };
+    loadStats();
+  }, [storage]);
+
+  const resetStats = async () => {
+    if (confirm('Are you sure you want to reset all stats? This cannot be undone.')) {
+      await storage.set('tetrisStats', {
+        gamesPlayed: 0,
+        totalLines: 0,
+        totalScore: 0,
+        highScores: { classic: 0, marathon: 0, sprint: 0, zen: 0 },
+        maxLevel: 1,
+        tetrisCount: 0,
+        playTime: 0
+      });
+      setStats(await storage.get('tetrisStats'));
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className=""min-h-screen bg-gray-900 flex items-center justify-center"">
+        <div className=""text-cyan-400 text-2xl"">Loading...</div>
+      </div>
+    );
+  }
+
+  const avgScore = stats.gamesPlayed > 0 ? Math.round(stats.totalScore / stats.gamesPlayed) : 0;
+  const avgLines = stats.gamesPlayed > 0 ? Math.round(stats.totalLines / stats.gamesPlayed) : 0;
+
+  return (
+    <div className=""min-h-screen bg-gradient-to-br from-gray-900 via-indigo-900/30 to-gray-900 text-white"">
+      <header className=""p-6 border-b border-cyan-500/20 bg-black/30"">
+        <div className=""max-w-4xl mx-auto flex justify-between items-center"">
+          <button onClick={() => navigate('/')} className=""text-cyan-400 hover:text-cyan-300 transition font-medium"">
+            ← Back to Menu
+          </button>
+          <h1 className=""text-3xl font-bold text-white"">Statistics</h1>
+          <div></div>
+        </div>
+      </header>
+
+      <main className=""max-w-4xl mx-auto p-6"">
+        {/* Overall Stats */}
+        <section className=""mb-10"">
+          <h2 className=""text-2xl font-bold mb-4 text-cyan-300"">Overall Performance</h2>
+          <div className=""grid grid-cols-2 md:grid-cols-4 gap-4"">
+            <StatsCard title=""Games Played"" value={stats.gamesPlayed} icon=""🎮"" />
+            <StatsCard title=""Total Score"" value={stats.totalScore.toLocaleString()} icon=""🏆"" />
+            <StatsCard title=""Total Lines"" value={stats.totalLines.toLocaleString()} icon=""📊"" />
+            <StatsCard title=""Max Level"" value={stats.maxLevel} icon=""⭐"" />
+          </div>
+        </section>
+
+        {/* Averages */}
+        <section className=""mb-10"">
+          <h2 className=""text-2xl font-bold mb-4 text-cyan-300"">Averages</h2>
+          <div className=""grid grid-cols-2 gap-4"">
+            <StatsCard title=""Avg Score/Game"" value={avgScore.toLocaleString()} icon=""📈"" />
+            <StatsCard title=""Avg Lines/Game"" value={avgLines} icon=""📉"" />
+          </div>
+        </section>
+
+        {/* High Scores by Mode */}
+        <section className=""mb-10"">
+          <h2 className=""text-2xl font-bold mb-4 text-cyan-300"">High Scores by Mode</h2>
+          <div className=""bg-gray-800/70 backdrop-blur rounded-xl p-6 border border-cyan-500/30"">
+            <div className=""grid grid-cols-2 md:grid-cols-4 gap-6"">
+              <div className=""text-center"">
+                <div className=""text-4xl mb-2"">🎮</div>
+                <div className=""text-cyan-300 font-medium"">Classic</div>
+                <div className=""text-3xl font-bold text-white"">{(stats.highScores.classic || 0).toLocaleString()}</div>
+              </div>
+              <div className=""text-center"">
+                <div className=""text-4xl mb-2"">🏃</div>
+                <div className=""text-cyan-300 font-medium"">Marathon</div>
+                <div className=""text-3xl font-bold text-white"">{(stats.highScores.marathon || 0).toLocaleString()}</div>
+              </div>
+              <div className=""text-center"">
+                <div className=""text-4xl mb-2"">⚡</div>
+                <div className=""text-cyan-300 font-medium"">Sprint</div>
+                <div className=""text-3xl font-bold text-white"">{stats.highScores.sprint > 0 ? 'Completed' : 'Not Yet'}</div>
+              </div>
+              <div className=""text-center"">
+                <div className=""text-4xl mb-2"">🧘</div>
+                <div className=""text-cyan-300 font-medium"">Zen</div>
+                <div className=""text-3xl font-bold text-white"">{(stats.highScores.zen || 0).toLocaleString()}</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Reset Button */}
+        <div className=""text-center"">
+          <button
+            onClick={resetStats}
+            className=""px-6 py-3 bg-red-600/20 hover:bg-red-600/40 border border-red-500 rounded-lg text-red-400 hover:text-red-300 transition font-medium""
+          >
+            Reset All Stats
+          </button>
+        </div>
+      </main>
+    </div>
+  );
+}","","","",""
