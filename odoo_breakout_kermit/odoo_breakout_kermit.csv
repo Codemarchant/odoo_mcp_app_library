@@ -1,0 +1,983 @@
+﻿"name","description","data_code","global_state_code","shared_components","shared_styles","router_mode","tailwind_enabled","cdn_dependencies","custom_imports","page_ids/name","page_ids/route_path","page_ids/page_title","page_ids/sequence","page_ids/data_code","page_ids/component_code","endpoint_ids/name","endpoint_ids/endpoint_path","endpoint_ids/method","endpoint_ids/handler_code"
+"Odoo Breakout kermit","Breakout game with Odoo theming, sound effects, background music options, and user stat tracking","","{ musicEnabled: true, sfxEnabled: true, currentTrack: 'synthwave' }","function KermitBreakoutLogo({size = 40}) {
+  return (
+    <svg width={size} height={size} viewBox=""0 0 100 100"">
+      <defs>
+        <linearGradient id=""kermitGrad"" x1=""0%"" y1=""0%"" x2=""0%"" y2=""100%"">
+          <stop offset=""0%"" stopColor=""#7CFC00""/>
+          <stop offset=""100%"" stopColor=""#228B22""/>
+        </linearGradient>
+      </defs>
+      <ellipse cx=""50"" cy=""55"" rx=""35"" ry=""30"" fill=""url(#kermitGrad)""/>
+      <circle cx=""35"" cy=""35"" r=""15"" fill=""url(#kermitGrad)"" stroke=""#228B22"" strokeWidth=""2""/>
+      <circle cx=""65"" cy=""35"" r=""15"" fill=""url(#kermitGrad)"" stroke=""#228B22"" strokeWidth=""2""/>
+      <circle cx=""35"" cy=""33"" r=""8"" fill=""white""/>
+      <circle cx=""65"" cy=""33"" r=""8"" fill=""white""/>
+      <circle cx=""37"" cy=""33"" r=""4"" fill=""black""/>
+      <circle cx=""67"" cy=""33"" r=""4"" fill=""black""/>
+      <ellipse cx=""50"" cy=""65"" rx=""12"" ry=""6"" fill=""#FF6B6B""/>
+      <path d=""M38 65 Q50 75 62 65"" stroke=""#8B0000"" strokeWidth=""2"" fill=""none""/>
+      <rect x=""15"" y=""5"" width=""12"" height=""6"" rx=""2"" fill=""#714B67""/>
+      <rect x=""29"" y=""5"" width=""12"" height=""6"" rx=""2"" fill=""#875A7B""/>
+      <rect x=""43"" y=""5"" width=""12"" height=""6"" rx=""2"" fill=""#228B22""/>
+      <rect x=""57"" y=""5"" width=""12"" height=""6"" rx=""2"" fill=""#7CFC00""/>
+      <rect x=""71"" y=""5"" width=""12"" height=""6"" rx=""2"" fill=""#FFD700""/>
+      <circle cx=""80"" cy=""85"" r=""6"" fill=""#333""/>
+      <path d=""M77 82 L74 78 M83 82 L86 78"" stroke=""#333"" strokeWidth=""1.5""/>
+    </svg>
+  );
+}
+
+function createAudioEngine() {
+  let ctx = null;
+  let isPlayingMusic = false;
+  let musicInterval = null;
+  let currentPattern = 0;
+  
+  const getCtx = () => {
+    if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
+    if (ctx.state === 'suspended') ctx.resume();
+    return ctx;
+  };
+  
+  const tracks = {
+    rickroll: { tempo: 113, notes: [392, 440, 523, 440, 659, 659, 587, 0], bass: [98, 98, 110, 110, 130, 130, 146, 146] },
+    allStar: { tempo: 104, notes: [329, 329, 293, 329, 392, 392, 293, 329], bass: [82, 82, 73, 73, 98, 98, 73, 73] },
+    crazyFrog: { tempo: 140, notes: [659, 784, 659, 523, 587, 659, 0, 659], bass: [164, 164, 196, 196, 146, 146, 164, 164] },
+    miiChannel: { tempo: 114, notes: [523, 587, 659, 523, 659, 698, 659, 0], bass: [130, 130, 146, 146, 164, 164, 174, 174] },
+    heMan: { tempo: 130, notes: [392, 494, 587, 494, 392, 494, 587, 392], bass: [98, 98, 123, 123, 146, 146, 123, 123] },
+    bonfire: { tempo: 150, notes: [349, 349, 392, 440, 392, 349, 311, 349], bass: [87, 87, 98, 98, 110, 110, 98, 98] }
+  };
+  
+  const playNote = (freq, duration, type = 'square', vol = 0.15) => {
+    if (freq === 0) return;
+    try {
+      const c = getCtx();
+      const o = c.createOscillator();
+      const g = c.createGain();
+      o.connect(g); g.connect(c.destination);
+      o.type = type;
+      o.frequency.setValueAtTime(freq, c.currentTime);
+      g.gain.setValueAtTime(vol, c.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.01, c.currentTime + duration);
+      o.start(c.currentTime); o.stop(c.currentTime + duration);
+    } catch(e) {}
+  };
+  
+  const startMusic = (trackName) => {
+    stopMusic();
+    const track = tracks[trackName] || tracks.rickroll;
+    const beatTime = 60000 / track.tempo / 2;
+    currentPattern = 0;
+    isPlayingMusic = true;
+    musicInterval = setInterval(() => {
+      if (!isPlayingMusic) return;
+      playNote(track.notes[currentPattern % 8], 0.2, 'square', 0.1);
+      playNote(track.bass[currentPattern % 8], 0.3, 'triangle', 0.15);
+      currentPattern++;
+    }, beatTime);
+  };
+  
+  const stopMusic = () => { isPlayingMusic = false; if (musicInterval) { clearInterval(musicInterval); musicInterval = null; } };
+  
+  const sfx = {
+    paddleHit: () => { playNote(523, 0.08, 'square', 0.2); playNote(659, 0.08, 'sine', 0.15); },
+    brickHit: () => { playNote(587, 0.05, 'square', 0.25); playNote(698, 0.08, 'square', 0.15); },
+    wallHit: () => playNote(262, 0.05, 'triangle', 0.15),
+    loseLife: () => { [400, 300, 200, 150].forEach((f, i) => setTimeout(() => playNote(f, 0.15, 'sawtooth', 0.25), i * 80)); },
+    levelUp: () => { [523, 659, 784, 1047, 1319].forEach((f, i) => setTimeout(() => playNote(f, 0.12, 'square', 0.2), i * 80)); },
+    gameOver: () => { [392, 349, 311, 293, 261, 233, 207].forEach((f, i) => setTimeout(() => playNote(f, 0.2, 'sawtooth', 0.2), i * 150)); },
+    powerUp: () => { [784, 880, 988, 1047, 1175, 1319].forEach((f, i) => setTimeout(() => playNote(f, 0.08, 'sine', 0.25), i * 40)); },
+    explosion: () => { for(let i=0;i<8;i++) setTimeout(() => playNote(80 + Math.random()*150, 0.12, 'sawtooth', 0.3), i*25); },
+    ribbit: () => { playNote(180, 0.08, 'sine', 0.35); setTimeout(() => playNote(250, 0.12, 'sine', 0.3), 80); },
+    tongue: () => { [400, 500, 600, 700].forEach((f, i) => setTimeout(() => playNote(f, 0.04, 'square', 0.2), i*20)); }
+  };
+  
+  return { startMusic, stopMusic, sfx, trackNames: Object.keys(tracks) };
+}","@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+.pulsing { animation: pulse 1s ease-in-out infinite; }
+@keyframes glow { 0%, 100% { box-shadow: 0 0 5px #228B22; } 50% { box-shadow: 0 0 20px #7CFC00, 0 0 30px #228B22; } }
+.glowing { animation: glow 2s ease-in-out infinite; }
+@keyframes ribbit { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(1.1); } }
+.ribbit { animation: ribbit 0.3s ease-in-out; }","Hash Router","True","","","Game","/","Odoo Breakout","10","","function GamePage({storage, user, globalState, setGlobalState}) {
+  const canvasRef = useRef(null);
+  const gameRef = useRef(null);
+  const audioRef = useRef(null);
+  const animRef = useRef(null);
+  const pausedRef = useRef(false);
+  const gameStateRef = useRef('menu');
+  const bgRef = useRef({ particles: [], type: 0, time: 0, lilyPads: [] });
+  const [gameState, setGameStateRaw] = useState('menu');
+  const [score, setScore] = useState(0);
+  const [lives, setLives] = useState(3);
+  const [level, setLevel] = useState(1);
+  const [combo, setCombo] = useState(0);
+  const [isPaused, setIsPausedRaw] = useState(false);
+  const [stats, setStats] = useState({ highScore: 0, gamesPlayed: 0, totalBricks: 0, maxLevel: 1, maxCombo: 0, fliesCaught: 0 });
+  const [showSettings, setShowSettings] = useState(false);
+  const [activePowerUps, setActivePowerUps] = useState([]);
+  
+  const globalStateRef = useRef(globalState);
+  globalStateRef.current = globalState;
+  
+  const setGameState = (val) => { gameStateRef.current = val; setGameStateRaw(val); };
+  
+  const W = 800, H = 650;
+  const PADDLE_W = 120, PADDLE_H = 20;
+  const BALL_R = 10;
+  const BRICK_COLS = 12;
+  const BRICK_W = 60, BRICK_H = 24, BRICK_PAD = 5;
+  const BRICK_TOP = 100;
+  
+  const COLORS = ['#7CFC00', '#228B22', '#32CD32', '#006400', '#714B67', '#875A7B', '#90EE90', '#00FF7F', '#3CB371', '#2E8B57'];
+  const POWERUP_TYPES = [
+    { type: 'multiball', color: '#00FFFF', icon: '🪰', name: 'Multi-Fly' },
+    { type: 'wide', color: '#00FF00', icon: '🐸', name: 'Big Kermit' },
+    { type: 'tongue', color: '#FF69B4', icon: '👅', name: 'Tongue Lash' },
+    { type: 'fireball', color: '#FF4500', icon: '🔥', name: 'Fire Fly' },
+    { type: 'slow', color: '#FFD700', icon: '🐢', name: 'Turtle Time' },
+    { type: 'life', color: '#FF69B4', icon: '💚', name: 'Extra Life' },
+    { type: 'magnet', color: '#9400D3', icon: '🧲', name: 'Fly Magnet' },
+    { type: 'rainbow', color: '#FF00FF', icon: '🌈', name: 'Rainbow Connection' }
+  ];
+  
+  const BG_TYPES = ['swamp', 'rainbow', 'lilypad', 'muppetShow', 'starfield', 'matrix', 'fireflies'];
+  
+  const KERMIT_QUOTES = [
+    ""Hi-ho! Kermit the ERP frog here!"",
+    ""It's not easy being open source!"",
+    ""Welcome to Odoo Experience!"",
+    ""One app to rule them all!"",
+    ""The community makes it possible!"",
+    ""Ribbit! That's good for your ROI!"",
+    ""Fabien would be proud!"",
+    ""Time to integrate some modules!"",
+    ""This is better than SAP! Yaaay!"",
+    ""Open source is the way!"",
+    ""No license fees! Wocka wocka!"",
+    ""ERP has never been so green!"",
+    ""Let's pivot that table!"",
+    ""Views, actions, menus... oh my!"",
+    ""XML-RPC? More like XML-RIBBIT!"",
+    ""Fiscal positions are fun!"",
+    ""That's one happy customer!"",
+    ""Automating workflows since 2005!"",
+    ""Python is a frog's best friend!"",
+    ""PostgreSQL powers my pond!"",
+    ""Have you tried turning Odoo off and on?"",
+    ""sudo apt-get install more-flies!"",
+    ""404: Flies not found... wait, there's one!"",
+    ""It's giving... enterprise!"",
+    ""Slay those bricks, queen!"",
+    ""No cap, this ERP slaps!"",
+    ""That brick just got ratioed!"",
+    ""Odoo devs hate this one weird trick!"",
+    ""POV: You're a fly in my swamp"",
+    ""Skill issue? Never heard of her!"",
+    ""We do a little brick breaking"",
+    ""Based and green-pilled!"",
+    ""Touch grass? I AM the grass!"",
+    ""Cope and seethe, SAP users!"",
+    ""Let him cook! (the flies)"",
+    ""It's morbin' time... I mean, Odoo time!"",
+    ""Caught in 4K catching flies!"",
+    ""Erm, what the sigma brick?"",
+    ""This fly bussin fr fr!"",
+    ""Main character energy!"",
+    ""Living my best frog life!"",
+    ""Installation wizard? I'm a frog wizard!"",
+    ""git commit -m 'caught another fly'"",
+    ""SELECT * FROM flies WHERE tasty = true;"",
+    ""The Odoo app store has 40k apps btw"",
+    ""Fabien sends his regards!"",
+    ""Have you configured your chart of accounts?"",
+    ""Remember to backup your database!"",
+    ""This is an Odoo-certified moment!""
+  ];
+  
+  useEffect(() => {
+    storage.get('breakoutStats', null).then(saved => {
+      const defaults = { highScore: 0, gamesPlayed: 0, totalBricks: 0, maxLevel: 1, maxCombo: 0, fliesCaught: 0 };
+      if (saved) {
+        setStats({
+          highScore: saved.highScore || 0,
+          gamesPlayed: saved.gamesPlayed || 0,
+          totalBricks: saved.totalBricks || 0,
+          maxLevel: saved.maxLevel || 1,
+          maxCombo: saved.maxCombo || 0,
+          fliesCaught: saved.fliesCaught || 0
+        });
+      } else {
+        setStats(defaults);
+      }
+    });
+    audioRef.current = createAudioEngine();
+    initBackground();
+    
+    return () => {
+      audioRef.current?.stopMusic();
+      if (animRef.current) cancelAnimationFrame(animRef.current);
+    };
+  }, []);
+  
+  useEffect(() => {
+    const handleKey = (e) => {
+      if (e.code === 'Space' || e.code === 'KeyP') {
+        e.preventDefault();
+        e.stopPropagation();
+        if (gameStateRef.current === 'playing') {
+          const newPaused = !pausedRef.current;
+          pausedRef.current = newPaused;
+          setIsPausedRaw(newPaused);
+          if (newPaused) {
+            audioRef.current?.stopMusic();
+          } else if (globalStateRef.current.musicEnabled) {
+            audioRef.current?.startMusic(globalStateRef.current.currentTrack);
+          }
+        }
+        return;
+      }
+      if (e.code === 'Escape') {
+        e.preventDefault();
+        if (gameStateRef.current === 'playing' && !pausedRef.current) {
+          pausedRef.current = true;
+          setIsPausedRaw(true);
+          audioRef.current?.stopMusic();
+        }
+        setShowSettings(true);
+        return;
+      }
+      if (!gameRef.current?.running || pausedRef.current) return;
+      const paddleSpeed = 35 + (gameRef.current.level * 2);
+      if (e.key === 'ArrowLeft' || e.code === 'KeyA') gameRef.current.paddle.x = Math.max(0, gameRef.current.paddle.x - paddleSpeed);
+      if (e.key === 'ArrowRight' || e.code === 'KeyD') gameRef.current.paddle.x = Math.min(W - gameRef.current.paddle.w, gameRef.current.paddle.x + paddleSpeed);
+    };
+    
+    const handleMouse = (e) => {
+      if (!gameRef.current?.running || !canvasRef.current || pausedRef.current) return;
+      const rect = canvasRef.current.getBoundingClientRect();
+      const scaleX = W / rect.width;
+      const x = (e.clientX - rect.left) * scaleX;
+      gameRef.current.paddle.x = Math.max(0, Math.min(W - gameRef.current.paddle.w, x - gameRef.current.paddle.w / 2));
+    };
+    
+    const handleTouch = (e) => {
+      if (!gameRef.current?.running || !canvasRef.current || pausedRef.current) return;
+      const rect = canvasRef.current.getBoundingClientRect();
+      const scaleX = W / rect.width;
+      const x = (e.touches[0].clientX - rect.left) * scaleX;
+      gameRef.current.paddle.x = Math.max(0, Math.min(W - gameRef.current.paddle.w, x - gameRef.current.paddle.w / 2));
+    };
+    
+    window.addEventListener('keydown', handleKey);
+    window.addEventListener('mousemove', handleMouse);
+    window.addEventListener('touchmove', handleTouch);
+    
+    return () => {
+      window.removeEventListener('keydown', handleKey);
+      window.removeEventListener('mousemove', handleMouse);
+      window.removeEventListener('touchmove', handleTouch);
+    };
+  }, []);
+  
+  const initBackground = () => {
+    const lilyPads = [];
+    for (let i = 0; i < 8; i++) {
+      lilyPads.push({ x: Math.random() * W, y: Math.random() * H, size: 30 + Math.random() * 40, rot: Math.random() * Math.PI * 2 });
+    }
+    bgRef.current = { particles: [], type: 0, time: 0, lilyPads };
+    for (let i = 0; i < 120; i++) {
+      bgRef.current.particles.push({
+        x: Math.random() * W, y: Math.random() * H,
+        vx: (Math.random() - 0.5) * 2, vy: Math.random() * 2 + 0.5,
+        size: Math.random() * 3 + 1, hue: Math.random() * 60 + 90,
+        char: String.fromCharCode(0x30A0 + Math.random() * 96),
+        phase: Math.random() * Math.PI * 2
+      });
+    }
+  };
+  
+  const drawKermitPaddle = (ctx, paddle, level) => {
+    const px = paddle.x, py = paddle.y, pw = paddle.w, ph = paddle.h;
+    const hue = paddle.isRainbow ? (bgRef.current.time * 100) % 360 : 120;
+    
+    ctx.fillStyle = paddle.isRainbow ? `hsl(${hue}, 80%, 40%)` : '#228B22';
+    ctx.beginPath();
+    ctx.ellipse(px + pw/2, py + ph/2, pw/2, ph/2 + 8, 0, 0, Math.PI * 2);
+    ctx.fill();
+    
+    const eyeSize = 16 + Math.min(level, 10);
+    const eyeY = py - 8;
+    
+    ctx.fillStyle = paddle.isRainbow ? `hsl(${(hue + 60) % 360}, 80%, 50%)` : '#7CFC00';
+    ctx.beginPath();
+    ctx.arc(px + pw/2 - 28, eyeY, eyeSize, 0, Math.PI * 2);
+    ctx.arc(px + pw/2 + 28, eyeY, eyeSize, 0, Math.PI * 2);
+    ctx.fill();
+    
+    ctx.fillStyle = 'white';
+    ctx.beginPath();
+    ctx.arc(px + pw/2 - 28, eyeY, eyeSize - 5, 0, Math.PI * 2);
+    ctx.arc(px + pw/2 + 28, eyeY, eyeSize - 5, 0, Math.PI * 2);
+    ctx.fill();
+    
+    ctx.fillStyle = 'black';
+    ctx.beginPath();
+    ctx.arc(px + pw/2 - 25, eyeY, 5, 0, Math.PI * 2);
+    ctx.arc(px + pw/2 + 31, eyeY, 5, 0, Math.PI * 2);
+    ctx.fill();
+    
+    if (paddle.hasTongue) {
+      ctx.strokeStyle = '#FF69B4';
+      ctx.lineWidth = 8;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(px + pw/2, py);
+      ctx.quadraticCurveTo(px + pw/2 + Math.sin(bgRef.current.time * 10) * 20, py - 60, px + pw/2, py - 130);
+      ctx.stroke();
+      ctx.fillStyle = '#FF1493';
+      ctx.beginPath();
+      ctx.arc(px + pw/2, py - 130, 8, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  };
+  
+  const drawFlyBall = (ctx, ball) => {
+    ctx.fillStyle = ball.fireball ? '#FF4500' : '#1a1a1a';
+    ctx.shadowColor = ball.fireball ? '#FF4500' : '#000';
+    ctx.shadowBlur = ball.fireball ? 25 : 8;
+    ctx.beginPath();
+    ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
+    ctx.fill();
+    
+    if (!ball.fireball) {
+      ctx.fillStyle = 'rgba(200,200,200,0.7)';
+      ctx.beginPath();
+      ctx.ellipse(ball.x - ball.r - 4, ball.y - 3, 8, 4, -0.4, 0, Math.PI * 2);
+      ctx.ellipse(ball.x + ball.r + 4, ball.y - 3, 8, 4, 0.4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#8B0000';
+      ctx.beginPath();
+      ctx.arc(ball.x - 3, ball.y - 2, 2.5, 0, Math.PI * 2);
+      ctx.arc(ball.x + 3, ball.y - 2, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      ctx.fillStyle = '#FFD700';
+      ctx.beginPath();
+      ctx.arc(ball.x, ball.y, ball.r * 0.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.shadowBlur = 0;
+  };
+  
+  const drawBackground = (ctx, g) => {
+    const bg = bgRef.current;
+    bg.time += 0.02;
+    const type = BG_TYPES[bg.type % BG_TYPES.length];
+    const intensity = Math.min(1, (g?.combo || 0) / 10 + 0.3);
+    
+    const grad = ctx.createLinearGradient(0, 0, 0, H);
+    if (type === 'swamp') { grad.addColorStop(0, '#0a2a1a'); grad.addColorStop(0.7, '#1a4a2a'); grad.addColorStop(1, '#0a3a1a'); }
+    else if (type === 'rainbow') { const hue = (bg.time * 30) % 360; grad.addColorStop(0, `hsl(${hue}, 50%, 15%)`); grad.addColorStop(0.5, `hsl(${(hue+60)%360}, 50%, 20%)`); grad.addColorStop(1, `hsl(${(hue+120)%360}, 50%, 15%)`); }
+    else if (type === 'lilypad') { grad.addColorStop(0, '#1a3a2a'); grad.addColorStop(1, '#0a4a3a'); }
+    else if (type === 'muppetShow') { grad.addColorStop(0, '#4a1a1a'); grad.addColorStop(0.5, '#6a2a2a'); grad.addColorStop(1, '#3a1a1a'); }
+    else if (type === 'starfield') { grad.addColorStop(0, '#0a0a1a'); grad.addColorStop(1, '#1a1a3a'); }
+    else if (type === 'matrix') { grad.addColorStop(0, '#0a1a0a'); grad.addColorStop(1, '#001a00'); }
+    else { grad.addColorStop(0, '#0a1a1a'); grad.addColorStop(1, '#1a2a1a'); }
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, W, H);
+    
+    if (type === 'swamp' || type === 'lilypad') {
+      bg.lilyPads.forEach((lp, i) => {
+        ctx.save();
+        ctx.translate(lp.x, lp.y);
+        ctx.rotate(lp.rot + Math.sin(bg.time + i) * 0.1);
+        ctx.fillStyle = '#228B22';
+        ctx.beginPath();
+        ctx.arc(0, 0, lp.size, 0, Math.PI * 1.8);
+        ctx.lineTo(0, 0);
+        ctx.fill();
+        ctx.restore();
+        lp.x += Math.sin(bg.time * 0.5 + i) * 0.3;
+        if (lp.x < -50) lp.x = W + 50;
+        if (lp.x > W + 50) lp.x = -50;
+      });
+    }
+    
+    if (type === 'rainbow') {
+      for (let i = 0; i < 7; i++) {
+        ctx.strokeStyle = `hsla(${i * 51}, 80%, 50%, 0.3)`;
+        ctx.lineWidth = 15;
+        ctx.beginPath();
+        ctx.arc(W/2, H + 200, 400 - i * 20, Math.PI * 1.2, Math.PI * 1.8);
+        ctx.stroke();
+      }
+    }
+    
+    if (type === 'muppetShow') {
+      ctx.fillStyle = '#8B4513';
+      ctx.fillRect(0, H - 30, W, 30);
+      for (let i = 0; i < W; i += 80) {
+        ctx.fillStyle = Math.sin(bg.time * 5 + i * 0.1) > 0 ? '#FFD700' : '#8B8000';
+        ctx.beginPath();
+        ctx.arc(i + 40, H - 15, 8, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    
+    bg.particles.forEach((p) => {
+      if (type === 'starfield') {
+        p.y += p.vy * intensity * 2;
+        if (p.y > H) { p.y = 0; p.x = Math.random() * W; }
+        ctx.fillStyle = `rgba(255, 255, 255, ${Math.sin(bg.time * 3 + p.phase) * 0.5 + 0.5})`;
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.fill();
+      } else if (type === 'matrix') {
+        p.y += p.vy * 3 * intensity;
+        if (p.y > H) { p.y = 0; p.char = String.fromCharCode(0x30A0 + Math.random() * 96); }
+        ctx.fillStyle = `rgba(0, 255, 0, ${0.8 * intensity})`;
+        ctx.font = `${12 + p.size * 2}px monospace`;
+        ctx.fillText(p.char, p.x, p.y);
+      } else if (type === 'fireflies') {
+        p.x += Math.sin(bg.time * 2 + p.phase) * 1.5;
+        p.y += Math.cos(bg.time * 1.5 + p.phase) * 1;
+        if (p.x < 0) p.x = W; if (p.x > W) p.x = 0;
+        if (p.y < 0) p.y = H; if (p.y > H) p.y = 0;
+        ctx.fillStyle = `rgba(200, 255, 100, ${(Math.sin(bg.time * 4 + p.phase) * 0.5 + 0.5) * intensity})`;
+        ctx.shadowColor = '#ADFF2F'; ctx.shadowBlur = 15;
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.size * 2, 0, Math.PI * 2); ctx.fill();
+        ctx.shadowBlur = 0;
+      }
+    });
+  };
+  
+  const saveStats = async (newStats) => { setStats(newStats); await storage.set('breakoutStats', newStats); };
+  
+  const createBricks = (lvl) => {
+    const bricks = [];
+    const rows = Math.min(5 + Math.floor(lvl / 3), 9);
+    const maxBombs = Math.min(2 + Math.floor(lvl / 4), 4);
+    const maxTnt = Math.min(1 + Math.floor(lvl / 5), 3);
+    const maxDiamonds = Math.min(2 + Math.floor(lvl / 3), 5);
+    const maxMystery = Math.min(2 + Math.floor(lvl / 4), 4);
+    let bombCount = 0, tntCount = 0, diamondCount = 0, mysteryCount = 0;
+    
+    const reinforcedChance = Math.min(0.05 + lvl * 0.03, 0.4);
+    const tripleHpChance = Math.min(lvl * 0.02, 0.2);
+    
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < BRICK_COLS; c++) {
+        let brickType = 'normal';
+        let icon = null;
+        let color = COLORS[r % COLORS.length];
+        
+        const roll = Math.random();
+        if (roll < 0.03 && bombCount < maxBombs && lvl >= 2) {
+          brickType = 'bomb'; icon = '💣'; color = '#FF4500'; bombCount++;
+        } else if (roll < 0.05 && tntCount < maxTnt && lvl >= 4) {
+          brickType = 'tnt'; icon = '🧨'; color = '#FF0000'; tntCount++;
+        } else if (roll < 0.10 && diamondCount < maxDiamonds && lvl >= 2) {
+          brickType = 'diamond'; icon = '💎'; color = '#00FFFF'; diamondCount++;
+        } else if (roll < 0.14 && mysteryCount < maxMystery) {
+          brickType = 'mystery'; icon = '❓'; color = '#FF00FF'; mysteryCount++;
+        }
+        
+        let hp = 1;
+        if (brickType === 'diamond') hp = 3;
+        else if (brickType === 'normal') {
+          if (Math.random() < tripleHpChance && r < 3) hp = 3;
+          else if (Math.random() < reinforcedChance) hp = 2;
+        }
+        
+        const hasPowerUp = brickType === 'mystery' || (brickType === 'normal' && Math.random() < 0.12);
+        const powerUp = hasPowerUp ? POWERUP_TYPES[Math.floor(Math.random() * POWERUP_TYPES.length)] : null;
+        const isKermit = brickType === 'normal' && Math.random() < 0.06;
+        
+        bricks.push({
+          x: c * (BRICK_W + BRICK_PAD) + 30, y: r * (BRICK_H + BRICK_PAD) + BRICK_TOP,
+          w: BRICK_W, h: BRICK_H, hp, maxHp: hp,
+          color, brickType, icon, powerUp, isKermit
+        });
+      }
+    }
+    return bricks;
+  };
+  
+  const triggerExplosion = (brick, g) => {
+    if (!g || brick.exploded) return;
+    brick.exploded = true;
+    
+    if (globalStateRef.current.sfxEnabled) audioRef.current?.sfx.explosion();
+    g.screenShake = Math.min(g.screenShake + 10, 25);
+    
+    const cx = brick.x + brick.w/2, cy = brick.y + brick.h/2;
+    const radius = brick.brickType === 'tnt' ? 140 : 90;
+    
+    spawnParticles(cx, cy, brick.color, 20, true);
+    
+    const toDestroy = [];
+    g.bricks.forEach(b => {
+      if (b === brick || b.exploded) return;
+      const bx = b.x + b.w/2, by = b.y + b.h/2;
+      const dist = Math.sqrt((bx - cx) ** 2 + (by - cy) ** 2);
+      if (dist < radius) toDestroy.push(b);
+    });
+    
+    toDestroy.forEach(b => {
+      b.hp -= 2;
+      if (b.hp <= 0 && !b.exploded) {
+        if (b.brickType === 'bomb' || b.brickType === 'tnt') setTimeout(() => triggerExplosion(b, g), 100);
+        if (b.powerUp) g.powerUps.push({ ...b.powerUp, x: b.x + b.w/2, y: b.y + b.h/2, dy: 3 });
+        g.score += 10 * g.level;
+        setScore(g.score);
+        spawnParticles(b.x + b.w/2, b.y + b.h/2, b.color, 8);
+      }
+    });
+    
+    g.bricks = g.bricks.filter(b => b.hp > 0 || ((b.brickType === 'bomb' || b.brickType === 'tnt') && !b.exploded));
+  };
+  
+  const initGame = (lvl = 1) => {
+    bgRef.current.type = (lvl - 1) % BG_TYPES.length;
+    const ballSpeed = 4.5 + (lvl - 1) * 0.35;
+    gameRef.current = {
+      paddle: { x: W / 2 - PADDLE_W / 2, y: H - 50, w: PADDLE_W, h: PADDLE_H, hasTongue: false, hasMagnet: false, isRainbow: false },
+      balls: [{ x: W / 2, y: H - 80, dx: ballSpeed * (Math.random() > 0.5 ? 1 : -1), dy: -ballSpeed, r: BALL_R, fireball: false }],
+      bricks: createBricks(lvl),
+      powerUps: [],
+      score: lvl === 1 ? 0 : gameRef.current?.score || 0,
+      lives: lvl === 1 ? 3 : gameRef.current?.lives || 3,
+      level: lvl,
+      combo: 0,
+      comboTimer: 0,
+      running: true,
+      particles: [],
+      screenShake: 0,
+      slowMo: false,
+      slowMoTimer: 0,
+      quote: lvl === 1 ? '' : KERMIT_QUOTES[Math.floor(Math.random() * KERMIT_QUOTES.length)],
+      quoteTimer: lvl === 1 ? 0 : 150
+    };
+    setScore(gameRef.current.score);
+    setLives(gameRef.current.lives);
+    setLevel(lvl);
+    setCombo(0);
+    setActivePowerUps([]);
+  };
+  
+  const showQuote = (g) => {
+    g.quote = KERMIT_QUOTES[Math.floor(Math.random() * KERMIT_QUOTES.length)];
+    g.quoteTimer = 150;
+  };
+  
+  const spawnParticles = (x, y, color, count = 10, explosive = false) => {
+    if (!gameRef.current) return;
+    for (let i = 0; i < count; i++) {
+      const angle = explosive ? (i / count) * Math.PI * 2 : Math.random() * Math.PI * 2;
+      const speed = explosive ? 6 + Math.random() * 4 : (Math.random() - 0.5) * 6;
+      gameRef.current.particles.push({ x, y, dx: Math.cos(angle) * speed, dy: Math.sin(angle) * speed, life: 50, color, size: Math.random() * 5 + 2 });
+    }
+  };
+  
+  const applyPowerUp = (pu) => {
+    const g = gameRef.current;
+    if (globalStateRef.current.sfxEnabled) audioRef.current?.sfx.powerUp();
+    showQuote(g);
+    
+    if (pu.type === 'multiball') {
+      const newBalls = [];
+      g.balls.forEach(b => {
+        newBalls.push({ ...b, dx: b.dx * 0.7 + 3, dy: b.dy });
+        newBalls.push({ ...b, dx: b.dx * 0.7 - 3, dy: b.dy });
+      });
+      g.balls.push(...newBalls);
+    } else if (pu.type === 'wide') {
+      g.paddle.w = Math.min(220, g.paddle.w + 50);
+      setTimeout(() => { if (gameRef.current) gameRef.current.paddle.w = PADDLE_W; }, 15000);
+    } else if (pu.type === 'tongue') {
+      g.paddle.hasTongue = true;
+      setTimeout(() => { if (gameRef.current) gameRef.current.paddle.hasTongue = false; }, 10000);
+    } else if (pu.type === 'fireball') {
+      g.balls.forEach(b => b.fireball = true);
+      setTimeout(() => { if (gameRef.current) gameRef.current.balls.forEach(b => b.fireball = false); }, 8000);
+    } else if (pu.type === 'slow') {
+      g.slowMo = true; g.slowMoTimer = 600;
+    } else if (pu.type === 'life') {
+      g.lives = Math.min(5, g.lives + 1); setLives(g.lives);
+    } else if (pu.type === 'magnet') {
+      g.paddle.hasMagnet = true;
+      setTimeout(() => { if (gameRef.current) gameRef.current.paddle.hasMagnet = false; }, 12000);
+    } else if (pu.type === 'rainbow') {
+      g.paddle.isRainbow = true; g.balls.forEach(b => b.fireball = true);
+      setTimeout(() => { if (gameRef.current) { gameRef.current.paddle.isRainbow = false; gameRef.current.balls.forEach(b => b.fireball = false); } }, 10000);
+    }
+    setActivePowerUps(prev => [...prev.filter(p => p.type !== pu.type), { ...pu, endTime: Date.now() + 10000 }]);
+  };
+  
+  const openSettings = () => {
+    if (gameStateRef.current === 'playing' && !pausedRef.current) {
+      pausedRef.current = true;
+      setIsPausedRaw(true);
+      audioRef.current?.stopMusic();
+    }
+    setShowSettings(true);
+  };
+  
+  const resumeGame = () => {
+    setShowSettings(false);
+    pausedRef.current = false;
+    setIsPausedRaw(false);
+    if (globalStateRef.current.musicEnabled && gameStateRef.current === 'playing') {
+      audioRef.current?.startMusic(globalStateRef.current.currentTrack);
+    }
+  };
+  
+  const gameLoop = useCallback(() => {
+    if (!gameRef.current?.running) return;
+    
+    if (pausedRef.current) {
+      animRef.current = requestAnimationFrame(gameLoop);
+      return;
+    }
+    
+    const g = gameRef.current;
+    const ctx = canvasRef.current?.getContext('2d');
+    if (!ctx) { animRef.current = requestAnimationFrame(gameLoop); return; }
+    
+    const speed = g.slowMo ? 0.5 : 1;
+    if (g.slowMoTimer > 0) { g.slowMoTimer--; if (g.slowMoTimer <= 0) g.slowMo = false; }
+    if (g.comboTimer > 0) { g.comboTimer--; if (g.comboTimer <= 0) { g.combo = 0; setCombo(0); } }
+    if (g.quoteTimer > 0) g.quoteTimer--;
+    
+    let shakeX = 0, shakeY = 0;
+    if (g.screenShake > 0) {
+      shakeX = (Math.random() - 0.5) * g.screenShake;
+      shakeY = (Math.random() - 0.5) * g.screenShake;
+      g.screenShake *= 0.9;
+      if (g.screenShake < 0.5) g.screenShake = 0;
+    }
+    
+    ctx.save();
+    ctx.translate(shakeX, shakeY);
+    
+    drawBackground(ctx, g);
+    
+    if (g.paddle.hasTongue) {
+      const tongueX = g.paddle.x + g.paddle.w / 2;
+      const tongueY = g.paddle.y - 130;
+      for (let i = g.bricks.length - 1; i >= 0; i--) {
+        const b = g.bricks[i];
+        if (b.exploded) continue;
+        if (tongueX > b.x - 10 && tongueX < b.x + b.w + 10 && tongueY < b.y + b.h && tongueY + 130 > b.y) {
+          b.hp--;
+          if (globalStateRef.current.sfxEnabled) audioRef.current?.sfx.tongue();
+          if (b.hp <= 0) {
+            if (b.brickType === 'bomb' || b.brickType === 'tnt') triggerExplosion(b, g);
+            if (b.powerUp) g.powerUps.push({ ...b.powerUp, x: b.x + b.w/2, y: b.y + b.h/2, dy: 3 });
+            g.bricks.splice(i, 1);
+            g.score += 10 * g.level;
+            setScore(g.score);
+            spawnParticles(b.x + b.w/2, b.y + b.h/2, b.color, 12);
+          }
+          break;
+        }
+      }
+    }
+    
+    g.bricks = g.bricks.filter(b => b.hp > 0);
+    
+    g.balls = g.balls.filter((ball) => {
+      ball.x += ball.dx * speed;
+      ball.y += ball.dy * speed;
+      
+      if (g.paddle.hasMagnet && ball.dy > 0 && ball.y > H - 150) {
+        ball.dx += ((g.paddle.x + g.paddle.w / 2) - ball.x) * 0.015;
+      }
+      
+      if (ball.x - ball.r < 0 || ball.x + ball.r > W) {
+        ball.dx *= -1;
+        ball.x = ball.x < ball.r ? ball.r : W - ball.r;
+        if (globalStateRef.current.sfxEnabled) audioRef.current?.sfx.wallHit();
+      }
+      if (ball.y - ball.r < 0) {
+        ball.dy *= -1; ball.y = ball.r;
+        if (globalStateRef.current.sfxEnabled) audioRef.current?.sfx.wallHit();
+      }
+      
+      if (ball.y + ball.r > H) {
+        if (g.balls.length > 1) return false;
+        g.lives--; setLives(g.lives);
+        if (globalStateRef.current.sfxEnabled) audioRef.current?.sfx.loseLife();
+        g.screenShake = 20;
+        if (g.lives <= 0) { endGame(); return false; }
+        const spd = 4.5 + (g.level - 1) * 0.35;
+        ball.x = W/2; ball.y = H-80; ball.dx = spd * (Math.random() > 0.5 ? 1 : -1); ball.dy = -spd;
+        ball.fireball = false;
+      }
+      
+      if (ball.y + ball.r > g.paddle.y && ball.y - ball.r < g.paddle.y + g.paddle.h &&
+          ball.x > g.paddle.x && ball.x < g.paddle.x + g.paddle.w && ball.dy > 0) {
+        const hit = (ball.x - g.paddle.x) / g.paddle.w;
+        const angle = (hit - 0.5) * Math.PI * 0.7;
+        const spd = Math.min(14, Math.sqrt(ball.dx * ball.dx + ball.dy * ball.dy) + 0.02);
+        ball.dx = Math.sin(angle) * spd;
+        ball.dy = -Math.cos(angle) * spd;
+        ball.y = g.paddle.y - ball.r;
+        if (globalStateRef.current.sfxEnabled) audioRef.current?.sfx.paddleHit();
+        if (globalStateRef.current.sfxEnabled && Math.random() < 0.15) audioRef.current?.sfx.ribbit();
+      }
+      
+      for (let i = g.bricks.length - 1; i >= 0; i--) {
+        const b = g.bricks[i];
+        if (b.exploded) continue;
+        if (ball.x + ball.r > b.x && ball.x - ball.r < b.x + b.w &&
+            ball.y + ball.r > b.y && ball.y - ball.r < b.y + b.h) {
+          if (!ball.fireball) ball.dy *= -1;
+          b.hp--;
+          g.combo++; g.comboTimer = 120; setCombo(g.combo);
+          if (b.hp <= 0) {
+            if (b.brickType === 'bomb' || b.brickType === 'tnt') triggerExplosion(b, g);
+            if (b.powerUp) g.powerUps.push({ ...b.powerUp, x: b.x + b.w/2, y: b.y + b.h/2, dy: 3 });
+            g.score += (b.brickType === 'diamond' ? 50 : 10) * g.level * (1 + Math.floor(g.combo / 5));
+            setScore(g.score);
+            spawnParticles(b.x + b.w/2, b.y + b.h/2, b.color, ball.fireball ? 16 : 10, ball.fireball);
+            if (ball.fireball) g.screenShake = Math.min(g.screenShake + 5, 20);
+            if (Math.random() < 0.08) showQuote(g);
+          }
+          if (globalStateRef.current.sfxEnabled) audioRef.current?.sfx.brickHit();
+          if (!ball.fireball) break;
+        }
+      }
+      return true;
+    });
+    
+    g.bricks = g.bricks.filter(b => b.hp > 0);
+    
+    if (g.balls.length === 0) {
+      const spd = 4.5 + (g.level - 1) * 0.35;
+      g.balls.push({ x: W/2, y: H-80, dx: spd * (Math.random() > 0.5 ? 1 : -1), dy: -spd, r: BALL_R, fireball: false });
+    }
+    
+    if (g.bricks.length === 0) {
+      if (globalStateRef.current.sfxEnabled) audioRef.current?.sfx.levelUp();
+      showQuote(g);
+      initGame(g.level + 1);
+      ctx.restore();
+      animRef.current = requestAnimationFrame(gameLoop);
+      return;
+    }
+    
+    g.powerUps = g.powerUps.filter(pu => {
+      pu.y += pu.dy;
+      ctx.fillStyle = pu.color;
+      ctx.shadowColor = pu.color; ctx.shadowBlur = 20;
+      ctx.beginPath(); ctx.arc(pu.x, pu.y, 15, 0, Math.PI * 2); ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = '#fff'; ctx.font = '16px Arial'; ctx.textAlign = 'center';
+      ctx.fillText(pu.icon, pu.x, pu.y + 6);
+      
+      if (pu.y > g.paddle.y && pu.y < g.paddle.y + g.paddle.h + 15 &&
+          pu.x > g.paddle.x && pu.x < g.paddle.x + g.paddle.w) {
+        applyPowerUp(pu);
+        return false;
+      }
+      return pu.y < H;
+    });
+    
+    g.particles = g.particles.filter(p => {
+      p.x += p.dx; p.y += p.dy; p.dy += 0.12; p.life--;
+      ctx.fillStyle = p.color;
+      ctx.globalAlpha = p.life / 50;
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = 1;
+      return p.life > 0;
+    });
+    
+    g.bricks.forEach(b => {
+      if (b.isKermit) {
+        ctx.fillStyle = '#228B22';
+        ctx.fillRect(b.x, b.y, b.w, b.h);
+        ctx.fillStyle = '#7CFC00';
+        ctx.beginPath(); ctx.arc(b.x + 15, b.y + 8, 6, 0, Math.PI * 2); ctx.arc(b.x + b.w - 15, b.y + 8, 6, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = 'white';
+        ctx.beginPath(); ctx.arc(b.x + 15, b.y + 8, 4, 0, Math.PI * 2); ctx.arc(b.x + b.w - 15, b.y + 8, 4, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = 'black';
+        ctx.beginPath(); ctx.arc(b.x + 16, b.y + 8, 2, 0, Math.PI * 2); ctx.arc(b.x + b.w - 14, b.y + 8, 2, 0, Math.PI * 2); ctx.fill();
+      } else if (b.brickType !== 'normal') {
+        const bgrad = ctx.createLinearGradient(b.x, b.y, b.x, b.y + b.h);
+        bgrad.addColorStop(0, b.color); bgrad.addColorStop(1, '#1a1a1a');
+        ctx.fillStyle = bgrad;
+        ctx.fillRect(b.x, b.y, b.w, b.h);
+        ctx.fillStyle = '#fff'; ctx.font = 'bold 14px Arial'; ctx.textAlign = 'center';
+        ctx.fillText(b.icon, b.x + b.w/2, b.y + b.h/2 + 5);
+      } else {
+        const bgrad = ctx.createLinearGradient(b.x, b.y, b.x, b.y + b.h);
+        if (b.maxHp > 1) {
+          bgrad.addColorStop(0, b.hp === b.maxHp ? (b.maxHp === 3 ? '#FFD700' : '#C0C0C0') : b.hp > 1 ? '#A0A0A0' : b.color);
+          bgrad.addColorStop(1, b.hp === b.maxHp ? (b.maxHp === 3 ? '#FF8C00' : '#707070') : b.hp > 1 ? '#606060' : '#1a3a1a');
+        } else { bgrad.addColorStop(0, b.color); bgrad.addColorStop(1, '#1a3a1a'); }
+        ctx.fillStyle = bgrad;
+        ctx.fillRect(b.x, b.y, b.w, b.h);
+      }
+      if (b.powerUp && b.brickType === 'normal') {
+        ctx.fillStyle = 'rgba(255,255,255,0.6)';
+        ctx.beginPath(); ctx.arc(b.x + b.w/2, b.y + b.h/2, 6, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+      ctx.strokeRect(b.x, b.y, b.w, b.h);
+    });
+    
+    drawKermitPaddle(ctx, g.paddle, g.level);
+    g.balls.forEach(ball => drawFlyBall(ctx, ball));
+    
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 20px Arial';
+    ctx.textAlign = 'left'; ctx.fillText(`Score: ${g.score}`, 15, 32);
+    ctx.textAlign = 'center'; ctx.fillText(`Level ${g.level}`, W/2, 32);
+    if (g.combo > 2) {
+      ctx.fillStyle = `hsl(${120 + g.combo * 10}, 100%, 50%)`;
+      ctx.font = 'bold 26px Arial';
+      ctx.fillText(`${g.combo}x COMBO!`, W/2, 65);
+    }
+    if (g.quoteTimer > 0 && g.quote) {
+      ctx.fillStyle = `rgba(124, 252, 0, ${Math.min(1, g.quoteTimer / 50)})`;
+      ctx.font = 'bold 20px Comic Sans MS, cursive';
+      ctx.fillText(`""${g.quote}""`, W/2, H/2 - 50);
+    }
+    ctx.textAlign = 'right'; ctx.fillStyle = '#fff'; ctx.font = 'bold 20px Arial';
+    ctx.fillText('💚'.repeat(g.lives), W - 15, 32);
+    
+    ctx.restore();
+    animRef.current = requestAnimationFrame(gameLoop);
+  }, []);
+  
+  const endGame = async () => {
+    if (gameRef.current) gameRef.current.running = false;
+    if (globalStateRef.current.sfxEnabled) audioRef.current?.sfx.gameOver();
+    const g = gameRef.current;
+    const finalCombo = g?.combo || 0;
+    const finalScore = g?.score || 0;
+    const finalLevel = g?.level || 1;
+    const newStats = {
+      highScore: Math.max(stats.highScore || 0, finalScore),
+      gamesPlayed: (stats.gamesPlayed || 0) + 1,
+      totalBricks: (stats.totalBricks || 0) + finalLevel * BRICK_COLS * 5,
+      maxLevel: Math.max(stats.maxLevel || 1, finalLevel),
+      maxCombo: Math.max(stats.maxCombo || 0, finalCombo),
+      fliesCaught: (stats.fliesCaught || 0) + Math.floor(finalScore / 10)
+    };
+    await saveStats(newStats);
+    setGameState('gameover');
+  };
+  
+  const startGame = () => {
+    initGame(1);
+    pausedRef.current = false;
+    setIsPausedRaw(false);
+    setShowSettings(false);
+    setGameState('playing');
+    animRef.current = requestAnimationFrame(gameLoop);
+  };
+  
+  return (
+    <div className=""min-h-screen bg-gradient-to-b from-green-900 to-green-950 flex flex-col items-center justify-center p-4"">
+      <div className=""text-center mb-3"">
+        <h1 className=""text-3xl font-bold text-green-300 flex items-center justify-center gap-3"">
+          <KermitBreakoutLogo size={55} /> Kermit's Fly Catcher
+        </h1>
+        {user && !user.is_public && <p className=""text-green-400 text-sm"">Player: {user.name}</p>}
+      </div>
+      
+      {activePowerUps.length > 0 && gameState === 'playing' && (
+        <div className=""flex gap-2 mb-2 flex-wrap justify-center"">
+          {activePowerUps.map((pu, i) => (
+            <div key={i} className=""px-2 py-1 rounded-full text-xs font-bold"" style={{backgroundColor: pu.color + '44', color: pu.color, border: `2px solid ${pu.color}`}}>
+              {pu.icon} {pu.name}
+            </div>
+          ))}
+        </div>
+      )}
+      
+      <div className=""relative"">
+        <canvas ref={canvasRef} width={W} height={H} className=""rounded-lg shadow-2xl border-4 border-green-500 glowing"" style={{maxWidth: '100%', height: 'auto'}} />
+        
+        {gameState === 'menu' && (
+          <div className=""absolute inset-0 flex flex-col items-center justify-center bg-black/75 rounded-lg"">
+            <KermitBreakoutLogo size={100} />
+            <h2 className=""text-green-300 text-3xl font-bold mt-4 mb-2"">Kermit's Fly Catcher</h2>
+            <p className=""text-green-400 mb-2"">""Hi-ho! Time to catch some flies!""</p>
+            <div className=""text-green-500 text-xs mb-4 flex gap-2 flex-wrap justify-center"">
+              <span>💣 Bomb</span><span>🧨 TNT</span><span>💎 Diamond</span><span>❓ Mystery</span>
+            </div>
+            <button onClick={startGame} className=""bg-green-600 hover:bg-green-500 text-white font-bold py-3 px-10 rounded-full text-xl mb-3 transition-all hover:scale-105"">Play</button>
+            <button onClick={() => setShowSettings(true)} className=""bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-6 rounded-full transition-all"">Settings</button>
+            {stats.gamesPlayed > 0 && (
+              <div className=""mt-4 text-green-300 text-center text-sm"">
+                <p>High Score: {stats.highScore || 0} | Max Level: {stats.maxLevel || 1}</p>
+                <p>Best Combo: {stats.maxCombo || 0}x | Flies: {Math.floor(stats.fliesCaught || 0)}</p>
+              </div>
+            )}
+          </div>
+        )}
+        
+        {isPaused && gameState === 'playing' && !showSettings && (
+          <div className=""absolute inset-0 flex flex-col items-center justify-center bg-black/75 rounded-lg"">
+            <h2 className=""text-yellow-400 text-5xl font-bold mb-4"">PAUSED</h2>
+            <p className=""text-green-300 text-lg mb-6"">""Time to touch some grass... I mean lily pads!""</p>
+            <button onClick={resumeGame} className=""bg-green-600 hover:bg-green-500 text-white font-bold py-3 px-10 rounded-full text-xl mb-3"">Resume</button>
+            <button onClick={openSettings} className=""bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-6 rounded-full"">Settings</button>
+          </div>
+        )}
+        
+        {gameState === 'gameover' && (
+          <div className=""absolute inset-0 flex flex-col items-center justify-center bg-black/75 rounded-lg"">
+            <h2 className=""text-red-400 text-4xl font-bold mb-2"">Game Over!</h2>
+            <p className=""text-white text-5xl font-bold mb-2"">{score}</p>
+            <p className=""text-green-300 mb-4"">Level {level} | Combo: {combo}x</p>
+            {score >= (stats.highScore || 0) && score > 0 && <p className=""text-yellow-400 text-xl mb-4 pulsing"">New High Score! Yaaay!</p>}
+            <div className=""bg-green-900/50 rounded-lg p-4 mb-4 text-green-200 grid grid-cols-2 gap-x-6 gap-y-1 text-sm"">
+              <p>Best:</p><p>{stats.highScore || 0}</p>
+              <p>Games:</p><p>{stats.gamesPlayed || 0}</p>
+              <p>Max Level:</p><p>{stats.maxLevel || 1}</p>
+              <p>Best Combo:</p><p>{stats.maxCombo || 0}x</p>
+              <p>Flies:</p><p>{Math.floor(stats.fliesCaught || 0)}</p>
+            </div>
+            <button onClick={startGame} className=""bg-green-600 hover:bg-green-500 text-white font-bold py-3 px-10 rounded-full text-xl transition-all hover:scale-105"">Play Again</button>
+          </div>
+        )}
+        
+        {showSettings && (
+          <div className=""absolute inset-0 flex flex-col items-center justify-center bg-black/90 rounded-lg p-6"">
+            <h2 className=""text-green-300 text-2xl font-bold mb-4"">Settings</h2>
+            <div className=""space-y-3 w-80"">
+              <div className=""flex items-center justify-between"">
+                <span className=""text-white"">Music</span>
+                <button onClick={() => setGlobalState(s => ({...s, musicEnabled: !s.musicEnabled}))} className={`px-4 py-2 rounded-full font-bold transition-all ${globalState.musicEnabled ? 'bg-green-600' : 'bg-gray-600'}`}>{globalState.musicEnabled ? 'ON' : 'OFF'}</button>
+              </div>
+              <div className=""flex items-center justify-between"">
+                <span className=""text-white"">Sound FX</span>
+                <button onClick={() => setGlobalState(s => ({...s, sfxEnabled: !s.sfxEnabled}))} className={`px-4 py-2 rounded-full font-bold transition-all ${globalState.sfxEnabled ? 'bg-green-600' : 'bg-gray-600'}`}>{globalState.sfxEnabled ? 'ON' : 'OFF'}</button>
+              </div>
+              <div className=""mt-3"">
+                <span className=""text-white block mb-2"">Music Track</span>
+                <div className=""grid grid-cols-3 gap-2"">
+                  {['rickroll', 'allStar', 'crazyFrog', 'miiChannel', 'heMan', 'bonfire'].map(track => (
+                    <button key={track} onClick={() => setGlobalState(s => ({...s, currentTrack: track}))} className={`px-2 py-2 rounded text-xs font-bold transition-all ${globalState.currentTrack === track ? 'bg-green-600 scale-105' : 'bg-gray-700 hover:bg-gray-600'}`}>
+                      {track === 'rickroll' ? '🎵 RickRoll' : track === 'allStar' ? '⭐ AllStar' : track === 'crazyFrog' ? '🐸 CrazyFrog' : track === 'miiChannel' ? '🎮 Mii' : track === 'heMan' ? '⚔️ HeMan' : '🔥 Bonfire'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <button onClick={resumeGame} className=""mt-5 bg-green-600 hover:bg-green-500 text-white font-bold py-2 px-8 rounded-full"">{gameStateRef.current === 'playing' ? 'Resume' : 'Close'}</button>
+          </div>
+        )}
+      </div>
+      
+      <div className=""mt-3 text-green-300 text-xs flex flex-wrap gap-3 justify-center"">
+        <span><kbd className=""bg-green-800 px-2 py-1 rounded"">Mouse</kbd>/<kbd className=""bg-green-800 px-2 py-1 rounded"">A/D</kbd> Move</span>
+        <span><kbd className=""bg-green-800 px-2 py-1 rounded"">Space</kbd> Pause</span>
+        <span><kbd className=""bg-green-800 px-2 py-1 rounded"">Esc</kbd> Settings</span>
+        {gameState === 'playing' && <button onClick={openSettings} className=""bg-green-700 px-2 py-1 rounded hover:bg-green-600"">⚙ Settings</button>}
+      </div>
+    </div>
+  );
+}","","","",""
