@@ -1,0 +1,848 @@
+﻿"name","description","data_code","global_state_code","shared_components","shared_styles","router_mode","tailwind_enabled","cdn_dependencies","custom_imports","page_ids/name","page_ids/route_path","page_ids/page_title","page_ids/sequence","page_ids/data_code","page_ids/component_code","endpoint_ids/name","endpoint_ids/endpoint_path","endpoint_ids/method","endpoint_ids/handler_code"
+"Minesweeper","Classic Minesweeper game with difficulty levels, user stats, global leaderboard, and sound effects","","{ difficulty: 'easy', gameState: 'idle', timer: 0, flagCount: 0, board: [], revealed: [], flags: [], gameOver: false, won: false, firstClick: true, currentTrack: 'none', soundEnabled: true, muted: false }","function Nav({currentPage}) {
+  return (
+    <nav className=""bg-gray-800 text-white p-4 shadow-lg"">
+      <div className=""max-w-6xl mx-auto flex justify-between items-center"">
+        <Link to=""/"" className=""text-2xl font-bold flex items-center gap-2"">
+          <span className=""text-3xl"">💣</span> Minesweeper
+        </Link>
+        <div className=""flex gap-6"">
+          <NavLink to=""/"" className={({isActive}) => `hover:text-yellow-400 transition ${isActive ? 'text-yellow-400 font-bold' : ''}`}>Play</NavLink>
+          <NavLink to=""/leaderboard"" className={({isActive}) => `hover:text-yellow-400 transition ${isActive ? 'text-yellow-400 font-bold' : ''}`}>Leaderboard</NavLink>
+          <NavLink to=""/stats"" className={({isActive}) => `hover:text-yellow-400 transition ${isActive ? 'text-yellow-400 font-bold' : ''}`}>My Stats</NavLink>
+          <NavLink to=""/settings"" className={({isActive}) => `hover:text-yellow-400 transition ${isActive ? 'text-yellow-400 font-bold' : ''}`}>Settings</NavLink>
+        </div>
+      </div>
+    </nav>
+  );
+}
+
+function Timer({seconds}) {
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return <span className=""font-mono text-xl"">{String(mins).padStart(2, '0')}:{String(secs).padStart(2, '0')}</span>;
+}
+
+function DifficultyBadge({difficulty}) {
+  const colors = { easy: 'bg-green-500', medium: 'bg-yellow-500', hard: 'bg-red-500' };
+  return <span className={`${colors[difficulty]} px-3 py-1 rounded-full text-white text-sm font-bold uppercase`}>{difficulty}</span>;
+}
+
+const MUSIC_TRACKS = {
+  none: { name: 'Off', icon: '🔇', notes: [] },
+  retro: { name: 'Retro', icon: '🎮', bpm: 120, notes: [262, 330, 392, 330, 262, 330, 392, 523, 392, 330, 262, 196, 220, 262, 220, 196] },
+  chill: { name: 'Chill', icon: '🌙', bpm: 80, notes: [196, 220, 262, 294, 262, 220, 196, 175, 196, 220, 262, 294, 330, 294, 262, 220] },
+  tense: { name: 'Tense', icon: '⚡', bpm: 140, notes: [165, 175, 165, 175, 196, 208, 196, 175, 165, 175, 196, 208, 220, 208, 196, 175] },
+  epic: { name: 'Epic', icon: '🎵', bpm: 100, notes: [131, 165, 196, 262, 196, 165, 131, 165, 196, 262, 330, 262, 196, 165, 196, 131] }
+};
+
+function MusicPlayer({currentTrack, onTrackChange, soundEnabled, onSoundToggle, muted, onMuteToggle}) {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const audioCtxRef = useRef(null);
+  const schedulerRef = useRef(null);
+  const nextNoteTimeRef = useRef(0);
+  const currentNoteRef = useRef(0);
+  
+  const getAudioContext = () => {
+    if (!audioCtxRef.current) {
+      audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (audioCtxRef.current.state === 'suspended') {
+      audioCtxRef.current.resume();
+    }
+    return audioCtxRef.current;
+  };
+  
+  const scheduleNote = (freq, time, duration, ctx) => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.frequency.value = freq;
+    osc.type = 'sine';
+    gain.gain.setValueAtTime(0, time);
+    gain.gain.linearRampToValueAtTime(0.06, time + 0.02);
+    gain.gain.linearRampToValueAtTime(0.04, time + duration * 0.5);
+    gain.gain.linearRampToValueAtTime(0, time + duration);
+    osc.start(time);
+    osc.stop(time + duration);
+  };
+  
+  const stopMusic = useCallback(() => {
+    if (schedulerRef.current) {
+      clearInterval(schedulerRef.current);
+      schedulerRef.current = null;
+    }
+    setIsPlaying(false);
+  }, []);
+  
+  const startMusic = useCallback((trackId) => {
+    stopMusic();
+    if (trackId === 'none' || muted) return;
+    
+    const track = MUSIC_TRACKS[trackId];
+    if (!track || !track.notes || track.notes.length === 0) return;
+    
+    const ctx = getAudioContext();
+    const secondsPerBeat = 60.0 / track.bpm;
+    const noteLength = secondsPerBeat * 0.9;
+    
+    nextNoteTimeRef.current = ctx.currentTime + 0.1;
+    currentNoteRef.current = 0;
+    setIsPlaying(true);
+    
+    const scheduler = () => {
+      while (nextNoteTimeRef.current < ctx.currentTime + 0.2) {
+        const note = track.notes[currentNoteRef.current % track.notes.length];
+        scheduleNote(note, nextNoteTimeRef.current, noteLength, ctx);
+        nextNoteTimeRef.current += secondsPerBeat;
+        currentNoteRef.current++;
+      }
+    };
+    
+    schedulerRef.current = setInterval(scheduler, 50);
+    scheduler();
+  }, [muted, stopMusic]);
+  
+  useEffect(() => {
+    if (currentTrack !== 'none' && !muted) {
+      startMusic(currentTrack);
+    } else {
+      stopMusic();
+    }
+    return () => stopMusic();
+  }, [currentTrack, muted, startMusic, stopMusic]);
+  
+  const handleTrackChange = (trackId) => {
+    onTrackChange(trackId);
+  };
+  
+  return (
+    <div className=""fixed bottom-4 right-4 bg-gray-800 text-white p-4 rounded-lg shadow-xl z-50 min-w-[200px]"">
+      <div className=""flex items-center justify-between mb-3"">
+        <span className=""font-bold text-sm"">Audio</span>
+        <div className=""flex gap-2"">
+          <button onClick={onSoundToggle} className={`p-1.5 rounded text-xs ${soundEnabled && !muted ? 'bg-purple-600' : 'bg-gray-600'}`} title=""Sound Effects"">
+            🔔
+          </button>
+          <button onClick={onMuteToggle} className={`p-1.5 rounded text-xs ${muted ? 'bg-red-600' : 'bg-green-600'}`} title={muted ? 'Unmute' : 'Mute All'}>
+            {muted ? '🔇' : '🔊'}
+          </button>
+        </div>
+      </div>
+      <div className=""grid grid-cols-5 gap-1"">
+        {Object.entries(MUSIC_TRACKS).map(([id, track]) => (
+          <button key={id} onClick={() => handleTrackChange(id)} className={`p-2 rounded text-center transition-all ${currentTrack === id ? 'bg-blue-600 ring-2 ring-blue-400' : 'bg-gray-700 hover:bg-gray-600'}`} title={track.name}>
+            <div className=""text-lg"">{track.icon}</div>
+            <div className=""text-[9px] truncate"">{track.name}</div>
+          </button>
+        ))}
+      </div>
+      {isPlaying && currentTrack !== 'none' && (
+        <div className=""mt-2 text-center text-xs text-green-400"">♫ Playing: {MUSIC_TRACKS[currentTrack].name}</div>
+      )}
+    </div>
+  );
+}","@keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } } @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-2px); } 75% { transform: translateX(2px); } } @keyframes explode { 0% { transform: scale(1); opacity: 1; } 100% { transform: scale(1.5); opacity: 0; } } @keyframes flag-plant { 0% { transform: translateY(-10px) rotate(-10deg); opacity: 0; } 100% { transform: translateY(0) rotate(0deg); opacity: 1; } } .cell-reveal { animation: pulse 0.15s ease-out; } .cell-explode { animation: explode 0.3s ease-out; } .cell-flag { animation: flag-plant 0.2s ease-out; } .game-won { animation: pulse 0.5s ease-in-out infinite; }","Hash Router","True","","","Game","/","Minesweeper - Play","10","","function GamePage({globalState, setGlobalState, storage, api, user}) {
+  const [username, setUsername] = useState(null);
+  const [stats, setStats] = useState({easy: {played: 0, won: 0, bestTime: null}, medium: {played: 0, won: 0, bestTime: null}, hard: {played: 0, won: 0, bestTime: null}});
+  const timerRef = useRef(null);
+  const audioContextRef = useRef(null);
+  
+  const DIFFICULTIES = {
+    easy: { rows: 9, cols: 9, mines: 10 },
+    medium: { rows: 16, cols: 16, mines: 40 },
+    hard: { rows: 16, cols: 30, mines: 99 }
+  };
+  
+  useEffect(() => {
+    storage.get('username', null).then(setUsername);
+    storage.get('stats', {easy: {played: 0, won: 0, bestTime: null}, medium: {played: 0, won: 0, bestTime: null}, hard: {played: 0, won: 0, bestTime: null}}).then(setStats);
+  }, []);
+  
+  const getAudioContext = () => {
+    if (!audioContextRef.current) {
+      audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (audioContextRef.current.state === 'suspended') {
+      audioContextRef.current.resume();
+    }
+    return audioContextRef.current;
+  };
+  
+  const playTone = (frequency, duration, type = 'square', volume = 0.1) => {
+    if (globalState.muted || !globalState.soundEnabled) return;
+    try {
+      const ctx = getAudioContext();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.frequency.value = frequency;
+      osc.type = type;
+      gain.gain.setValueAtTime(volume, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + duration);
+    } catch(e) {}
+  };
+  
+  const playClick = () => playTone(800, 0.05, 'square', 0.08);
+  const playReveal = () => playTone(600, 0.1, 'sine', 0.06);
+  const playFlag = () => { playTone(400, 0.1, 'triangle', 0.1); setTimeout(() => playTone(600, 0.1, 'triangle', 0.1), 100); };
+  const playExplosion = () => {
+    if (globalState.muted || !globalState.soundEnabled) return;
+    try {
+      const ctx = getAudioContext();
+      const bufferSize = ctx.sampleRate * 0.5;
+      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufferSize, 2);
+      }
+      const source = ctx.createBufferSource();
+      const gain = ctx.createGain();
+      source.buffer = buffer;
+      source.connect(gain);
+      gain.connect(ctx.destination);
+      gain.gain.setValueAtTime(0.3, ctx.currentTime);
+      source.start();
+    } catch(e) {}
+  };
+  const playWin = () => {
+    const notes = [523, 659, 784, 1047];
+    notes.forEach((freq, i) => setTimeout(() => playTone(freq, 0.2, 'sine', 0.15), i * 150));
+  };
+  
+  const createBoard = (diff, firstRow = -1, firstCol = -1) => {
+    const {rows, cols, mines} = DIFFICULTIES[diff];
+    const board = Array(rows).fill(null).map(() => Array(cols).fill(0));
+    let placed = 0;
+    while (placed < mines) {
+      const r = Math.floor(Math.random() * rows);
+      const c = Math.floor(Math.random() * cols);
+      const isSafe = firstRow >= 0 && Math.abs(r - firstRow) <= 1 && Math.abs(c - firstCol) <= 1;
+      if (board[r][c] !== -1 && !isSafe) {
+        board[r][c] = -1;
+        placed++;
+      }
+    }
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        if (board[r][c] === -1) continue;
+        let count = 0;
+        for (let dr = -1; dr <= 1; dr++) {
+          for (let dc = -1; dc <= 1; dc++) {
+            const nr = r + dr, nc = c + dc;
+            if (nr >= 0 && nr < rows && nc >= 0 && nc < cols && board[nr][nc] === -1) count++;
+          }
+        }
+        board[r][c] = count;
+      }
+    }
+    return board;
+  };
+  
+  const startGame = (diff) => {
+    playClick();
+    const {rows, cols, mines} = DIFFICULTIES[diff];
+    clearInterval(timerRef.current);
+    setGlobalState(s => ({
+      ...s,
+      difficulty: diff,
+      gameState: 'ready',
+      timer: 0,
+      flagCount: 0,
+      board: Array(rows).fill(null).map(() => Array(cols).fill(0)),
+      revealed: Array(rows).fill(null).map(() => Array(cols).fill(false)),
+      flags: Array(rows).fill(null).map(() => Array(cols).fill(false)),
+      gameOver: false,
+      won: false,
+      firstClick: true
+    }));
+  };
+  
+  const startTimer = () => {
+    clearInterval(timerRef.current);
+    timerRef.current = setInterval(() => {
+      setGlobalState(s => s.gameState === 'playing' ? {...s, timer: s.timer + 1} : s);
+    }, 1000);
+  };
+  
+  const reveal = (row, col, board, revealed, flags) => {
+    const {rows, cols} = DIFFICULTIES[globalState.difficulty];
+    if (row < 0 || row >= rows || col < 0 || col >= cols) return revealed;
+    if (revealed[row][col] || flags[row][col]) return revealed;
+    const newRevealed = revealed.map(r => [...r]);
+    newRevealed[row][col] = true;
+    if (board[row][col] === 0) {
+      for (let dr = -1; dr <= 1; dr++) {
+        for (let dc = -1; dc <= 1; dc++) {
+          if (dr !== 0 || dc !== 0) {
+            const result = reveal(row + dr, col + dc, board, newRevealed, flags);
+            for (let r = 0; r < rows; r++) {
+              for (let c = 0; c < cols; c++) {
+                newRevealed[r][c] = newRevealed[r][c] || result[r][c];
+              }
+            }
+          }
+        }
+      }
+    }
+    return newRevealed;
+  };
+  
+  const checkWin = (board, revealed, flags) => {
+    const {rows, cols, mines} = DIFFICULTIES[globalState.difficulty];
+    let hiddenCount = 0;
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        if (!revealed[r][c]) hiddenCount++;
+      }
+    }
+    return hiddenCount === mines;
+  };
+  
+  const handleCellClick = async (row, col) => {
+    if (globalState.gameOver || globalState.won) return;
+    if (globalState.flags[row][col]) return;
+    
+    let board = globalState.board;
+    let revealed = globalState.revealed;
+    let isFirstClick = globalState.firstClick;
+    
+    if (isFirstClick) {
+      board = createBoard(globalState.difficulty, row, col);
+      startTimer();
+      playReveal();
+    } else {
+      playClick();
+    }
+    
+    if (board[row][col] === -1) {
+      playExplosion();
+      clearInterval(timerRef.current);
+      const allRevealed = revealed.map(r => r.map(() => true));
+      const newStats = {...stats};
+      newStats[globalState.difficulty].played++;
+      setStats(newStats);
+      await storage.set('stats', newStats);
+      setGlobalState(s => ({...s, board, revealed: allRevealed, gameState: 'lost', gameOver: true, firstClick: false}));
+      return;
+    }
+    
+    const newRevealed = reveal(row, col, board, revealed, globalState.flags);
+    const won = checkWin(board, newRevealed, globalState.flags);
+    
+    if (won) {
+      playWin();
+      clearInterval(timerRef.current);
+      const time = globalState.timer;
+      const newStats = {...stats};
+      newStats[globalState.difficulty].played++;
+      newStats[globalState.difficulty].won++;
+      if (!newStats[globalState.difficulty].bestTime || time < newStats[globalState.difficulty].bestTime) {
+        newStats[globalState.difficulty].bestTime = time;
+      }
+      setStats(newStats);
+      await storage.set('stats', newStats);
+      if (username) {
+        const scores = await storage.get('myScores', []);
+        scores.push({username, difficulty: globalState.difficulty, time, timestamp: Date.now()});
+        await storage.set('myScores', scores);
+        try {
+          await api.post('submit-score', {username, difficulty: globalState.difficulty, time, user_id: user.id});
+        } catch(e) { console.log('Score submit error:', e); }
+      }
+      setGlobalState(s => ({...s, board, revealed: newRevealed, gameState: 'won', won: true, firstClick: false}));
+    } else {
+      setGlobalState(s => ({...s, board, revealed: newRevealed, gameState: 'playing', firstClick: false}));
+    }
+  };
+  
+  const handleRightClick = (e, row, col) => {
+    e.preventDefault();
+    if (globalState.gameOver || globalState.won || globalState.revealed[row][col]) return;
+    playFlag();
+    const newFlags = globalState.flags.map(r => [...r]);
+    newFlags[row][col] = !newFlags[row][col];
+    const flagCount = newFlags.flat().filter(Boolean).length;
+    setGlobalState(s => ({...s, flags: newFlags, flagCount}));
+  };
+  
+  const getCellContent = (row, col) => {
+    if (globalState.flags[row][col] && !globalState.revealed[row][col]) return '🚩';
+    if (!globalState.revealed[row][col]) return '';
+    const val = globalState.board[row][col];
+    if (val === -1) return '💣';
+    if (val === 0) return '';
+    return val;
+  };
+  
+  const getCellClass = (row, col) => {
+    const base = 'w-7 h-7 border border-gray-400 flex items-center justify-center font-bold text-sm select-none transition-all duration-100 ';
+    if (globalState.flags[row][col] && !globalState.revealed[row][col]) return base + 'bg-gray-300 cursor-pointer hover:bg-gray-200';
+    if (!globalState.revealed[row][col]) return base + 'bg-gray-300 cursor-pointer hover:bg-gray-200 shadow-inner';
+    const val = globalState.board[row][col];
+    if (val === -1) return base + 'bg-red-500';
+    const colors = ['bg-gray-100', 'text-blue-600 bg-gray-100', 'text-green-600 bg-gray-100', 'text-red-600 bg-gray-100', 'text-purple-800 bg-gray-100', 'text-red-800 bg-gray-100', 'text-cyan-600 bg-gray-100', 'text-black bg-gray-100', 'text-gray-600 bg-gray-100'];
+    return base + colors[val];
+  };
+  
+  const {rows, cols, mines} = DIFFICULTIES[globalState.difficulty];
+  const remainingMines = mines - globalState.flagCount;
+  
+  return (
+    <div className=""min-h-screen bg-gradient-to-b from-gray-700 to-gray-900"">
+      <Nav currentPage=""game"" />
+      <div className=""max-w-6xl mx-auto p-4"">
+        <div className=""text-center mb-6"">
+          <h1 className=""text-4xl font-bold text-white mb-2"">💣 Minesweeper 💣</h1>
+          {!username && <p className=""text-yellow-400"">Set a username in Settings to appear on the leaderboard!</p>}
+        </div>
+        
+        <div className=""flex justify-center gap-4 mb-6"">
+          {['easy', 'medium', 'hard'].map(diff => (
+            <button key={diff} onClick={() => startGame(diff)} className={`px-6 py-3 rounded-lg font-bold text-white transition transform hover:scale-105 ${diff === 'easy' ? 'bg-green-600 hover:bg-green-500' : diff === 'medium' ? 'bg-yellow-600 hover:bg-yellow-500' : 'bg-red-600 hover:bg-red-500'} ${globalState.difficulty === diff && globalState.gameState !== 'idle' ? 'ring-4 ring-white' : ''}`}>
+              {diff.charAt(0).toUpperCase() + diff.slice(1)}
+              <span className=""block text-xs opacity-80"">{DIFFICULTIES[diff].rows}x{DIFFICULTIES[diff].cols} • {DIFFICULTIES[diff].mines} mines</span>
+            </button>
+          ))}
+        </div>
+        
+        <div className=""flex justify-center"">
+          <div className=""bg-gray-200 p-4 rounded-lg shadow-2xl"">
+            <div className=""flex justify-between items-center mb-4 px-2"">
+              <div className=""bg-black text-red-500 px-4 py-2 rounded font-mono text-xl"">💣 {remainingMines}</div>
+              <div className=""text-4xl"">
+                {globalState.gameOver ? '😵' : globalState.won ? '😎' : globalState.gameState === 'playing' ? '😮' : '🙂'}
+              </div>
+              <div className=""bg-black text-red-500 px-4 py-2 rounded""><Timer seconds={globalState.timer} /></div>
+            </div>
+            
+            {globalState.gameState === 'idle' ? (
+              <div className=""text-center py-20 px-10"">
+                <p className=""text-xl text-gray-600"">Select a difficulty to start playing!</p>
+              </div>
+            ) : (
+              <div className=""inline-block"" style={{display: 'grid', gridTemplateColumns: `repeat(${cols}, 1.75rem)`, gap: '0px'}}>
+                {globalState.board.map((row, r) => row.map((_, c) => (
+                  <div key={`${r}-${c}`} className={getCellClass(r, c)} onClick={() => handleCellClick(r, c)} onContextMenu={(e) => handleRightClick(e, r, c)}>
+                    {getCellContent(r, c)}
+                  </div>
+                )))}
+              </div>
+            )}
+            
+            {(globalState.won || globalState.gameOver) && (
+              <div className={`mt-4 text-center p-4 rounded-lg ${globalState.won ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                <p className=""text-2xl font-bold mb-2"">{globalState.won ? '🎉 You Won! 🎉' : '💥 Game Over! 💥'}</p>
+                {globalState.won && <p>Time: {Math.floor(globalState.timer / 60)}:{String(globalState.timer % 60).padStart(2, '0')}</p>}
+                <button onClick={() => startGame(globalState.difficulty)} className=""mt-2 bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-500"">Play Again</button>
+              </div>
+            )}
+          </div>
+        </div>
+        
+        <div className=""mt-8 bg-gray-800 rounded-lg p-6 text-white"">
+          <h2 className=""text-2xl font-bold mb-4 text-center"">📖 How to Play Minesweeper</h2>
+          <div className=""grid md:grid-cols-2 gap-6"">
+            <div>
+              <h3 className=""text-lg font-semibold text-yellow-400 mb-2"">🎯 Objective</h3>
+              <p className=""text-gray-300"">Clear all cells that don't contain mines without triggering any mines. The game is won when all non-mine cells are revealed.</p>
+            </div>
+            <div>
+              <h3 className=""text-lg font-semibold text-yellow-400 mb-2"">🖱️ Controls</h3>
+              <ul className=""text-gray-300 space-y-1"">
+                <li><strong>Left Click:</strong> Reveal a cell</li>
+                <li><strong>Right Click:</strong> Place/remove a flag</li>
+              </ul>
+            </div>
+            <div>
+              <h3 className=""text-lg font-semibold text-yellow-400 mb-2"">🔢 Numbers</h3>
+              <p className=""text-gray-300"">Each number indicates how many mines are adjacent to that cell (including diagonals). Use these clues to deduce which cells are safe.</p>
+            </div>
+            <div>
+              <h3 className=""text-lg font-semibold text-yellow-400 mb-2"">🚩 Flags</h3>
+              <p className=""text-gray-300"">Use flags to mark cells you believe contain mines. This helps you keep track of dangerous cells and plan your moves.</p>
+            </div>
+            <div>
+              <h3 className=""text-lg font-semibold text-yellow-400 mb-2"">💡 Tips</h3>
+              <ul className=""text-gray-300 space-y-1"">
+                <li>• Start with corners or edges</li>
+                <li>• If a number equals adjacent flags, other adjacent cells are safe</li>
+                <li>• If a number equals total adjacent hidden cells, they're all mines</li>
+                <li>• The first click is always safe!</li>
+              </ul>
+            </div>
+            <div>
+              <h3 className=""text-lg font-semibold text-yellow-400 mb-2"">⚙️ Difficulty Levels</h3>
+              <ul className=""text-gray-300 space-y-1"">
+                <li><span className=""text-green-400"">Easy:</span> 9×9 grid, 10 mines</li>
+                <li><span className=""text-yellow-400"">Medium:</span> 16×16 grid, 40 mines</li>
+                <li><span className=""text-red-400"">Hard:</span> 16×30 grid, 99 mines</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+      <MusicPlayer currentTrack={globalState.currentTrack} onTrackChange={(t) => setGlobalState(s => ({...s, currentTrack: t}))} soundEnabled={globalState.soundEnabled} onSoundToggle={() => setGlobalState(s => ({...s, soundEnabled: !s.soundEnabled}))} muted={globalState.muted} onMuteToggle={() => setGlobalState(s => ({...s, muted: !s.muted}))} />
+    </div>
+  );
+}","Get Leaderboard","leaderboard","GET","webapp = env['mcp.webapp'].search([('name', '=', 'Minesweeper')], limit=1)
+if webapp:
+    Storage = env['mcp.webapp.user.storage']
+    storage_rec = Storage.search([('webapp_id', '=', webapp.id), ('session_id', '=', 'global_leaderboard')], limit=1)
+    if storage_rec and storage_rec.data and 'scores' in storage_rec.data:
+        all_scores = storage_rec.data['scores']
+        easy = sorted([s for s in all_scores if s.get('difficulty') == 'easy'], key=lambda x: x.get('time', 9999))[:10]
+        medium = sorted([s for s in all_scores if s.get('difficulty') == 'medium'], key=lambda x: x.get('time', 9999))[:10]
+        hard = sorted([s for s in all_scores if s.get('difficulty') == 'hard'], key=lambda x: x.get('time', 9999))[:10]
+        result = {'easy': easy, 'medium': medium, 'hard': hard}
+    else:
+        result = {'easy': [], 'medium': [], 'hard': []}
+else:
+    result = {'easy': [], 'medium': [], 'hard': []}"
+"","","","","","","","","","","Leaderboard","/leaderboard","Minesweeper - Leaderboard","10","result = {'easy': [], 'medium': [], 'hard': []}","function LeaderboardPage({data, globalState, setGlobalState, api}) {
+  const [tab, setTab] = useState('easy');
+  const [leaderboard, setLeaderboard] = useState(data);
+  const [loading, setLoading] = useState(false);
+  
+  useEffect(() => {
+    refresh();
+  }, []);
+  
+  const refresh = async () => {
+    setLoading(true);
+    try {
+      const result = await api.get('leaderboard');
+      if (result && !result.error) {
+        setLeaderboard(result);
+      }
+    } catch(e) {
+      console.log('Leaderboard fetch error:', e);
+    }
+    setLoading(false);
+  };
+  
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${String(secs).padStart(2, '0')}`;
+  };
+  
+  const getMedal = (index) => {
+    if (index === 0) return '🥇';
+    if (index === 1) return '🥈';
+    if (index === 2) return '🥉';
+    return `#${index + 1}`;
+  };
+  
+  return (
+    <div className=""min-h-screen bg-gradient-to-b from-gray-700 to-gray-900"">
+      <Nav currentPage=""leaderboard"" />
+      <div className=""max-w-4xl mx-auto p-6"">
+        <div className=""text-center mb-8"">
+          <h1 className=""text-4xl font-bold text-white mb-2"">🏆 Global Leaderboard 🏆</h1>
+          <p className=""text-gray-400"">Top 10 fastest times for each difficulty</p>
+          <button onClick={refresh} disabled={loading} className=""mt-4 bg-blue-600 hover:bg-blue-500 disabled:bg-gray-600 text-white px-4 py-2 rounded-lg transition"">
+            {loading ? '⏳ Loading...' : '🔄 Refresh'}
+          </button>
+        </div>
+        
+        <div className=""flex justify-center gap-2 mb-6"">
+          {['easy', 'medium', 'hard'].map(diff => (
+            <button key={diff} onClick={() => setTab(diff)} className={`px-6 py-3 rounded-lg font-bold transition ${tab === diff ? (diff === 'easy' ? 'bg-green-600 text-white' : diff === 'medium' ? 'bg-yellow-600 text-white' : 'bg-red-600 text-white') : 'bg-gray-600 text-gray-300 hover:bg-gray-500'}`}>
+              {diff.charAt(0).toUpperCase() + diff.slice(1)}
+            </button>
+          ))}
+        </div>
+        
+        <div className=""bg-gray-800 rounded-lg overflow-hidden shadow-xl"">
+          <table className=""w-full"">
+            <thead className={`${tab === 'easy' ? 'bg-green-700' : tab === 'medium' ? 'bg-yellow-700' : 'bg-red-700'}`}>
+              <tr>
+                <th className=""py-3 px-4 text-left text-white"">Rank</th>
+                <th className=""py-3 px-4 text-left text-white"">Player</th>
+                <th className=""py-3 px-4 text-right text-white"">Time</th>
+              </tr>
+            </thead>
+            <tbody>
+              {leaderboard[tab]?.length > 0 ? leaderboard[tab].map((entry, idx) => (
+                <tr key={idx} className={`${idx % 2 === 0 ? 'bg-gray-700' : 'bg-gray-750'} ${idx < 3 ? 'text-yellow-300' : 'text-white'}`}>
+                  <td className=""py-3 px-4 font-bold text-xl"">{getMedal(idx)}</td>
+                  <td className=""py-3 px-4 font-semibold"">{entry.username}</td>
+                  <td className=""py-3 px-4 text-right font-mono text-lg"">{formatTime(entry.time)}</td>
+                </tr>
+              )) : (
+                <tr>
+                  <td colSpan=""3"" className=""py-8 text-center text-gray-400"">No entries yet. Be the first to set a record!</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+        
+        <div className=""mt-6 text-center text-gray-400 text-sm"">
+          <p>💡 Set a username in Settings to appear on the leaderboard when you win!</p>
+        </div>
+      </div>
+      <MusicPlayer currentTrack={globalState.currentTrack} onTrackChange={(t) => setGlobalState(s => ({...s, currentTrack: t}))} soundEnabled={globalState.soundEnabled} onSoundToggle={() => setGlobalState(s => ({...s, soundEnabled: !s.soundEnabled}))} muted={globalState.muted} onMuteToggle={() => setGlobalState(s => ({...s, muted: !s.muted}))} />
+    </div>
+  );
+}","","","",""
+"","","","","","","","","","","Stats","/stats","Minesweeper - My Stats","10","","function StatsPage({storage, globalState, setGlobalState}) {
+  const [stats, setStats] = useState(null);
+  const [username, setUsername] = useState(null);
+  
+  useEffect(() => {
+    storage.get('stats', {easy: {played: 0, won: 0, bestTime: null}, medium: {played: 0, won: 0, bestTime: null}, hard: {played: 0, won: 0, bestTime: null}}).then(setStats);
+    storage.get('username', null).then(setUsername);
+  }, []);
+  
+  const formatTime = (seconds) => {
+    if (seconds === null) return '--:--';
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${String(secs).padStart(2, '0')}`;
+  };
+  
+  const getWinRate = (won, played) => {
+    if (played === 0) return '0%';
+    return Math.round((won / played) * 100) + '%';
+  };
+  
+  const resetStats = async () => {
+    if (confirm('Are you sure you want to reset all your stats? This cannot be undone.')) {
+      const newStats = {easy: {played: 0, won: 0, bestTime: null}, medium: {played: 0, won: 0, bestTime: null}, hard: {played: 0, won: 0, bestTime: null}};
+      await storage.set('stats', newStats);
+      setStats(newStats);
+    }
+  };
+  
+  if (!stats) return <div className=""min-h-screen bg-gradient-to-b from-gray-700 to-gray-900""><Nav /><div className=""p-8 text-center text-white"">Loading...</div></div>;
+  
+  const totalPlayed = stats.easy.played + stats.medium.played + stats.hard.played;
+  const totalWon = stats.easy.won + stats.medium.won + stats.hard.won;
+  
+  return (
+    <div className=""min-h-screen bg-gradient-to-b from-gray-700 to-gray-900"">
+      <Nav currentPage=""stats"" />
+      <div className=""max-w-4xl mx-auto p-6"">
+        <div className=""text-center mb-8"">
+          <h1 className=""text-4xl font-bold text-white mb-2"">📊 My Statistics</h1>
+          {username && <p className=""text-yellow-400"">Playing as: {username}</p>}
+        </div>
+        
+        <div className=""grid md:grid-cols-3 gap-6 mb-8"">
+          <div className=""bg-gray-800 rounded-lg p-6 text-center"">
+            <div className=""text-5xl font-bold text-white mb-2"">{totalPlayed}</div>
+            <div className=""text-gray-400"">Games Played</div>
+          </div>
+          <div className=""bg-gray-800 rounded-lg p-6 text-center"">
+            <div className=""text-5xl font-bold text-green-400 mb-2"">{totalWon}</div>
+            <div className=""text-gray-400"">Games Won</div>
+          </div>
+          <div className=""bg-gray-800 rounded-lg p-6 text-center"">
+            <div className=""text-5xl font-bold text-yellow-400 mb-2"">{getWinRate(totalWon, totalPlayed)}</div>
+            <div className=""text-gray-400"">Overall Win Rate</div>
+          </div>
+        </div>
+        
+        <div className=""grid md:grid-cols-3 gap-6"">
+          {['easy', 'medium', 'hard'].map(diff => (
+            <div key={diff} className={`rounded-lg p-6 ${diff === 'easy' ? 'bg-green-900' : diff === 'medium' ? 'bg-yellow-900' : 'bg-red-900'}`}>
+              <h3 className=""text-2xl font-bold text-white mb-4 text-center capitalize"">{diff}</h3>
+              <div className=""space-y-3"">
+                <div className=""flex justify-between text-white"">
+                  <span>Played:</span>
+                  <span className=""font-bold"">{stats[diff].played}</span>
+                </div>
+                <div className=""flex justify-between text-white"">
+                  <span>Won:</span>
+                  <span className=""font-bold text-green-300"">{stats[diff].won}</span>
+                </div>
+                <div className=""flex justify-between text-white"">
+                  <span>Win Rate:</span>
+                  <span className=""font-bold"">{getWinRate(stats[diff].won, stats[diff].played)}</span>
+                </div>
+                <div className=""flex justify-between text-white"">
+                  <span>Best Time:</span>
+                  <span className=""font-bold font-mono text-yellow-300"">{formatTime(stats[diff].bestTime)}</span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+        
+        <div className=""mt-8 text-center"">
+          <button onClick={resetStats} className=""bg-red-600 hover:bg-red-500 text-white px-6 py-3 rounded-lg transition"">
+            🗑️ Reset All Stats
+          </button>
+        </div>
+      </div>
+      <MusicPlayer currentTrack={globalState.currentTrack} onTrackChange={(t) => setGlobalState(s => ({...s, currentTrack: t}))} soundEnabled={globalState.soundEnabled} onSoundToggle={() => setGlobalState(s => ({...s, soundEnabled: !s.soundEnabled}))} muted={globalState.muted} onMuteToggle={() => setGlobalState(s => ({...s, muted: !s.muted}))} />
+    </div>
+  );
+}","","","",""
+"","","","","","","","","","","Settings","/settings","Minesweeper - Settings","10","","function SettingsPage({storage, globalState, setGlobalState, user}) {
+  const [username, setUsername] = useState('');
+  const [savedUsername, setSavedUsername] = useState(null);
+  const [message, setMessage] = useState('');
+  
+  useEffect(() => {
+    storage.get('username', null).then(u => {
+      setSavedUsername(u);
+      if (u) setUsername(u);
+    });
+  }, []);
+  
+  const saveUsername = async () => {
+    const trimmed = username.trim();
+    if (!trimmed) {
+      setMessage('Please enter a username');
+      return;
+    }
+    if (trimmed.length < 3) {
+      setMessage('Username must be at least 3 characters');
+      return;
+    }
+    if (trimmed.length > 20) {
+      setMessage('Username must be 20 characters or less');
+      return;
+    }
+    if (!/^[a-zA-Z0-9_-]+$/.test(trimmed)) {
+      setMessage('Username can only contain letters, numbers, - and _');
+      return;
+    }
+    await storage.set('username', trimmed);
+    setSavedUsername(trimmed);
+    setMessage('Username saved successfully!');
+    setTimeout(() => setMessage(''), 3000);
+  };
+  
+  const clearUsername = async () => {
+    await storage.delete('username');
+    setUsername('');
+    setSavedUsername(null);
+    setMessage('Username cleared');
+    setTimeout(() => setMessage(''), 3000);
+  };
+  
+  const TRACKS = [
+    { id: 'none', name: 'Off', icon: '🔇', desc: 'No background music' },
+    { id: 'retro', name: 'Retro', icon: '🎮', desc: 'Classic arcade vibes' },
+    { id: 'chill', name: 'Chill', icon: '🌙', desc: 'Relaxing ambient tones' },
+    { id: 'tense', name: 'Tense', icon: '⚡', desc: 'Suspenseful atmosphere' },
+    { id: 'epic', name: 'Epic', icon: '🎵', desc: 'Heroic adventure theme' }
+  ];
+  
+  return (
+    <div className=""min-h-screen bg-gradient-to-b from-gray-700 to-gray-900"">
+      <Nav currentPage=""settings"" />
+      <div className=""max-w-2xl mx-auto p-6"">
+        <h1 className=""text-4xl font-bold text-white mb-8 text-center"">⚙️ Settings</h1>
+        
+        <div className=""bg-gray-800 rounded-lg p-6 mb-6"">
+          <h2 className=""text-2xl font-bold text-white mb-4"">🎮 Minesweeper Username</h2>
+          <p className=""text-gray-400 mb-4"">This username will be displayed on the global leaderboard instead of your real name.</p>
+          
+          {savedUsername && (
+            <div className=""bg-green-900 text-green-300 p-3 rounded-lg mb-4"">
+              Current username: <strong>{savedUsername}</strong>
+            </div>
+          )}
+          
+          <div className=""flex gap-3"">
+            <input type=""text"" value={username} onChange={(e) => setUsername(e.target.value)} placeholder=""Enter your minesweeper username"" className=""flex-1 px-4 py-3 rounded-lg bg-gray-700 text-white border border-gray-600 focus:border-blue-500 focus:outline-none"" maxLength={20} />
+            <button onClick={saveUsername} className=""bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-lg transition font-bold"">Save</button>
+          </div>
+          
+          {message && <p className={`mt-3 ${message.includes('success') || message.includes('cleared') ? 'text-green-400' : 'text-red-400'}`}>{message}</p>}
+          
+          {savedUsername && (
+            <button onClick={clearUsername} className=""mt-4 text-red-400 hover:text-red-300 text-sm"">Clear username</button>
+          )}
+        </div>
+        
+        <div className=""bg-gray-800 rounded-lg p-6 mb-6"">
+          <h2 className=""text-2xl font-bold text-white mb-4"">🎵 Background Music</h2>
+          <p className=""text-gray-400 mb-4"">Choose your soundtrack while playing.</p>
+          
+          <div className=""grid grid-cols-1 gap-3"">
+            {TRACKS.map(track => (
+              <button key={track.id} onClick={() => setGlobalState(s => ({...s, currentTrack: track.id}))} className={`flex items-center gap-4 p-4 rounded-lg transition-all ${globalState.currentTrack === track.id ? 'bg-blue-600 ring-2 ring-blue-400' : 'bg-gray-700 hover:bg-gray-600'}`}>
+                <span className=""text-3xl"">{track.icon}</span>
+                <div className=""text-left"">
+                  <div className=""font-bold text-white"">{track.name}</div>
+                  <div className=""text-sm text-gray-300"">{track.desc}</div>
+                </div>
+                {globalState.currentTrack === track.id && <span className=""ml-auto text-green-400"">✓</span>}
+              </button>
+            ))}
+          </div>
+        </div>
+        
+        <div className=""bg-gray-800 rounded-lg p-6 mb-6"">
+          <h2 className=""text-2xl font-bold text-white mb-4"">🔊 Sound Settings</h2>
+          
+          <div className=""space-y-4"">
+            <div className=""flex items-center justify-between p-3 bg-gray-700 rounded-lg"">
+              <div>
+                <span className=""text-white font-semibold"">Master Volume</span>
+                <p className=""text-sm text-gray-400"">Mute all audio</p>
+              </div>
+              <button onClick={() => setGlobalState(s => ({...s, muted: !s.muted}))} className={`px-6 py-2 rounded-lg font-bold transition ${globalState.muted ? 'bg-red-600 hover:bg-red-500' : 'bg-green-600 hover:bg-green-500'} text-white`}>
+                {globalState.muted ? '🔇 Muted' : '🔊 On'}
+              </button>
+            </div>
+            
+            <div className=""flex items-center justify-between p-3 bg-gray-700 rounded-lg"">
+              <div>
+                <span className=""text-white font-semibold"">Sound Effects</span>
+                <p className=""text-sm text-gray-400"">Click, flag, explosion sounds</p>
+              </div>
+              <button onClick={() => setGlobalState(s => ({...s, soundEnabled: !s.soundEnabled}))} className={`px-6 py-2 rounded-lg font-bold transition ${globalState.soundEnabled ? 'bg-purple-600 hover:bg-purple-500' : 'bg-gray-600 hover:bg-gray-500'} text-white`}>
+                {globalState.soundEnabled ? '🔔 On' : '🔔 Off'}
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        <div className=""bg-gray-800 rounded-lg p-6"">
+          <h2 className=""text-2xl font-bold text-white mb-4"">👤 Account Info</h2>
+          <div className=""text-gray-400 space-y-2"">
+            <p><strong>Logged in as:</strong> {user.name}</p>
+            <p><strong>Email:</strong> {user.email || 'N/A'}</p>
+            <p className=""text-sm text-gray-500 mt-4"">Your real name is never shown on the leaderboard.</p>
+          </div>
+        </div>
+      </div>
+      <MusicPlayer currentTrack={globalState.currentTrack} onTrackChange={(t) => setGlobalState(s => ({...s, currentTrack: t}))} soundEnabled={globalState.soundEnabled} onSoundToggle={() => setGlobalState(s => ({...s, soundEnabled: !s.soundEnabled}))} muted={globalState.muted} onMuteToggle={() => setGlobalState(s => ({...s, muted: !s.muted}))} />
+    </div>
+  );
+}","","","",""
+"","","","","","","","","","","","","","","","","Submit Score","submit-score","POST","username = body.get('username')
+difficulty = body.get('difficulty')
+time = body.get('time')
+submit_user_id = body.get('user_id')
+
+if not username or not difficulty or time is None:
+    result = {'error': 'Missing required fields'}
+else:
+    webapp = env['mcp.webapp'].search([('name', '=', 'Minesweeper')], limit=1)
+    if webapp:
+        Storage = env['mcp.webapp.user.storage']
+        storage_rec = Storage.search([('webapp_id', '=', webapp.id), ('user_id', '=', False), ('session_id', '=', 'global_leaderboard')], limit=1)
+        if not storage_rec:
+            storage_rec = Storage.create({'webapp_id': webapp.id, 'session_id': 'global_leaderboard', 'data': {}})
+        current_data = storage_rec.data or {}
+        if 'scores' not in current_data:
+            current_data['scores'] = []
+        current_data['scores'].append({'username': username, 'difficulty': difficulty, 'time': time, 'user_id': submit_user_id, 'timestamp': str(datetime.datetime.now())})
+        if len(current_data['scores']) > 1000:
+            current_data['scores'] = current_data['scores'][-1000:]
+        storage_rec.write({'data': current_data})
+        result = {'success': True}
+    else:
+        result = {'error': 'Webapp not found'}"
