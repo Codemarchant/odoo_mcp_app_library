@@ -1,0 +1,1249 @@
+﻿"name","description","data_code","global_state_code","shared_components","shared_styles","router_mode","tailwind_enabled","cdn_dependencies","custom_imports","page_ids/name","page_ids/route_path","page_ids/page_title","page_ids/sequence","page_ids/data_code","page_ids/component_code","endpoint_ids/name","endpoint_ids/endpoint_path","endpoint_ids/method","endpoint_ids/handler_code"
+"MineClone - forsenE Edition","A comprehensive Minecraft clone with block-based world generation, player movement, inventory system, sound effects, and playable worlds.","","{
+  chunkSize: 32,
+  worldHeight: 128,
+  blockSize: 24,
+  loadedChunks: {},
+  
+  player: {
+    x: 16,
+    y: 30,
+    vx: 0,
+    vy: 0,
+    onGround: false,
+    facing: 'right',
+    health: 20,
+    maxHealth: 20,
+    selectedSlot: 0
+  },
+  
+  camera: { x: 0, y: 0 },
+  projectiles: [],
+  enemies: [],
+  enemySpawnTimer: 0,
+  maxEnemies: 10,
+  
+  inventory: [
+    { type: 'gun', count: 1 },
+    { type: 'dirt', count: 64 },
+    { type: 'cobblestone', count: 64 },
+    { type: 'wood', count: 64 },
+    { type: 'planks', count: 32 },
+    { type: 'torch', count: 64 },
+    { type: 'tnt', count: 16 },
+    { type: 'glass', count: 32 },
+    { type: 'brick', count: 32 }
+  ],
+  
+  paused: false,
+  worldSeed: Date.now(),
+  showMenu: true,
+  savedWorlds: [],
+  currentWorldName: 'New World',
+  soundEnabled: true,
+  score: 0,
+  kills: 0
+}","// Block type definitions with weapon bonuses
+const BLOCK_TYPES = {
+  air: { color: 'transparent', solid: false, breakable: false, name: 'Air' },
+  dirt: { color: '#8B5A2B', accent: '#6B4423', solid: true, breakable: true, drops: 'dirt', hardness: 0.5, name: 'Dirt (ERP Module)' },
+  grass: { color: '#567d46', accent: '#4a6b3d', topColor: '#3CB371', solid: true, breakable: true, drops: 'dirt', hardness: 0.5, name: 'Grass (Odoo Green)' },
+  stone: { color: '#808080', accent: '#696969', solid: true, breakable: true, drops: 'cobblestone', hardness: 1.5, name: 'Stone (Legacy Code)', bonusChance: 0.02, bonusType: 'damage' },
+  cobblestone: { color: '#6a6a6a', accent: '#555', solid: true, breakable: true, drops: 'cobblestone', hardness: 1.5, name: 'Cobblestone (Technical Debt)' },
+  deepslate: { color: '#4a4a4a', accent: '#333', solid: true, breakable: true, drops: 'deepslate', hardness: 2, name: 'Deepslate (Deprecated API)', bonusChance: 0.05, bonusType: 'firerate' },
+  wood: { color: '#8B4513', accent: '#654321', solid: true, breakable: true, drops: 'wood', hardness: 0.8, name: 'Wood (Snus Log)' },
+  leaves: { color: '#228B22', accent: '#006400', solid: true, breakable: true, drops: 'leaves', transparent: true, hardness: 0.2, name: 'Leaves (forsenTree)' },
+  sand: { color: '#F4A460', accent: '#DEB887', solid: true, breakable: true, drops: 'sand', hardness: 0.4, name: 'Sand (Beach Episode)' },
+  lava: { color: 'rgba(255, 69, 0, 0.9)', solid: false, breakable: false, liquid: true, damage: 4, glow: true, name: 'Lava (Rage Quit)' },
+  coal: { color: '#555', accent: '#333', ore: '#1a1a1a', solid: true, breakable: true, drops: 'coal', hardness: 1.5, name: 'Coal (Dark Mode)', bonusChance: 0.05, bonusType: 'speed' },
+  iron: { color: '#808080', accent: '#696969', ore: '#D4A574', solid: true, breakable: true, drops: 'iron', hardness: 2, name: 'Iron (Enterprise License)', bonusChance: 0.08, bonusType: 'damage' },
+  gold: { color: '#808080', accent: '#696969', ore: '#FFD700', solid: true, breakable: true, drops: 'gold', hardness: 2.5, name: 'Gold (Paid Module)', bonusChance: 0.12, bonusType: 'multishot' },
+  diamond: { color: '#4a4a5a', accent: '#3a3a4a', ore: '#00CED1', solid: true, breakable: true, drops: 'diamond', hardness: 3, name: 'Diamond (God Gamer Loot)', bonusChance: 0.25, bonusType: 'all' },
+  emerald: { color: '#4a4a5a', accent: '#3a3a4a', ore: '#50C878', solid: true, breakable: true, drops: 'emerald', hardness: 3, name: 'Emerald (Odoo.sh Credits)', bonusChance: 0.2, bonusType: 'heal' },
+  bedrock: { color: '#1a1a1a', accent: '#0a0a0a', solid: true, breakable: false, name: 'Bedrock (Terms of Service)' },
+  planks: { color: '#C4A35A', accent: '#A08040', solid: true, breakable: true, drops: 'planks', hardness: 0.8, name: 'Planks (forsenSWA)' },
+  brick: { color: '#B22222', accent: '#8B0000', solid: true, breakable: true, drops: 'brick', hardness: 1.5, name: 'Brick (ZULUL)' },
+  glass: { color: 'rgba(200, 230, 255, 0.4)', solid: true, breakable: true, transparent: true, hardness: 0.3, name: 'Glass (Transparent Pricing)' },
+  torch: { color: '#FFA500', solid: false, breakable: true, drops: 'torch', light: 14, hardness: 0.1, name: 'Torch (Enlightenment)' },
+  tnt: { color: '#FF0000', accent: '#8B0000', solid: true, breakable: true, drops: 'tnt', hardness: 0.1, explosive: true, name: 'TNT (rm -rf /)' },
+  gravel: { color: '#9E9E9E', accent: '#757575', solid: true, breakable: true, drops: 'gravel', hardness: 0.5, name: 'Gravel (Bug Reports)' },
+  gun: { color: '#333', isItem: true, weapon: true, name: 'Gun (forsenGun)' }
+};
+
+// Enemy types with Frog and Ender Dragon bosses
+const ENEMY_TYPES = {
+  zombie: { w: 0.6, h: 1.4, speed: 0.02, hp: 20, dmg: 3, color: '#5a8a5a', name: 'Pepega', isBoss: false },
+  skeleton: { w: 0.5, h: 1.5, speed: 0.015, hp: 15, dmg: 2, color: '#ddd', name: 'monkaS', isBoss: false },
+  slime: { w: 0.8, h: 0.8, speed: 0.01, hp: 10, dmg: 2, color: 'rgba(100,200,100,0.8)', bouncy: true, name: 'forsenE', isBoss: false },
+  creeper: { w: 0.5, h: 1.2, speed: 0.025, hp: 20, dmg: 0, color: '#714ba3', explodes: true, name: 'Odoo Bug', isBoss: false },
+  madmonq: { w: 0.7, h: 1.3, speed: 0.03, hp: 60, dmg: 5, color: '#00FF00', name: 'MADMONQ Enjoyer', isBoss: false },
+  horse: { w: 1.2, h: 1.4, speed: 0.035, hp: 100, dmg: 8, color: '#8B4513', name: 'MEGALUL Horse', isBoss: true, charge: true },
+  sebastian: { w: 1.0, h: 1.6, speed: 0.04, hp: 150, dmg: 10, color: '#FFD700', name: 'Sebastian (forsenPls)', isBoss: true, teleport: true },
+  clown: { w: 0.8, h: 1.5, speed: 0.05, hp: 80, dmg: 6, color: '#FF69B4', name: 'forsenClown', isBoss: true, spam: true },
+  frog: { w: 1.0, h: 0.8, speed: 0.06, hp: 200, dmg: 12, color: '#32CD32', name: 'FROG (forsenFrog)', isBoss: true, leap: true, tongueAttack: true },
+  dragon: { w: 2.5, h: 2.0, speed: 0.02, hp: 500, dmg: 25, color: '#2d0a4e', name: 'ENDER DRAGON (forsenInsane)', isBoss: true, flying: true, breathFire: true, phases: 3 }
+};
+
+// World powerup types
+const POWERUP_TYPES = {
+  health: { color: '#ff4444', icon: '❤️', name: 'Health Pack', effect: 'heal', value: 10 },
+  damage: { color: '#ff8800', icon: '⚔️', name: 'Damage Boost', effect: 'damage', value: 2 },
+  firerate: { color: '#00aaff', icon: '🔫', name: 'Rapid Fire', effect: 'firerate', value: 2 },
+  speed: { color: '#ffff00', icon: '⚡', name: 'Speed Boost', effect: 'speed', value: 2 },
+  multishot: { color: '#ff00ff', icon: '✨', name: 'Multi-Shot', effect: 'multishot', value: 2 },
+  blockbreaker: { color: '#00ffaa', icon: '💎', name: 'Block Breaker', effect: 'blockbreaker', value: 30, desc: 'Bullets destroy blocks!' },
+  shield: { color: '#4488ff', icon: '🛡️', name: 'Shield', effect: 'shield', value: 180, desc: 'Temporary invincibility!' },
+  nuke: { color: '#ff0000', icon: '💥', name: 'NUKE', effect: 'nuke', value: 1, desc: 'Kills all enemies on screen!' },
+  megagun: { color: '#ffd700', icon: '🌟', name: 'MEGA GUN', effect: 'megagun', value: 300, desc: 'Ultimate weapon for 5 seconds!' }
+};
+
+// Meme messages
+const DEATH_MESSAGES = [
+  'forsenDespair Another satisfactory run...',
+  'OMEGALUL skill issue',
+  'monkaS he does not know',
+  'Pepega Clap WR pace',
+  'forsenInsane I see it',
+  'ERP system has crashed',
+  'Traceback: NoneType object is not subscriptable',
+  'ZULUL VI LOST',
+  'Two time? More like zero time',
+  'God gamer btw',
+  'Segmentation fault (core dumped)',
+  'forsenSmug at least you have mass',
+  'Horse wins again MEGALUL',
+  'Should have used Odoo Enterprise',
+  'WAYTOODANK skill issue detected',
+  'forsenCD transparent',
+  'FROG GOT YOU forsenFrog',
+  'DRAGON WINS forsenInsane',
+  'Skill diff OMEGALUL',
+  'Just mass it 4Head'
+];
+
+const KILL_MESSAGES = [
+  'OMEGALUL', 'forsenBased', 'EZ Clap', 'Pog', 'PagMan', 'WAYTOODANK',
+  'Module uninstalled', 'sudo rm enemy', 'git push --force', 'DROP TABLE enemies;',
+  'MEGALUL', 'forsenCD transparent', 'GET HORSED', 'NOIDONTTHINKSO',
+  'forsenScoots', 'FeelsOkayMan', 'FeelsGoodMan Clap', 'ZULUL WARRIORS'
+];
+
+const HORSE_SOUNDS = ['NEIGH MEGALUL', 'forsenPls SEBASTIAN', 'HORSE WON AGAIN', 'CLIP IT', 'BACK TO VALORANT'];
+const FROG_MESSAGES = ['forsenFrog RIBBIT', 'FROG GOT TONGUE', 'HOPIUM', 'forsenFrog RIBBIT RIBBIT'];
+const DRAGON_MESSAGES = ['forsenInsane THE DRAGON', 'ENDER SLAIN', 'GOD GAMER ACHIEVED', 'forsenSmug ez dragon'];
+
+const BONUS_MESSAGES = {
+  damage: ['+DMG forsenScoots', 'GOD GAMER BUFF', 'PagMan DAMAGE UP'],
+  firerate: ['+FIRERATE Pog', 'GUN GO BRRRR', 'forsenGun UPGRADED'],
+  speed: ['+SPEED ZULUL', 'GOTTA GO FAST', 'nymnRun'],
+  multishot: ['+MULTISHOT FeelsGoodMan', 'SPREAD EM', 'forsenAim'],
+  heal: ['+HEAL FeelsOkayMan', 'HP RESTORED', 'forsenSmug'],
+  all: ['JACKPOT forsenPls', 'ALL STATS UP', 'GOD GAMER MODE'],
+  blockbreaker: ['BLOCK BREAKER! 💎', 'BULLETS DESTROY BLOCKS!', 'forsenGun MEGA'],
+  shield: ['SHIELD UP! 🛡️', 'INVINCIBLE!', 'forsenE PROTECTED'],
+  nuke: ['NUKE! 💥', 'TACTICAL NUKE INCOMING', 'forsenInsane KABOOM'],
+  megagun: ['MEGA GUN! 🌟', 'ULTIMATE POWER', 'GOD GAMER WEAPON']
+};
+
+const SPLASH_TEXTS = [
+  'forsenE FORSEN forsenE', 'God Gamer Edition', 'ZULUL', 'monkaS', 'Pepega Clap',
+  'Powered by Odoo MCP', 'Not a paid module', 'Technical debt included!',
+  'Two Time Champion', 'forsenInsane', 'Just mass it 4Head',
+  'ERP stands for Extremely Radical Pepega', 'Snus and Juice',
+  'OMEGALUL HE DOESNT KNOW', 'FeelsDankMan', 'forsenSWA',
+  'Bajs welcome!', 'PepeHands', 'gachiGASM', 'forsenCD',
+  'HORSE INCIDENT', 'MEGALUL', 'VI VON ZULUL', 'Classic LULW',
+  'MADMONQ Powered', 'forsenLevel forsenGun', 'Doc clip it',
+  'Odoo Enterprise when?', 'sudo rm -rf competition',
+  'forsenFrog FROG BOSS', 'ENDER DRAGON forsenInsane', 'COLLECT POWERUPS'
+];
+
+const ODOO_TIPS = [
+  'Did you know? Odoo has 82 apps forsenScoots',
+  'Remember to backup your database Pepega',
+  'ORM or raw SQL? forsenThink',
+  'sudo pip install --upgrade skill',
+  'Have you tried turning ir.cron off and on?',
+  'res.partner is just a fancy contact list',
+  'XML-RPC? More like XML-REEE'
+];
+
+// Sound system
+const AudioSystem = {
+  ctx: null, musicGain: null, musicPlaying: false,
+  init() {
+    if (!this.ctx) {
+      this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+      this.musicGain = this.ctx.createGain();
+      this.musicGain.gain.value = 0.12;
+      this.musicGain.connect(this.ctx.destination);
+    }
+    if (this.ctx.state === 'suspended') this.ctx.resume();
+    return this.ctx;
+  },
+  playTone(freq, dur, type = 'square', vol = 0.3) {
+    try {
+      const ctx = this.init();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.type = type; osc.frequency.setValueAtTime(freq, ctx.currentTime);
+      gain.gain.setValueAtTime(vol, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + dur);
+      osc.start(); osc.stop(ctx.currentTime + dur);
+    } catch(e) {}
+  },
+  playNoise(dur, vol = 0.2, freq = 1000) {
+    try {
+      const ctx = this.init();
+      const buf = ctx.createBuffer(1, ctx.sampleRate * dur, ctx.sampleRate);
+      const data = buf.getChannelData(0);
+      for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+      const noise = ctx.createBufferSource(); noise.buffer = buf;
+      const gain = ctx.createGain();
+      const filter = ctx.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.value = freq;
+      noise.connect(filter); filter.connect(gain); gain.connect(ctx.destination);
+      gain.gain.setValueAtTime(vol, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + dur);
+      noise.start();
+    } catch(e) {}
+  },
+  playHorseNeigh() {
+    try {
+      const ctx = this.init();
+      [880, 1100, 900, 700, 500].forEach((f, i) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(f, ctx.currentTime + i * 0.1);
+        gain.gain.setValueAtTime(0.2, ctx.currentTime + i * 0.1);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + i * 0.1 + 0.15);
+        osc.start(ctx.currentTime + i * 0.1);
+        osc.stop(ctx.currentTime + i * 0.1 + 0.15);
+      });
+    } catch(e) {}
+  },
+  playFrogRibbit() {
+    try {
+      const ctx = this.init();
+      [150, 200, 150, 180].forEach((f, i) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(f, ctx.currentTime + i * 0.08);
+        gain.gain.setValueAtTime(0.25, ctx.currentTime + i * 0.08);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + i * 0.08 + 0.1);
+        osc.start(ctx.currentTime + i * 0.08);
+        osc.stop(ctx.currentTime + i * 0.08 + 0.1);
+      });
+    } catch(e) {}
+  },
+  playDragonRoar() {
+    try {
+      const ctx = this.init();
+      [80, 100, 60, 120, 80, 50].forEach((f, i) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(f, ctx.currentTime + i * 0.15);
+        gain.gain.setValueAtTime(0.35, ctx.currentTime + i * 0.15);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + i * 0.15 + 0.2);
+        osc.start(ctx.currentTime + i * 0.15);
+        osc.stop(ctx.currentTime + i * 0.15 + 0.2);
+      });
+      this.playNoise(0.8, 0.3, 100);
+    } catch(e) {}
+  },
+  playForsenPls() {
+    try {
+      const ctx = this.init();
+      const notes = [440, 554, 659, 554, 440, 554, 659, 880];
+      notes.forEach((f, i) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(f, ctx.currentTime + i * 0.12);
+        gain.gain.setValueAtTime(0.15, ctx.currentTime + i * 0.12);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + i * 0.12 + 0.1);
+        osc.start(ctx.currentTime + i * 0.12);
+        osc.stop(ctx.currentTime + i * 0.12 + 0.12);
+      });
+    } catch(e) {}
+  },
+  playBossAlert() {
+    try {
+      const ctx = this.init();
+      [200, 250, 200, 250, 300, 400].forEach((f, i) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(f, ctx.currentTime + i * 0.15);
+        gain.gain.setValueAtTime(0.25, ctx.currentTime + i * 0.15);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + i * 0.15 + 0.12);
+        osc.start(ctx.currentTime + i * 0.15);
+        osc.stop(ctx.currentTime + i * 0.15 + 0.15);
+      });
+    } catch(e) {}
+  },
+  playPowerup() {
+    try {
+      const ctx = this.init();
+      [523, 659, 784, 1047].forEach((f, i) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(f, ctx.currentTime + i * 0.08);
+        gain.gain.setValueAtTime(0.2, ctx.currentTime + i * 0.08);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + i * 0.08 + 0.15);
+        osc.start(ctx.currentTime + i * 0.08);
+        osc.stop(ctx.currentTime + i * 0.08 + 0.2);
+      });
+    } catch(e) {}
+  },
+  playNuke() {
+    try {
+      const ctx = this.init();
+      this.playNoise(1.5, 0.6, 50);
+      [100, 80, 60, 40, 30].forEach((f, i) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(f, ctx.currentTime + i * 0.2);
+        gain.gain.setValueAtTime(0.4, ctx.currentTime + i * 0.2);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + i * 0.2 + 0.3);
+        osc.start(ctx.currentTime + i * 0.2);
+        osc.stop(ctx.currentTime + i * 0.2 + 0.35);
+      });
+    } catch(e) {}
+  },
+  startMusic() {
+    if (this.musicPlaying) return;
+    this.musicPlaying = true;
+    const ctx = this.init();
+    const notes = [
+      { n: 'E4', d: 0.5 }, { n: 'G4', d: 0.5 }, { n: 'A4', d: 1 }, { n: 'G4', d: 0.5 }, { n: 'E4', d: 0.5 },
+      { n: 'D4', d: 1 }, { n: 'E4', d: 0.5 }, { n: 'G4', d: 0.5 }, { n: 'A4', d: 1.5 }, { n: null, d: 0.5 },
+      { n: 'A4', d: 0.5 }, { n: 'B4', d: 0.5 }, { n: 'C5', d: 1 }, { n: 'B4', d: 0.5 }, { n: 'A4', d: 0.5 },
+      { n: 'G4', d: 1 }, { n: 'E4', d: 1 }, { n: 'D4', d: 1 }, { n: null, d: 1 }
+    ];
+    const freqs = { C4: 262, D4: 294, E4: 330, F4: 349, G4: 392, A4: 440, B4: 494, C5: 523 };
+    const playLoop = () => {
+      if (!this.musicPlaying) return;
+      let time = ctx.currentTime + 0.1;
+      notes.forEach(note => {
+        if (note.n && freqs[note.n]) {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.connect(gain); gain.connect(this.musicGain);
+          osc.type = 'triangle'; osc.frequency.setValueAtTime(freqs[note.n], time);
+          gain.gain.setValueAtTime(0, time);
+          gain.gain.linearRampToValueAtTime(0.25, time + 0.03);
+          gain.gain.linearRampToValueAtTime(0.1, time + note.d * 0.35);
+          gain.gain.linearRampToValueAtTime(0, time + note.d * 0.4);
+          osc.start(time); osc.stop(time + note.d * 0.4);
+        }
+        time += note.d * 0.4;
+      });
+      setTimeout(playLoop, notes.reduce((a, n) => a + n.d, 0) * 400 + 1500);
+    };
+    playLoop();
+  },
+  stopMusic() { this.musicPlaying = false; }
+};
+
+const sounds = {
+  blockPlace: () => AudioSystem.playNoise(0.08, 0.2, 800),
+  blockBreak: () => AudioSystem.playNoise(0.12, 0.3, 600),
+  dig: () => AudioSystem.playNoise(0.05, 0.15, 500),
+  playerJump: () => AudioSystem.playTone(350, 0.1, 'sine', 0.15),
+  playerHurt: () => { AudioSystem.playTone(200, 0.1, 'sawtooth', 0.25); AudioSystem.playTone(150, 0.15, 'sawtooth', 0.2); },
+  enemyHurt: () => AudioSystem.playTone(150, 0.1, 'sawtooth', 0.2),
+  enemyDeath: () => { AudioSystem.playNoise(0.2, 0.3, 300); AudioSystem.playTone(100, 0.2, 'sawtooth', 0.2); },
+  gunShoot: () => { AudioSystem.playNoise(0.08, 0.35, 2000); AudioSystem.playTone(800, 0.05, 'square', 0.2); },
+  explosion: () => { AudioSystem.playNoise(0.4, 0.5, 150); setTimeout(() => AudioSystem.playNoise(0.3, 0.3, 80), 80); },
+  menuClick: () => AudioSystem.playTone(500, 0.04, 'square', 0.12),
+  gameOver: () => { AudioSystem.playTone(300, 0.2, 'sawtooth', 0.3); setTimeout(() => AudioSystem.playTone(200, 0.3, 'sawtooth', 0.3), 200); },
+  horseNeigh: () => AudioSystem.playHorseNeigh(),
+  frogRibbit: () => AudioSystem.playFrogRibbit(),
+  dragonRoar: () => AudioSystem.playDragonRoar(),
+  bossSpawn: () => AudioSystem.playBossAlert(),
+  forsenPls: () => AudioSystem.playForsenPls(),
+  powerup: () => AudioSystem.playPowerup(),
+  nuke: () => AudioSystem.playNuke(),
+  bossDeath: () => { AudioSystem.playNoise(0.5, 0.5, 200); AudioSystem.playTone(200, 0.4, 'sawtooth', 0.4); setTimeout(() => AudioSystem.playTone(150, 0.5, 'sawtooth', 0.3), 200); },
+  dragonDeath: () => { AudioSystem.playNoise(1.0, 0.6, 100); [150, 120, 100, 80, 60].forEach((f, i) => setTimeout(() => AudioSystem.playTone(f, 0.4, 'sawtooth', 0.4), i * 150)); }
+};
+
+function seededRandom(seed) { let s = seed; return () => { s = (s * 9301 + 49297) % 233280; return s / 233280; }; }
+function noise(x, seed) { const s = Math.sin(seed + x * 127.1) * 43758.5453; return s - Math.floor(s); }
+function smoothNoise(x, seed) { const x0 = Math.floor(x), t = x - x0; return noise(x0, seed) * (1 - t) + noise(x0 + 1, seed) * t; }
+function terrainNoise(x, seed) { return smoothNoise(x * 0.02, seed) * 20 + smoothNoise(x * 0.05, seed + 100) * 10 + smoothNoise(x * 0.1, seed + 200) * 5; }
+function caveNoise(x, y, seed) { const s1 = Math.sin(seed + x * 0.1 + y * 0.1) * 43758.5453; const s2 = Math.sin(seed + x * 0.05 - y * 0.07 + 1000) * 43758.5453; return ((s1 - Math.floor(s1)) + (s2 - Math.floor(s2))) / 2; }
+
+function generateChunk(chunkX, worldHeight, seed, chunkSize = 32) {
+  const blocks = [];
+  const rand = seededRandom(seed + chunkX * 10000);
+  const wx = chunkX * chunkSize;
+  for (let y = 0; y < worldHeight; y++) { blocks[y] = []; for (let x = 0; x < chunkSize; x++) blocks[y][x] = 'air'; }
+  const heights = [];
+  for (let x = 0; x < chunkSize; x++) heights[x] = Math.floor(35 + terrainNoise(wx + x, seed));
+  for (let x = 0; x < chunkSize; x++) {
+    const surf = heights[x];
+    for (let y = 0; y < worldHeight; y++) {
+      if (y >= worldHeight - 3) { blocks[y][x] = 'bedrock'; continue; }
+      const cave = caveNoise(wx + x, y, seed);
+      if (cave > 0.65 && y > surf + 8 && y < worldHeight - 5) { blocks[y][x] = y > worldHeight - 15 ? 'lava' : 'air'; continue; }
+      if (y > surf) {
+        const depth = y - surf;
+        if (depth <= 4) blocks[y][x] = 'dirt';
+        else if (depth > 70) { blocks[y][x] = 'deepslate'; if (rand() < 0.01) blocks[y][x] = 'diamond'; else if (rand() < 0.03) blocks[y][x] = 'gold'; }
+        else { blocks[y][x] = 'stone'; if (depth > 50 && rand() < 0.008) blocks[y][x] = 'diamond'; else if (depth > 30 && rand() < 0.02) blocks[y][x] = 'gold'; else if (depth > 15 && rand() < 0.04) blocks[y][x] = 'iron'; else if (depth > 5 && rand() < 0.06) blocks[y][x] = 'coal'; else if (depth > 40 && rand() < 0.015) blocks[y][x] = 'emerald'; }
+      } else if (y === surf) blocks[y][x] = 'grass';
+    }
+    if (rand() < 0.06 && x > 2 && x < chunkSize - 2) {
+      const th = 4 + Math.floor(rand() * 3);
+      for (let ty = 1; ty <= th; ty++) if (surf - ty >= 0) blocks[surf - ty][x] = 'wood';
+      for (let ly = -2; ly <= 0; ly++) for (let lx = -2; lx <= 2; lx++) {
+        const lfy = surf - th - 1 - ly, lfx = x + lx;
+        if (lfx >= 0 && lfx < chunkSize && lfy >= 0 && Math.abs(lx) + Math.abs(ly) < 4 && blocks[lfy][lfx] === 'air') blocks[lfy][lfx] = 'leaves';
+      }
+    }
+  }
+  return blocks;
+}
+
+function getBlock(chunks, x, y, worldHeight, chunkSize = 32) {
+  if (y < 0 || y >= worldHeight) return 'bedrock';
+  const cx = Math.floor(x / chunkSize), lx = ((x % chunkSize) + chunkSize) % chunkSize;
+  return chunks[cx]?.[y]?.[lx] || 'air';
+}
+
+function setBlock(chunks, x, y, blockType, worldHeight, chunkSize = 32) {
+  if (y < 0 || y >= worldHeight) return chunks;
+  const cx = Math.floor(x / chunkSize), lx = ((x % chunkSize) + chunkSize) % chunkSize;
+  if (!chunks[cx]) return chunks;
+  const newChunks = { ...chunks };
+  newChunks[cx] = chunks[cx].map((row, ry) => ry === y ? row.map((b, bx) => bx === lx ? blockType : b) : row);
+  return newChunks;
+}","/* Minecraft-style pixelated font */
+@import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
+
+* {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+.minecraft-font {
+  font-family: 'VT323', monospace;
+  letter-spacing: 1px;
+}
+
+.pixel-border {
+  border: 4px solid #555;
+  border-top-color: #aaa;
+  border-left-color: #aaa;
+  background: #8b8b8b;
+}
+
+.pixel-button {
+  font-family: 'VT323', monospace;
+  font-size: 1.25rem;
+  padding: 8px 24px;
+  background: linear-gradient(180deg, #7a7a7a 0%, #5a5a5a 50%, #4a4a4a 100%);
+  border: 3px outset #888;
+  color: #fff;
+  text-shadow: 2px 2px 0 #3f3f3f;
+  cursor: pointer;
+  transition: all 0.1s;
+}
+
+.pixel-button:hover {
+  background: linear-gradient(180deg, #9a9a9a 0%, #7a7a7a 50%, #6a6a6a 100%);
+}
+
+.pixel-button:active {
+  border-style: inset;
+  transform: translateY(2px);
+}
+
+.hotbar-slot {
+  width: 48px;
+  height: 48px;
+  background: #8b8b8b;
+  border: 3px solid #373737;
+  border-top-color: #fff;
+  border-left-color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.hotbar-slot.selected {
+  border: 3px solid #fff;
+  box-shadow: 0 0 10px rgba(255,255,255,0.5);
+}
+
+.health-heart {
+  width: 16px;
+  height: 16px;
+  background: #ff0000;
+  clip-path: path('M8 14s-6-4.35-6-8.5C2 3.01 3.01 2 4.5 2c1.28 0 2.5.94 3.5 2.47C9 2.94 10.22 2 11.5 2 12.99 2 14 3.01 14 5.5 14 9.65 8 14 8 14z');
+}
+
+.game-canvas {
+  background: #87CEEB;
+  cursor: crosshair;
+}
+
+/* Day/night cycle gradient */
+.sky-day { background: linear-gradient(180deg, #87CEEB 0%, #b4d7e8 100%); }
+.sky-sunset { background: linear-gradient(180deg, #ff7e5f 0%, #feb47b 50%, #87CEEB 100%); }
+.sky-night { background: linear-gradient(180deg, #0c1445 0%, #1a237e 50%, #283593 100%); }","Hash Router","True","","","Game","/","MineClone - Play Now!","10","","function GamePage({ globalState, setGlobalState, storage }) {
+  const canvasRef = useRef(null);
+  const frameRef = useRef(0);
+  const keysRef = useRef({});
+  const mouseXRef = useRef(500);
+  const mouseYRef = useRef(325);
+  const leftDownRef = useRef(false);
+  const rightDownRef = useRef(false);
+  const breakingRef = useRef({ x: -1, y: -1, progress: 0 });
+  const lastShotRef = useRef(0);
+  const gameTimeRef = useRef(0);
+  const [worldNameInput, setWorldNameInput] = useState('New World');
+  const [tick, setTick] = useState(0);
+  const [saveMsg, setSaveMsg] = useState('');
+  const [killMsg, setKillMsg] = useState('');
+  const [bonusMsg, setBonusMsg] = useState('');
+  const [bossAlert, setBossAlert] = useState('');
+  const [odooTip, setOdooTip] = useState('');
+  const [splash] = useState(() => SPLASH_TEXTS[Math.floor(Math.random() * SPLASH_TEXTS.length)]);
+  
+  const { chunkSize, worldHeight, blockSize } = globalState;
+  const BLOCKS = BLOCK_TYPES;
+  const ENEMIES = ENEMY_TYPES;
+  const POWERUPS = POWERUP_TYPES;
+  
+  useEffect(() => { storage.get('savedWorlds', []).then(w => { if (w?.length) setGlobalState(s => ({ ...s, savedWorlds: w })); }); }, []);
+  
+  useEffect(() => {
+    if (globalState.showMenu || globalState.paused || globalState.gameOver) return;
+    const tipInterval = setInterval(() => {
+      if (Math.random() < 0.3) {
+        setOdooTip(ODOO_TIPS[Math.floor(Math.random() * ODOO_TIPS.length)]);
+        setTimeout(() => setOdooTip(''), 4000);
+      }
+    }, 30000);
+    return () => clearInterval(tipInterval);
+  }, [globalState.showMenu, globalState.paused, globalState.gameOver]);
+  
+  const saveWorld = async () => {
+    const s = globalState;
+    const data = { name: s.currentWorldName, seed: s.worldSeed, chunks: s.loadedChunks, player: s.player, inventory: s.inventory, score: s.score, kills: s.kills, weaponBonuses: s.weaponBonuses, activeEffects: s.activeEffects, gameTime: gameTimeRef.current, savedAt: Date.now() };
+    const worlds = [data, ...s.savedWorlds.filter(w => w.name !== data.name)].slice(0, 5);
+    await storage.set('savedWorlds', worlds);
+    setGlobalState(prev => ({ ...prev, savedWorlds: worlds }));
+    setSaveMsg('forsenSave Game Saved!');
+    sounds.menuClick();
+    setTimeout(() => setSaveMsg(''), 2000);
+  };
+  
+  const loadWorld = (w) => {
+    sounds.menuClick(); AudioSystem.startMusic();
+    gameTimeRef.current = w.gameTime || 0;
+    setGlobalState(s => ({ ...s, loadedChunks: w.chunks, player: { ...w.player, invincible: 0 }, inventory: w.inventory, currentWorldName: w.name, worldSeed: w.seed, score: w.score || 0, kills: w.kills || 0, weaponBonuses: w.weaponBonuses || { damage: 0, firerate: 0, speed: 0, multishot: 0 }, activeEffects: w.activeEffects || {}, worldPowerups: [], showMenu: false, paused: false, gameOver: false, enemies: [], projectiles: [], dragonSpawned: false }));
+  };
+  
+  const newWorld = (name) => {
+    sounds.menuClick(); AudioSystem.startMusic();
+    const seed = Date.now();
+    const chunks = { '-1': generateChunk(-1, worldHeight, seed, chunkSize), '0': generateChunk(0, worldHeight, seed, chunkSize), '1': generateChunk(1, worldHeight, seed, chunkSize) };
+    let spawnY = 20;
+    for (let y = 0; y < worldHeight; y++) { if (BLOCKS[getBlock(chunks, 16, y, worldHeight, chunkSize)]?.solid) { spawnY = y - 2; break; } }
+    gameTimeRef.current = 0;
+    setGlobalState(s => ({ ...s, loadedChunks: chunks, worldSeed: seed, currentWorldName: name || 'New World', player: { ...s.player, x: 16, y: spawnY, vx: 0, vy: 0, health: 20, invincible: 0 },
+      inventory: [ { type: 'gun', count: 1 }, { type: 'dirt', count: 64 }, { type: 'cobblestone', count: 64 }, { type: 'wood', count: 64 }, { type: 'planks', count: 32 }, { type: 'torch', count: 64 }, { type: 'tnt', count: 16 }, { type: 'glass', count: 32 }, { type: 'brick', count: 32 } ],
+      enemies: [], projectiles: [], worldPowerups: [], score: 0, kills: 0, weaponBonuses: { damage: 0, firerate: 0, speed: 0, multishot: 0 }, activeEffects: {}, showMenu: false, paused: false, gameOver: false, dragonSpawned: false, difficulty: 1 }));
+  };
+  
+  useEffect(() => {
+    const kd = (e) => { keysRef.current[e.code] = true; if (!globalState.showMenu && !globalState.paused && !globalState.gameOver && e.key >= '1' && e.key <= '9') setGlobalState(prev => ({ ...prev, player: { ...prev.player, selectedSlot: +e.key - 1 } })); if (e.code === 'Escape' && !globalState.showMenu && !globalState.gameOver) setGlobalState(prev => ({ ...prev, paused: !prev.paused })); };
+    const ku = (e) => { keysRef.current[e.code] = false; };
+    window.addEventListener('keydown', kd); window.addEventListener('keyup', ku);
+    return () => { window.removeEventListener('keydown', kd); window.removeEventListener('keyup', ku); };
+  }, [globalState.showMenu, globalState.paused, globalState.gameOver]);
+  
+  useEffect(() => {
+    if (globalState.showMenu || globalState.paused || globalState.gameOver || !Object.keys(globalState.loadedChunks).length) return;
+    const canvas = canvasRef.current; if (!canvas) return;
+    const getMousePos = (e) => { const rect = canvas.getBoundingClientRect(); return { x: (e.clientX - rect.left) * (canvas.width / rect.width), y: (e.clientY - rect.top) * (canvas.height / rect.height) }; };
+    const onMouseMove = (e) => { const pos = getMousePos(e); mouseXRef.current = pos.x; mouseYRef.current = pos.y; };
+    const onMouseDown = (e) => { e.preventDefault(); const pos = getMousePos(e); mouseXRef.current = pos.x; mouseYRef.current = pos.y; AudioSystem.init(); if (e.button === 0) leftDownRef.current = true; if (e.button === 2) rightDownRef.current = true; };
+    const onMouseUp = (e) => { if (e.button === 0) { leftDownRef.current = false; breakingRef.current = { x: -1, y: -1, progress: 0 }; } if (e.button === 2) rightDownRef.current = false; };
+    const onContext = (e) => e.preventDefault();
+    canvas.addEventListener('mousemove', onMouseMove); canvas.addEventListener('mousedown', onMouseDown); canvas.addEventListener('mouseup', onMouseUp); canvas.addEventListener('contextmenu', onContext); document.addEventListener('mouseup', onMouseUp);
+    
+    const loop = setInterval(() => {
+      frameRef.current++;
+      gameTimeRef.current++;
+      const frame = frameRef.current;
+      const gameTime = gameTimeRef.current;
+      const mx = mouseXRef.current, my = mouseYRef.current;
+      const leftDown = leftDownRef.current, rightDown = rightDownRef.current;
+      
+      setGlobalState(prev => {
+        if (prev.showMenu || prev.paused || prev.gameOver) return prev;
+        let { player, loadedChunks, camera, enemies, projectiles, enemySpawnTimer, score, kills, inventory, weaponBonuses = { damage: 0, firerate: 0, speed: 0, multishot: 0 }, activeEffects = {}, worldPowerups = [], dragonSpawned = false, difficulty = 1 } = prev;
+        let { x, y, vx, vy, onGround, facing, health, selectedSlot, invincible = 0 } = player;
+        const keys = keysRef.current;
+        
+        // Update difficulty based on time (ramps up aggressively)
+        difficulty = 1 + Math.floor(gameTime / 1800) * 0.5; // +0.5 every 30 seconds
+        
+        // Decrement active effects
+        const newEffects = {};
+        Object.keys(activeEffects).forEach(k => {
+          if (activeEffects[k] > 0) newEffects[k] = activeEffects[k] - 1;
+        });
+        activeEffects = newEffects;
+        
+        invincible = Math.max(0, invincible - 1);
+        if (activeEffects.shield > 0) invincible = Math.max(invincible, 1);
+        
+        const pcx = Math.floor(x / chunkSize);
+        for (let i = -2; i <= 2; i++) { if (!loadedChunks[pcx + i]) loadedChunks = { ...loadedChunks, [pcx + i]: generateChunk(pcx + i, worldHeight, prev.worldSeed, chunkSize) }; }
+        const isSolid = (px, py) => BLOCKS[getBlock(loadedChunks, Math.floor(px), Math.floor(py), worldHeight, chunkSize)]?.solid;
+        const baseSpeed = 0.04 + weaponBonuses.speed * 0.005 + (activeEffects.megagun > 0 ? 0.02 : 0);
+        const maxVx = 0.15 + weaponBonuses.speed * 0.01;
+        if (keys['KeyA'] || keys['ArrowLeft']) { vx -= baseSpeed; facing = 'left'; }
+        if (keys['KeyD'] || keys['ArrowRight']) { vx += baseSpeed; facing = 'right'; }
+        vx *= 0.8; if (Math.abs(vx) > maxVx) vx = maxVx * Math.sign(vx); if (Math.abs(vx) < 0.001) vx = 0;
+        if ((keys['KeyW'] || keys['Space'] || keys['ArrowUp']) && onGround) { vy = -0.28; onGround = false; sounds.playerJump(); }
+        vy += 0.012; if (vy > 0.4) vy = 0.4;
+        const pw = 0.25;
+        let nx = x + vx;
+        if (vx > 0 && (isSolid(nx + pw, y - 0.1) || isSolid(nx + pw, y - 0.9))) { nx = Math.floor(nx + pw) - pw; vx = 0; }
+        else if (vx < 0 && (isSolid(nx - pw, y - 0.1) || isSolid(nx - pw, y - 0.9))) { nx = Math.ceil(nx - pw) + pw; vx = 0; }
+        let ny = y + vy; onGround = false;
+        if (vy > 0 && (isSolid(nx - pw + 0.05, ny) || isSolid(nx + pw - 0.05, ny))) { ny = Math.floor(ny); vy = 0; onGround = true; }
+        else if (vy < 0 && (isSolid(nx - pw + 0.05, ny - 1.5) || isSolid(nx + pw - 0.05, ny - 1.5))) { ny = Math.ceil(ny - 1.5) + 1.5; vy = 0; }
+        if (getBlock(loadedChunks, Math.floor(nx), Math.floor(ny), worldHeight, chunkSize) === 'lava' && frame % 15 === 0 && invincible === 0) { health = Math.max(0, health - 4); invincible = 20; sounds.playerHurt(); }
+        ny = Math.max(2, Math.min(worldHeight - 1, ny));
+        const vw = 1000, vh = 650;
+        let camX = camera.x + (nx * blockSize - vw/2 - camera.x) * 0.08;
+        let camY = camera.y + (ny * blockSize - vh/2 - camera.y) * 0.08;
+        camY = Math.max(0, Math.min(worldHeight * blockSize - vh, camY));
+        
+        // Spawn world powerups periodically
+        if (frame % 600 === 0 && worldPowerups.length < 5 + Math.floor(difficulty)) {
+          const powerupTypes = Object.keys(POWERUPS);
+          const ptype = powerupTypes[Math.floor(Math.random() * powerupTypes.length)];
+          const px = nx + (Math.random() - 0.5) * 30;
+          let py = 20;
+          for (let ty = 0; ty < worldHeight; ty++) { if (BLOCKS[getBlock(loadedChunks, Math.floor(px), ty, worldHeight, chunkSize)]?.solid) { py = ty - 1; break; } }
+          worldPowerups = [...worldPowerups, { type: ptype, x: px, y: py, bobOffset: Math.random() * Math.PI * 2 }];
+        }
+        
+        // Check powerup collection
+        worldPowerups = worldPowerups.filter(p => {
+          if (Math.abs(nx - p.x) < 1 && Math.abs(ny - p.y) < 1.5) {
+            const pu = POWERUPS[p.type];
+            sounds.powerup();
+            if (pu.effect === 'heal') health = Math.min(20, health + pu.value);
+            else if (pu.effect === 'damage') weaponBonuses = { ...weaponBonuses, damage: weaponBonuses.damage + pu.value };
+            else if (pu.effect === 'firerate') weaponBonuses = { ...weaponBonuses, firerate: weaponBonuses.firerate + pu.value };
+            else if (pu.effect === 'speed') weaponBonuses = { ...weaponBonuses, speed: weaponBonuses.speed + pu.value };
+            else if (pu.effect === 'multishot') weaponBonuses = { ...weaponBonuses, multishot: weaponBonuses.multishot + pu.value };
+            else if (pu.effect === 'blockbreaker') activeEffects = { ...activeEffects, blockbreaker: (activeEffects.blockbreaker || 0) + pu.value * 60 };
+            else if (pu.effect === 'shield') activeEffects = { ...activeEffects, shield: (activeEffects.shield || 0) + pu.value };
+            else if (pu.effect === 'megagun') activeEffects = { ...activeEffects, megagun: (activeEffects.megagun || 0) + pu.value };
+            else if (pu.effect === 'nuke') {
+              sounds.nuke();
+              enemies = [];
+              score += enemies.length * 25;
+            }
+            const msgs = BONUS_MESSAGES[pu.effect] || ['+BONUS'];
+            setBonusMsg(msgs[Math.floor(Math.random() * msgs.length)]);
+            setTimeout(() => setBonusMsg(''), 2000);
+            return false;
+          }
+          return true;
+        });
+        
+        const bx = Math.floor((mx + camX) / blockSize), by = Math.floor((my + camY) / blockSize);
+        const distToBlock = Math.sqrt((nx - bx - 0.5)**2 + (ny - 0.7 - by - 0.5)**2);
+        if (rightDown && distToBlock <= 5) {
+          const blockAt = getBlock(loadedChunks, bx, by, worldHeight, chunkSize);
+          if (blockAt === 'air') {
+            const ppx = Math.floor(nx), ppy1 = Math.floor(ny), ppy2 = Math.floor(ny - 1);
+            if (!(bx === ppx && (by === ppy1 || by === ppy2))) {
+              const item = inventory[selectedSlot];
+              if (item && item.count > 0 && item.type !== 'gun' && BLOCKS[item.type]) {
+                loadedChunks = setBlock(loadedChunks, bx, by, item.type, worldHeight, chunkSize);
+                inventory = [...inventory]; inventory[selectedSlot] = { ...item, count: item.count - 1 };
+                sounds.blockPlace(); rightDownRef.current = false;
+              }
+            }
+          }
+        }
+        if (leftDown) {
+          const item = inventory[selectedSlot];
+          if (item?.type === 'gun') {
+            let baseFireRate = 10 - Math.min(weaponBonuses.firerate, 7);
+            if (activeEffects.megagun > 0) baseFireRate = 2;
+            if (frame - lastShotRef.current >= baseFireRate) {
+              const worldMx = (mx + camX) / blockSize, worldMy = (my + camY) / blockSize;
+              const dx = worldMx - nx, dy = worldMy - (ny - 0.7), d = Math.sqrt(dx*dx + dy*dy) || 1;
+              let bulletSpeed = 0.6 + weaponBonuses.damage * 0.05;
+              let bulletDmg = 10 + weaponBonuses.damage * 2;
+              if (activeEffects.megagun > 0) { bulletSpeed = 1.0; bulletDmg = 30; }
+              let shotCount = 1 + Math.floor(weaponBonuses.multishot / 3);
+              if (activeEffects.megagun > 0) shotCount = Math.max(shotCount, 3);
+              const newProjectiles = [];
+              for (let s = 0; s < shotCount; s++) {
+                const spread = shotCount > 1 ? (s - (shotCount - 1) / 2) * 0.15 : 0;
+                const angle = Math.atan2(dy, dx) + spread;
+                newProjectiles.push({ x: nx, y: ny - 0.7, vx: Math.cos(angle) * bulletSpeed, vy: Math.sin(angle) * bulletSpeed, life: 80, dmg: bulletDmg, breaksBlocks: activeEffects.blockbreaker > 0 || activeEffects.megagun > 0 });
+              }
+              projectiles = [...projectiles, ...newProjectiles];
+              facing = dx > 0 ? 'right' : 'left'; sounds.gunShoot(); lastShotRef.current = frame;
+            }
+          } else if (distToBlock <= 5) {
+            const blockType = getBlock(loadedChunks, bx, by, worldHeight, chunkSize);
+            const block = BLOCKS[blockType];
+            if (block && blockType !== 'air' && blockType !== 'bedrock' && block.breakable !== false && !block.liquid) {
+              const br = breakingRef.current;
+              if (br.x !== bx || br.y !== by) breakingRef.current = { x: bx, y: by, progress: 0 };
+              else {
+                br.progress += 0.025 / (block.hardness || 1); if (frame % 6 === 0) sounds.dig();
+                if (br.progress >= 1) {
+                  let newChunks = setBlock(loadedChunks, bx, by, 'air', worldHeight, chunkSize); sounds.blockBreak();
+                  if (block.bonusChance && Math.random() < block.bonusChance) {
+                    const bonusType = block.bonusType;
+                    if (bonusType === 'all') weaponBonuses = { damage: weaponBonuses.damage + 1, firerate: weaponBonuses.firerate + 1, speed: weaponBonuses.speed + 1, multishot: weaponBonuses.multishot + 1 };
+                    else if (bonusType === 'heal') health = Math.min(20, health + 5);
+                    else weaponBonuses = { ...weaponBonuses, [bonusType]: weaponBonuses[bonusType] + 1 };
+                    sounds.powerup();
+                    const msgs = BONUS_MESSAGES[bonusType];
+                    setBonusMsg(msgs[Math.floor(Math.random() * msgs.length)]);
+                    setTimeout(() => setBonusMsg(''), 2000);
+                  }
+                  if (block.explosive) { sounds.explosion(); for (let ey = -4; ey <= 4; ey++) for (let ex = -4; ex <= 4; ex++) if (ex*ex + ey*ey <= 16) { const tb = getBlock(newChunks, bx+ex, by+ey, worldHeight, chunkSize); if (BLOCKS[tb]?.breakable && tb !== 'bedrock' && !BLOCKS[tb]?.liquid) newChunks = setBlock(newChunks, bx+ex, by+ey, 'air', worldHeight, chunkSize); } }
+                  const drops = block.drops || blockType; inventory = [...inventory]; let added = false;
+                  for (let i = 0; i < inventory.length && !added; i++) if (inventory[i]?.type === drops && inventory[i].count < 64) { inventory[i] = { ...inventory[i], count: inventory[i].count + 1 }; added = true; }
+                  for (let i = 0; i < inventory.length && !added; i++) if (!inventory[i] || inventory[i].count <= 0) { inventory[i] = { type: drops, count: 1 }; added = true; }
+                  loadedChunks = newChunks; breakingRef.current = { x: -1, y: -1, progress: 0 };
+                }
+              }
+            }
+          }
+        }
+        
+        // Projectiles - check block breaking
+        projectiles = projectiles.map(p => {
+          const np = { ...p, x: p.x + p.vx, y: p.y + p.vy, vy: p.vy + 0.008, life: p.life - 1 };
+          if (p.breaksBlocks) {
+            const bpx = Math.floor(np.x), bpy = Math.floor(np.y);
+            const bt = getBlock(loadedChunks, bpx, bpy, worldHeight, chunkSize);
+            if (BLOCKS[bt]?.solid && BLOCKS[bt]?.breakable && bt !== 'bedrock') {
+              loadedChunks = setBlock(loadedChunks, bpx, bpy, 'air', worldHeight, chunkSize);
+              sounds.blockBreak();
+              np.life = 0;
+            }
+          }
+          return np;
+        }).filter(p => p.life > 0 && !isSolid(p.x, p.y));
+        
+        // Aggressive spawn rate scaling
+        const baseSpawnRate = Math.max(30, 180 - Math.floor(gameTime / 600) * 20); // Much faster ramp
+        const maxEnemies = Math.min(30, 10 + Math.floor(gameTime / 1800) * 3);
+        
+        enemySpawnTimer = (enemySpawnTimer || 0) + 1;
+        if (enemySpawnTimer > baseSpawnRate / difficulty && enemies.length < maxEnemies) {
+          let types = ['zombie', 'zombie', 'skeleton', 'slime', 'creeper'];
+          if (gameTime > 1800) types.push('madmonq', 'madmonq'); // 30 sec
+          if (gameTime > 3600) types.push('horse'); // 1 min
+          if (gameTime > 7200) types.push('horse', 'frog'); // 2 min
+          if (gameTime > 10800) types.push('sebastian', 'clown', 'frog'); // 3 min
+          
+          let type;
+          const bossChance = Math.min(0.25, 0.05 + gameTime / 72000);
+          
+          // Dragon spawns after 5 minutes, only once per game
+          if (gameTime > 18000 && !dragonSpawned && Math.random() < 0.1) {
+            type = 'dragon';
+            dragonSpawned = true;
+            sounds.dragonRoar();
+            setBossAlert('⚔️ ENDER DRAGON HAS AWAKENED! forsenInsane ⚔️');
+            setTimeout(() => setBossAlert(''), 5000);
+          } else if (Math.random() < bossChance && gameTime > 3600) {
+            const bossTypes = gameTime > 10800 ? ['horse', 'sebastian', 'clown', 'frog'] : gameTime > 7200 ? ['horse', 'frog'] : ['horse'];
+            type = bossTypes[Math.floor(Math.random() * bossTypes.length)];
+            const et = ENEMIES[type];
+            sounds.bossSpawn();
+            if (type === 'horse') sounds.horseNeigh();
+            if (type === 'frog') sounds.frogRibbit();
+            if (type === 'sebastian') sounds.forsenPls();
+            setBossAlert(`BOSS: ${et.name} HAS SPAWNED!`);
+            setTimeout(() => setBossAlert(''), 3000);
+          } else {
+            type = types[Math.floor(Math.random() * types.length)];
+          }
+          
+          const et = ENEMIES[type]; const side = Math.random() < 0.5 ? -1 : 1; 
+          let spawnX = nx + side * (15 + Math.random() * 10);
+          let spawnY = 20;
+          if (et.flying) {
+            spawnY = ny - 10 - Math.random() * 5;
+          } else {
+            for (let ty = 0; ty < worldHeight; ty++) if (BLOCKS[getBlock(loadedChunks, Math.floor(spawnX), ty, worldHeight, chunkSize)]?.solid) { spawnY = ty - 1; break; }
+          }
+          enemies = [...enemies, { type, x: spawnX, y: spawnY, vx: 0, vy: 0, hp: Math.floor(et.hp * difficulty), maxHp: Math.floor(et.hp * difficulty), hurt: 0, ground: false, chargeTimer: 0, teleportTimer: 0, spamTimer: 0, leapTimer: 0, fireTimer: 0, phase: 1 }]; 
+          enemySpawnTimer = 0;
+        }
+        
+        // Enemy AI
+        enemies = enemies.map(e => {
+          const et = ENEMIES[e.type];
+          let { x: ex, y: ey, vx: evx, vy: evy, hp, hurt, ground, chargeTimer = 0, teleportTimer = 0, spamTimer = 0, leapTimer = 0, fireTimer = 0, phase = 1 } = e;
+          hurt = Math.max(0, hurt - 1);
+          const edx = nx - ex, edy = ny - ey;
+          
+          // Flying enemies (dragon)
+          if (et.flying) {
+            const targetY = ny - 8;
+            evx += Math.sign(edx) * et.speed * 0.5;
+            evy += Math.sign(targetY - ey) * 0.01;
+            evx *= 0.95; evy *= 0.95;
+            
+            // Dragon fire breath
+            fireTimer++;
+            if (fireTimer > 120 && Math.abs(edx) < 15) {
+              // Spawn fire projectiles
+              for (let i = 0; i < 5; i++) {
+                projectiles = [...projectiles, { x: ex, y: ey + 1, vx: (edx / Math.abs(edx || 1)) * 0.3 + (Math.random() - 0.5) * 0.2, vy: 0.2 + Math.random() * 0.1, life: 60, dmg: 0, isEnemyFire: true }];
+              }
+              fireTimer = 0;
+            }
+            
+            // Dragon phases based on HP
+            if (hp < et.hp * difficulty * 0.3) phase = 3;
+            else if (hp < et.hp * difficulty * 0.6) phase = 2;
+            
+            ex += evx; ey += evy;
+          } else if (et.leap) {
+            // Frog AI - leaps toward player
+            leapTimer++;
+            if (leapTimer > 90 && ground) {
+              evx = Math.sign(edx) * 0.4;
+              evy = -0.4;
+              leapTimer = 0;
+              if (Math.random() < 0.5) sounds.frogRibbit();
+            }
+            evx += Math.sign(edx) * et.speed * 0.2;
+            evx *= 0.9; evy += 0.015;
+            
+            // Tongue attack (ranged damage)
+            if (Math.abs(edx) < 8 && Math.abs(edy) < 3 && frame % 120 < 5 && invincible === 0) {
+              health = Math.max(0, health - 5);
+              invincible = 30;
+              sounds.playerHurt();
+            }
+          } else if (et.charge) {
+            chargeTimer++;
+            if (chargeTimer > 120 && Math.abs(edx) < 12) {
+              evx = Math.sign(edx) * 0.25;
+              chargeTimer = 0;
+              if (Math.random() < 0.3) sounds.horseNeigh();
+            } else {
+              evx += Math.sign(edx) * et.speed * 0.3;
+            }
+          } else if (et.teleport) {
+            teleportTimer++;
+            if (teleportTimer > 180) {
+              ex = nx + (Math.random() - 0.5) * 10;
+              ey = ny - 2;
+              teleportTimer = 0;
+              sounds.forsenPls();
+            }
+            evx += Math.sign(edx) * et.speed * 0.3;
+          } else if (et.spam) {
+            spamTimer++;
+            if (spamTimer > 60) {
+              evx = (Math.random() - 0.5) * 0.3;
+              evy = -0.2;
+              spamTimer = 0;
+            }
+            evx += Math.sign(edx) * et.speed * 0.3;
+          } else {
+            evx += Math.sign(edx) * et.speed * 0.3 * difficulty;
+          }
+          
+          if (!et.flying) {
+            evx *= 0.85; evx = Math.max(-et.speed * 2 * difficulty, Math.min(et.speed * 2 * difficulty, evx));
+            if (ground && isSolid(ex + Math.sign(evx) * et.w, ey - 0.5)) evy = et.bouncy ? -0.35 : -0.25;
+            evy += 0.012; if (evy > 0.4) evy = 0.4;
+            let nex = ex + evx, ney = ey + evy;
+            if (evx > 0 && isSolid(nex + et.w/2, ey - et.h/2)) { nex = Math.floor(nex + et.w/2) - et.w/2; evx = 0; }
+            else if (evx < 0 && isSolid(nex - et.w/2, ey - et.h/2)) { nex = Math.ceil(nex - et.w/2) + et.w/2; evx = 0; }
+            ground = false;
+            if (evy > 0 && isSolid(nex, ney)) { ney = Math.floor(ney); evy = 0; ground = true; }
+            else if (evy < 0 && isSolid(nex, ney - et.h)) { ney = Math.ceil(ney - et.h) + et.h; evy = 0; }
+            ex = nex; ey = ney;
+          }
+          
+          projectiles.forEach((p, pi) => {
+            if (!p.isEnemyFire && Math.abs(p.x - ex) < et.w && Math.abs(p.y - (ey - et.h/2)) < et.h/2) { 
+              hp -= p.dmg || 10; hurt = 10; evx += p.vx * 0.3; sounds.enemyHurt(); projectiles = projectiles.filter((_, i) => i !== pi); 
+            }
+          });
+          
+          // Player collision
+          if (Math.abs(nx - ex) < (0.5 + et.w/2) && Math.abs(ny - 0.7 - ey + et.h/2) < (0.7 + et.h/2) && invincible === 0) {
+            if (et.explodes) hp = 0;
+            else if (et.dmg > 0) { 
+              const dmg = Math.floor(et.dmg * (et.isBoss ? 1 : difficulty));
+              health = Math.max(0, health - dmg); 
+              invincible = 60; 
+              vx += Math.sign(nx - ex) * 0.2; 
+              vy = -0.15; 
+              sounds.playerHurt(); 
+            }
+          }
+          return { ...e, x: ex, y: ey, vx: evx, vy: evy, hp, hurt, ground, chargeTimer, teleportTimer, spamTimer, leapTimer, fireTimer, phase };
+        });
+        
+        // Check for enemy fire hitting player
+        projectiles = projectiles.filter(p => {
+          if (p.isEnemyFire && Math.abs(p.x - nx) < 0.5 && Math.abs(p.y - ny + 0.7) < 1 && invincible === 0) {
+            health = Math.max(0, health - 8);
+            invincible = 30;
+            sounds.playerHurt();
+            return false;
+          }
+          return true;
+        });
+        
+        enemies = enemies.filter(e => {
+          if (e.hp <= 0) {
+            const et = ENEMIES[e.type];
+            const isBoss = et.isBoss;
+            kills++; 
+            score += isBoss ? (e.type === 'dragon' ? 2000 : 500) : Math.floor(50 * difficulty);
+            if (e.type === 'dragon') {
+              sounds.dragonDeath();
+              weaponBonuses = { damage: weaponBonuses.damage + 5, firerate: weaponBonuses.firerate + 5, speed: weaponBonuses.speed + 5, multishot: weaponBonuses.multishot + 5 };
+              setBonusMsg('🐉 DRAGON SLAIN! GOD GAMER! +ALL STATS');
+              setKillMsg(DRAGON_MESSAGES[Math.floor(Math.random() * DRAGON_MESSAGES.length)]);
+              setTimeout(() => setBonusMsg(''), 4000);
+            } else if (isBoss) {
+              sounds.bossDeath();
+              const bonusTypes = ['damage', 'firerate', 'speed', 'multishot'];
+              const bonusType = bonusTypes[Math.floor(Math.random() * bonusTypes.length)];
+              weaponBonuses = { ...weaponBonuses, [bonusType]: weaponBonuses[bonusType] + 2 };
+              sounds.powerup();
+              const msgs = BONUS_MESSAGES[bonusType];
+              setBonusMsg(`BOSS SLAIN! ${msgs[Math.floor(Math.random() * msgs.length)]}`);
+              setTimeout(() => setBonusMsg(''), 3000);
+              if (e.type === 'horse') setKillMsg(HORSE_SOUNDS[Math.floor(Math.random() * HORSE_SOUNDS.length)]);
+              else if (e.type === 'frog') setKillMsg(FROG_MESSAGES[Math.floor(Math.random() * FROG_MESSAGES.length)]);
+              else setKillMsg(KILL_MESSAGES[Math.floor(Math.random() * KILL_MESSAGES.length)]);
+            } else {
+              sounds.enemyDeath();
+              setKillMsg(KILL_MESSAGES[Math.floor(Math.random() * KILL_MESSAGES.length)]);
+            }
+            setTimeout(() => setKillMsg(''), 1500);
+            if (et.explodes) {
+              sounds.explosion();
+              for (let ey = -3; ey <= 3; ey++) for (let ex = -3; ex <= 3; ex++) if (ex*ex + ey*ey <= 9) { const b = getBlock(loadedChunks, Math.floor(e.x)+ex, Math.floor(e.y)+ey, worldHeight, chunkSize); if (BLOCKS[b]?.breakable && b !== 'bedrock') loadedChunks = setBlock(loadedChunks, Math.floor(e.x)+ex, Math.floor(e.y)+ey, 'air', worldHeight, chunkSize); }
+              if (Math.sqrt((nx-e.x)**2+(ny-e.y)**2) < 4 && invincible === 0) { health = Math.max(0, health-10); invincible = 60; sounds.playerHurt(); }
+            }
+            // Chance to drop powerup on death
+            if (Math.random() < (isBoss ? 0.5 : 0.1)) {
+              const ptypes = Object.keys(POWERUPS);
+              worldPowerups = [...worldPowerups, { type: ptypes[Math.floor(Math.random() * ptypes.length)], x: e.x, y: e.y - 1, bobOffset: Math.random() * Math.PI * 2 }];
+            }
+            return false;
+          }
+          return true;
+        });
+        if (health <= 0) { sounds.gameOver(); AudioSystem.stopMusic(); return { ...prev, gameOver: true, deathMsg: DEATH_MESSAGES[Math.floor(Math.random() * DEATH_MESSAGES.length)], player: { x:nx,y:ny,vx,vy,onGround,facing,health:0,selectedSlot,invincible }, finalTime: gameTimeRef.current, finalDifficulty: difficulty }; }
+        return { ...prev, loadedChunks, inventory, projectiles, enemies, enemySpawnTimer, score, kills, weaponBonuses, activeEffects, worldPowerups, dragonSpawned, difficulty, player: { x:nx,y:ny,vx,vy,onGround,facing,health,selectedSlot,invincible }, camera: { x:camX, y:camY } };
+      });
+      setTick(t => t + 1);
+    }, 1000/60);
+    return () => { clearInterval(loop); canvas.removeEventListener('mousemove', onMouseMove); canvas.removeEventListener('mousedown', onMouseDown); canvas.removeEventListener('mouseup', onMouseUp); canvas.removeEventListener('contextmenu', onContext); document.removeEventListener('mouseup', onMouseUp); };
+  }, [globalState.showMenu, globalState.paused, globalState.gameOver, Object.keys(globalState.loadedChunks).length]);
+  
+  useEffect(() => {
+    const canvas = canvasRef.current; if (!canvas || !Object.keys(globalState.loadedChunks).length || globalState.showMenu) return;
+    const ctx = canvas.getContext('2d');
+    const { loadedChunks, player, camera, enemies, projectiles, weaponBonuses = {}, activeEffects = {}, worldPowerups = [] } = globalState;
+    const frame = frameRef.current, mx = mouseXRef.current, my = mouseYRef.current;
+    const skyGrad = ctx.createLinearGradient(0, 0, 0, canvas.height); skyGrad.addColorStop(0, '#87CEEB'); skyGrad.addColorStop(1, '#E0F7FA'); ctx.fillStyle = skyGrad; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    const sx = Math.floor(camera.x / blockSize) - 1, ex = Math.ceil((camera.x + canvas.width) / blockSize) + 1;
+    const sy = Math.max(0, Math.floor(camera.y / blockSize) - 1), ey = Math.min(worldHeight, Math.ceil((camera.y + canvas.height) / blockSize) + 1);
+    for (let yi = sy; yi < ey; yi++) for (let xi = sx; xi < ex; xi++) {
+      const bt = getBlock(loadedChunks, xi, yi, worldHeight, chunkSize); if (bt === 'air') continue;
+      const block = BLOCKS[bt]; const dx = xi * blockSize - camera.x, dy = yi * blockSize - camera.y;
+      if (bt === 'torch') { ctx.fillStyle = '#654'; ctx.fillRect(dx + 10, dy + 8, 4, 16); ctx.fillStyle = '#fa0'; ctx.beginPath(); ctx.arc(dx + 12, dy + 6 + Math.sin(frame*0.3)*2, 5, 0, Math.PI*2); ctx.fill(); }
+      else if (bt === 'tnt') { ctx.fillStyle = '#f00'; ctx.fillRect(dx, dy, blockSize, blockSize); ctx.fillStyle = '#800'; ctx.fillRect(dx, dy + 8, blockSize, 8); ctx.fillStyle = '#fff'; ctx.font = 'bold 10px sans-serif'; ctx.fillText('TNT', dx + 4, dy + 18); }
+      else if (bt === 'lava') { ctx.fillStyle = block.color; ctx.fillRect(dx, dy, blockSize, blockSize); }
+      else { ctx.fillStyle = block.color; ctx.fillRect(dx, dy, blockSize, blockSize); if (block.topColor && bt === 'grass') { ctx.fillStyle = block.topColor; ctx.fillRect(dx, dy, blockSize, 6); } if (block.ore) { ctx.fillStyle = block.ore; [[6,8],[14,6],[10,14],[18,16],[4,18]].forEach(([ox,oy]) => { ctx.beginPath(); ctx.arc(dx+ox, dy+oy, 3, 0, Math.PI*2); ctx.fill(); }); } if (block.solid) { ctx.fillStyle = 'rgba(0,0,0,0.15)'; ctx.fillRect(dx, dy + blockSize - 2, blockSize, 2); } }
+    }
+    const br = breakingRef.current; if (br.progress > 0) { ctx.fillStyle = `rgba(0,0,0,${br.progress * 0.6})`; ctx.fillRect(br.x * blockSize - camera.x, br.y * blockSize - camera.y, blockSize, blockSize); }
+    
+    // Draw powerups
+    worldPowerups.forEach(p => {
+      const pu = POWERUPS[p.type];
+      const psx = p.x * blockSize - camera.x, psy = (p.y + Math.sin(frame * 0.05 + p.bobOffset) * 0.2) * blockSize - camera.y;
+      ctx.fillStyle = pu.color;
+      ctx.beginPath(); ctx.arc(psx, psy, 12, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#fff'; ctx.font = '14px sans-serif'; ctx.textAlign = 'center'; ctx.fillText(pu.icon, psx, psy + 5);
+    });
+    
+    enemies.forEach(e => {
+      const et = ENEMIES[e.type]; const esx = e.x * blockSize - camera.x, esy = e.y * blockSize - camera.y; const ew = et.w * blockSize, eh = et.h * blockSize;
+      ctx.globalAlpha = e.hurt > 0 ? 0.5 : 1;
+      
+      if (e.type === 'dragon') {
+        // Dragon body
+        ctx.fillStyle = et.color;
+        ctx.beginPath();
+        ctx.ellipse(esx, esy - eh/2, ew/2, eh/3, 0, 0, Math.PI*2);
+        ctx.fill();
+        // Wings
+        ctx.fillStyle = '#1a0030';
+        const wingFlap = Math.sin(frame * 0.2) * 15;
+        ctx.beginPath();
+        ctx.moveTo(esx - 10, esy - eh/2);
+        ctx.lineTo(esx - 50, esy - eh/2 - 20 + wingFlap);
+        ctx.lineTo(esx - 30, esy - eh/2 + 10);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(esx + 10, esy - eh/2);
+        ctx.lineTo(esx + 50, esy - eh/2 - 20 - wingFlap);
+        ctx.lineTo(esx + 30, esy - eh/2 + 10);
+        ctx.fill();
+        // Head
+        ctx.fillStyle = et.color;
+        ctx.fillRect(esx + ew/3, esy - eh + 5, 20, 15);
+        // Eyes (glow based on phase)
+        ctx.fillStyle = e.phase === 3 ? '#ff0000' : e.phase === 2 ? '#ff8800' : '#ff00ff';
+        ctx.fillRect(esx + ew/3 + 12, esy - eh + 8, 5, 5);
+        // Fire particles
+        if (e.fireTimer > 100) {
+          ctx.fillStyle = 'rgba(255,100,0,0.8)';
+          for (let i = 0; i < 5; i++) {
+            ctx.beginPath();
+            ctx.arc(esx + ew/2 + Math.random()*10, esy - eh + 15 + Math.random()*5, 3, 0, Math.PI*2);
+            ctx.fill();
+          }
+        }
+      } else if (e.type === 'frog') {
+        // Frog body
+        ctx.fillStyle = et.color;
+        ctx.beginPath();
+        ctx.ellipse(esx, esy - eh/2, ew/2, eh/2, 0, 0, Math.PI*2);
+        ctx.fill();
+        // Eyes (big bulging)
+        ctx.fillStyle = '#fff';
+        ctx.beginPath(); ctx.arc(esx - 8, esy - eh + 5, 8, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(esx + 8, esy - eh + 5, 8, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = '#000';
+        ctx.beginPath(); ctx.arc(esx - 8, esy - eh + 5, 4, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(esx + 8, esy - eh + 5, 4, 0, Math.PI*2); ctx.fill();
+        // Legs
+        ctx.fillStyle = '#228B22';
+        ctx.fillRect(esx - ew/2 - 5, esy - 8, 10, 8);
+        ctx.fillRect(esx + ew/2 - 5, esy - 8, 10, 8);
+      } else if (e.type === 'horse') {
+        ctx.fillStyle = et.color;
+        ctx.fillRect(esx - ew/2, esy - eh + 10, ew, eh - 20);
+        ctx.fillRect(esx + ew/3, esy - eh, ew/3, 20);
+        ctx.fillStyle = '#5a3510';
+        ctx.fillRect(esx - ew/3, esy - 10, 6, 10);
+        ctx.fillRect(esx + ew/4, esy - 10, 6, 10);
+        ctx.fillStyle = '#f00';
+        ctx.fillRect(esx + ew/2 - 3, esy - eh + 5, 4, 4);
+      } else if (e.type === 'sebastian') {
+        ctx.fillStyle = et.color;
+        ctx.fillRect(esx - ew/2, esy - eh, ew, eh);
+        ctx.fillStyle = '#FFD700';
+        ctx.beginPath();
+        ctx.moveTo(esx - 6, esy - eh);
+        ctx.lineTo(esx - 8, esy - eh - 8);
+        ctx.lineTo(esx, esy - eh - 4);
+        ctx.lineTo(esx + 8, esy - eh - 8);
+        ctx.lineTo(esx + 6, esy - eh);
+        ctx.fill();
+        ctx.fillStyle = '#000';
+        ctx.fillRect(esx - 4, esy - eh + 6, 3, 3);
+        ctx.fillRect(esx + 1, esy - eh + 6, 3, 3);
+      } else if (e.type === 'clown') {
+        ctx.fillStyle = et.color;
+        ctx.fillRect(esx - ew/2, esy - eh, ew, eh);
+        ctx.fillStyle = '#f00';
+        ctx.beginPath(); ctx.arc(esx, esy - eh + 12, 5, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = '#000';
+        ctx.fillRect(esx - 5, esy - eh + 4, 4, 4);
+        ctx.fillRect(esx + 1, esy - eh + 4, 4, 4);
+      } else if (et.bouncy) { 
+        ctx.fillStyle = et.color;
+        ctx.beginPath(); ctx.ellipse(esx, esy - eh/2, ew/2, eh/2, 0, 0, Math.PI*2); ctx.fill(); 
+      } else { 
+        ctx.fillStyle = et.color;
+        ctx.fillRect(esx - ew/2, esy - eh, ew, eh); 
+      }
+      if (!['horse', 'sebastian', 'clown', 'frog', 'dragon'].includes(e.type)) {
+        ctx.fillStyle = '#000'; ctx.fillRect(esx - 4, esy - eh + 4, 3, 3); ctx.fillRect(esx + 1, esy - eh + 4, 3, 3);
+      }
+      ctx.globalAlpha = 1; 
+      ctx.fillStyle = et.isBoss ? (e.type === 'dragon' ? '#ff00ff' : '#FFD700') : '#fff'; 
+      ctx.font = et.isBoss ? 'bold 12px monospace' : '10px monospace'; 
+      ctx.textAlign = 'center'; 
+      ctx.fillText(et.name, esx, esy - eh - 10);
+      if (e.hp < e.maxHp) { 
+        const barWidth = e.type === 'dragon' ? 80 : ew;
+        ctx.fillStyle = '#333'; ctx.fillRect(esx - barWidth/2, esy - eh - 6, barWidth, 4); 
+        ctx.fillStyle = e.type === 'dragon' ? '#ff00ff' : et.isBoss ? '#FFD700' : '#f44'; 
+        ctx.fillRect(esx - barWidth/2 + 1, esy - eh - 5, (barWidth-2)*e.hp/e.maxHp, 2); 
+      }
+    });
+    
+    // Draw projectiles
+    projectiles.forEach(p => {
+      if (p.isEnemyFire) {
+        ctx.fillStyle = '#ff4400';
+        ctx.beginPath(); ctx.arc(p.x * blockSize - camera.x, p.y * blockSize - camera.y, 6, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = '#ffaa00';
+        ctx.beginPath(); ctx.arc(p.x * blockSize - camera.x, p.y * blockSize - camera.y, 3, 0, Math.PI*2); ctx.fill();
+      } else {
+        ctx.fillStyle = p.breaksBlocks ? '#00ffaa' : (activeEffects.megagun > 0 ? '#ffd700' : '#FFD700');
+        ctx.beginPath(); ctx.arc(p.x * blockSize - camera.x, p.y * blockSize - camera.y, 4 + (weaponBonuses.damage || 0) * 0.3 + (p.breaksBlocks ? 2 : 0), 0, Math.PI*2); ctx.fill();
+      }
+    });
+    
+    const px = player.x * blockSize - camera.x, py = player.y * blockSize - camera.y;
+    ctx.save(); if (player.facing === 'left') { ctx.translate(px, 0); ctx.scale(-1, 1); ctx.translate(-px, 0); }
+    if ((player.invincible||0) > 0 && Math.floor(frame/4)%2===0) ctx.globalAlpha = 0.5;
+    // Shield effect
+    if (activeEffects.shield > 0) {
+      ctx.strokeStyle = 'rgba(68,136,255,0.6)';
+      ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(px, py - 20, 25, 0, Math.PI * 2); ctx.stroke();
+    }
+    ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.beginPath(); ctx.ellipse(px, py + 2, 10, 3, 0, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#1E3A8A'; ctx.fillRect(px - 6, py - 10, 5, 10); ctx.fillRect(px + 1, py - 10, 5, 10);
+    ctx.fillStyle = activeEffects.megagun > 0 ? '#ffd700' : '#714ba3'; ctx.fillRect(px - 8, py - 28, 16, 18);
+    ctx.fillStyle = '#FDBF6F'; ctx.fillRect(px - 6, py - 40, 12, 12);
+    ctx.fillStyle = '#5D3A00'; ctx.fillRect(px - 6, py - 42, 12, 4);
+    ctx.fillStyle = '#FFF'; ctx.fillRect(px - 4, py - 37, 3, 3); ctx.fillRect(px + 1, py - 37, 3, 3);
+    ctx.fillStyle = '#FDBF6F'; ctx.fillRect(px + 8, py - 26, 4, 12);
+    const heldItem = globalState.inventory[player.selectedSlot];
+    if (heldItem?.type === 'gun') { ctx.fillStyle = activeEffects.megagun > 0 ? '#ffd700' : (activeEffects.blockbreaker > 0 ? '#00ffaa' : '#333'); ctx.fillRect(px + 12, py - 22, 12 + (weaponBonuses.damage || 0), 4); }
+    else if (heldItem && BLOCKS[heldItem.type]) { ctx.fillStyle = BLOCKS[heldItem.type].color; ctx.fillRect(px + 10, py - 24, 8, 8); }
+    ctx.globalAlpha = 1; ctx.restore();
+    const bxh = Math.floor((mx + camera.x) / blockSize), byh = Math.floor((my + camera.y) / blockSize);
+    const dist = Math.sqrt((player.x - bxh - 0.5)**2 + (player.y - 0.7 - byh - 0.5)**2);
+    if (dist <= 5) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.strokeRect(bxh * blockSize - camera.x, byh * blockSize - camera.y, blockSize, blockSize); }
+  }, [tick, globalState]);
+  
+  const activeEffectsList = Object.entries(globalState.activeEffects || {}).filter(([k,v]) => v > 0);
+  
+  if (globalState.showMenu) {
+    return (
+      <div className=""min-h-screen flex items-center justify-center p-4"" style={{ background: 'linear-gradient(180deg, #714ba3 0%, #1a237e 50%, #0d47a1 100%)', fontFamily: 'monospace' }}>
+        <div className=""text-center max-w-md w-full"">
+          <h1 className=""text-4xl font-bold text-white mb-1"" style={{ textShadow: '4px 4px #000' }}>MINECLONE</h1>
+          <p className=""text-yellow-300 text-xl mb-1 animate-pulse"">forsenE Edition</p>
+          <p className=""text-green-400 text-sm mb-2 italic"">""{splash}""</p>
+          <p className=""text-red-400 text-xs mb-2"">🐴 HORSE 🐸 FROG 🐉 DRAGON BOSSES!</p>
+          <p className=""text-cyan-400 text-xs mb-4"">💎 Collect POWERUPS! 🌟 MEGA GUN!</p>
+          <div className=""bg-black/60 p-4 rounded-lg mb-4 border-2 border-purple-500"">
+            <input type=""text"" value={worldNameInput} onChange={e => setWorldNameInput(e.target.value)} className=""w-full p-3 mb-3 bg-gray-800 text-white rounded border border-purple-400"" placeholder=""World Name"" />
+            <button onClick={() => newWorld(worldNameInput)} className=""w-full p-3 bg-purple-600 hover:bg-purple-500 text-white rounded font-bold text-lg"">Create New World</button>
+          </div>
+          {globalState.savedWorlds?.length > 0 && (
+            <div className=""bg-black/60 p-4 rounded-lg mb-4 border-2 border-purple-500"">
+              <p className=""text-white font-bold mb-3"">Saved Worlds:</p>
+              {globalState.savedWorlds.map((w, i) => (<button key={i} onClick={() => loadWorld(w)} className=""w-full p-3 mb-2 bg-gray-700 hover:bg-gray-600 text-white rounded text-left""><span className=""font-bold"">{w.name}</span><span className=""text-yellow-400 float-right"">Score: {w.score || 0}</span></button>))}
+            </div>
+          )}
+          <div className=""text-white text-xs text-left bg-black/60 p-3 rounded-lg border-2 border-purple-500"">
+            <p className=""text-yellow-400 font-bold mb-1"">Controls:</p>
+            <p><span className=""text-green-400"">WASD</span> Move | <span className=""text-green-400"">Left Click</span> Dig/Shoot | <span className=""text-green-400"">Right Click</span> Place</p>
+            <p className=""text-orange-400 mt-2"">💎 Collect powerups for bonuses!</p>
+            <p className=""text-cyan-400"">🌟 MEGA GUN & 💎 BLOCK BREAKER shoot through blocks!</p>
+            <p className=""text-red-400"">⚠️ Difficulty increases over time!</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  
+  if (globalState.gameOver) {
+    const mins = Math.floor((globalState.finalTime || 0) / 3600);
+    const secs = Math.floor(((globalState.finalTime || 0) % 3600) / 60);
+    return (
+      <div className=""min-h-screen flex items-center justify-center"" style={{ background: 'rgba(113,75,163,0.95)', fontFamily: 'monospace' }}>
+        <div className=""text-center bg-black/80 p-8 rounded-lg border-4 border-purple-500"">
+          <h2 className=""text-5xl text-red-500 font-bold mb-2"">YOU DIED</h2>
+          <p className=""text-yellow-400 text-lg mb-4"">{globalState.deathMsg}</p>
+          <p className=""text-gray-300 text-xl mb-1"">Score: <span className=""text-yellow-400"">{globalState.score}</span></p>
+          <p className=""text-gray-300 text-xl mb-1"">Kills: <span className=""text-red-400"">{globalState.kills}</span></p>
+          <p className=""text-gray-300 text-lg mb-1"">Survived: <span className=""text-green-400"">{mins}m {secs}s</span></p>
+          <p className=""text-gray-300 text-lg mb-4"">Difficulty: <span className=""text-orange-400"">x{(globalState.finalDifficulty || 1).toFixed(1)}</span></p>
+          <button onClick={() => setGlobalState(s => ({ ...s, showMenu: true, gameOver: false }))} className=""px-8 py-3 bg-purple-700 hover:bg-purple-600 text-white rounded font-bold text-lg"">Return to Menu</button>
+        </div>
+      </div>
+    );
+  }
+  
+  if (globalState.paused) {
+    return (
+      <div className=""min-h-screen flex items-center justify-center"" style={{ background: 'rgba(0,0,0,0.85)', fontFamily: 'monospace' }}>
+        <div className=""text-center bg-gray-900 p-6 rounded-lg border-2 border-purple-500"">
+          <h2 className=""text-4xl text-white font-bold mb-4"">PAUSED</h2>
+          <p className=""text-gray-400 mb-2"">Score: {globalState.score} | Kills: {globalState.kills} | Difficulty: x{(globalState.difficulty || 1).toFixed(1)}</p>
+          {saveMsg && <p className=""text-green-400 font-bold mb-4 text-xl"">{saveMsg}</p>}
+          <button onClick={() => setGlobalState(s => ({ ...s, paused: false }))} className=""block w-48 mx-auto p-3 mb-3 bg-blue-600 hover:bg-blue-500 text-white rounded font-bold"">Resume</button>
+          <button onClick={saveWorld} className=""block w-48 mx-auto p-3 mb-3 bg-green-600 hover:bg-green-500 text-white rounded font-bold"">Save World</button>
+          <button onClick={() => { AudioSystem.stopMusic(); setGlobalState(s => ({ ...s, showMenu: true, paused: false })); }} className=""block w-48 mx-auto p-3 bg-red-600 hover:bg-red-500 text-white rounded font-bold"">Exit to Menu</button>
+        </div>
+      </div>
+    );
+  }
+  
+  return (
+    <div className=""w-full h-screen overflow-hidden bg-black flex flex-col items-center justify-center"" style={{ fontFamily: 'monospace' }}>
+      <canvas ref={canvasRef} width={1000} height={650} style={{ border: '4px solid #714ba3', cursor: 'crosshair' }} />
+      <div className=""absolute top-2 left-2 flex gap-1 bg-black/70 px-2 py-1 rounded"">
+        {Array.from({length:10}).map((_,i) => { const hp = globalState.player.health; const full = hp >= (i+1)*2, half = hp === i*2+1; return (<div key={i} style={{width:16,height:16,position:'relative'}}><svg viewBox=""0 0 20 20"" style={{position:'absolute',opacity:0.3}}><path fill=""#555"" d=""M10 18l-1.45-1.32C3.4 12.36 0 9.28 0 5.5 0 2.42 2.42 0 5.5 0 7.24 0 8.91.81 10 2.09 11.09.81 12.76 0 14.5 0 17.58 0 20 2.42 20 5.5c0 3.78-3.4 6.86-8.55 11.18L10 18z""/></svg>{full && <svg viewBox=""0 0 20 20"" style={{position:'absolute'}}><path fill=""#e53935"" d=""M10 18l-1.45-1.32C3.4 12.36 0 9.28 0 5.5 0 2.42 2.42 0 5.5 0 7.24 0 8.91.81 10 2.09 11.09.81 12.76 0 14.5 0 17.58 0 20 2.42 20 5.5c0 3.78-3.4 6.86-8.55 11.18L10 18z""/></svg>}{half && <svg viewBox=""0 0 20 20"" style={{position:'absolute'}}><defs><clipPath id={`h${i}`}><rect x=""0"" y=""0"" width=""10"" height=""20""/></clipPath></defs><path fill=""#e53935"" clipPath={`url(#h${i})`} d=""M10 18l-1.45-1.32C3.4 12.36 0 9.28 0 5.5 0 2.42 2.42 0 5.5 0 7.24 0 8.91.81 10 2.09 11.09.81 12.76 0 14.5 0 17.58 0 20 2.42 20 5.5c0 3.78-3.4 6.86-8.55 11.18L10 18z""/></svg>}</div>); })}
+      </div>
+      <div className=""absolute top-2 right-2 text-white bg-black/70 px-3 py-1 rounded text-sm"">
+        <span className=""text-yellow-400"">Score:</span> {globalState.score} | <span className=""text-red-400"">Kills:</span> {globalState.kills} | <span className=""text-orange-400"">x{(globalState.difficulty || 1).toFixed(1)}</span>
+      </div>
+      <div className=""absolute top-2 left-1/2 -translate-x-1/2 text-white bg-black/70 px-3 py-1 rounded text-sm"">Time: {Math.floor(gameTimeRef.current / 3600)}m {Math.floor((gameTimeRef.current % 3600) / 60)}s</div>
+      {bossAlert && <div className=""absolute top-16 left-1/2 -translate-x-1/2 text-red-400 bg-black/90 px-6 py-3 rounded-lg font-bold text-xl animate-pulse border-2 border-red-500"">{bossAlert}</div>}
+      {killMsg && <div className=""absolute top-10 left-1/2 -translate-x-1/2 text-yellow-400 bg-purple-900/80 px-4 py-2 rounded font-bold text-lg animate-bounce"">{killMsg}</div>}
+      {bonusMsg && <div className=""absolute top-24 left-1/2 -translate-x-1/2 text-green-400 bg-black/80 px-4 py-2 rounded font-bold text-lg"">{bonusMsg}</div>}
+      {activeEffectsList.length > 0 && (
+        <div className=""absolute top-10 left-2 text-xs bg-black/70 px-2 py-1 rounded"">
+          {activeEffectsList.map(([k,v]) => <div key={k} className=""text-cyan-400"">{k}: {Math.ceil(v/60)}s</div>)}
+        </div>
+      )}
+      <div className=""absolute bottom-3 flex gap-1"">
+        {globalState.inventory.slice(0,9).map((item,i) => { const sel = i === globalState.player.selectedSlot; const block = item ? BLOCKS[item.type] : null; return (<div key={i} onClick={() => setGlobalState(s => ({...s, player:{...s.player,selectedSlot:i}}))} className=""relative cursor-pointer"" style={{width:48,height:48,background:sel?'#714ba3':'#333',border:sel?'3px solid #fff':'3px solid #222'}}>{item && item.count > 0 && (<>{item.type === 'gun' ? <div className=""absolute inset-0 flex items-center justify-center""><div style={{width:32,height:12,background:'#333',borderRadius:2}}/></div> : <div className=""absolute inset-0 flex items-center justify-center""><div style={{width:32,height:32,backgroundColor:block?.color||'#888',border:'2px solid #555',borderRadius:2}}/></div>}{item.type !== 'gun' && <span className=""absolute bottom-0 right-1 text-white font-bold"" style={{textShadow:'1px 1px #000',fontSize:11}}>{item.count}</span>}</>)}<span className=""absolute top-0 left-1 text-gray-400"" style={{fontSize:10}}>{i+1}</span></div>); })}
+      </div>
+      <div className=""absolute bottom-16 text-white bg-purple-900/80 px-3 py-1 rounded text-sm"">{globalState.inventory[globalState.player.selectedSlot]?.type ? BLOCKS[globalState.inventory[globalState.player.selectedSlot].type]?.name||'Unknown' : 'Empty'}</div>
+    </div>
+  );
+}","","","",""
