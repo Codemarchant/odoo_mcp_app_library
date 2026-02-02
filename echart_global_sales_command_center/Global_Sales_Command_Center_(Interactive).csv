@@ -1,0 +1,480 @@
+﻿"name","description","data_code","chart_options_text","renderer","media_queries_text","extension_urls","pre_init_js","post_init_js"
+"Global Sales Command Center (Interactive)","Cyberpunk 3D globe with clickable country details panel","
+# Country coordinate mapping for major countries
+country_coords = {
+    'United States': [-95.7129, 37.0902],
+    'USA': [-95.7129, 37.0902],
+    'US': [-95.7129, 37.0902],
+    'United Kingdom': [-3.4360, 55.3781],
+    'UK': [-3.4360, 55.3781],
+    'France': [2.2137, 46.2276],
+    'Germany': [10.4515, 51.1657],
+    'Spain': [-3.7492, 40.4637],
+    'Italy': [12.5674, 41.8719],
+    'Netherlands': [5.2913, 52.1326],
+    'Belgium': [4.4699, 50.5039],
+    'Canada': [-106.3468, 56.1304],
+    'Mexico': [-102.5528, 23.6345],
+    'Brazil': [-51.9253, -14.2350],
+    'Argentina': [-63.6167, -38.4161],
+    'China': [104.1954, 35.8617],
+    'Japan': [138.2529, 36.2048],
+    'India': [78.9629, 20.5937],
+    'Australia': [133.7751, -25.2744],
+    'South Africa': [22.9375, -30.5595],
+    'Russia': [105.3188, 61.5240],
+    'Poland': [19.1451, 51.9194],
+    'Sweden': [18.6435, 60.1282],
+    'Norway': [8.4689, 60.4720],
+    'Denmark': [9.5018, 56.2639],
+    'Finland': [25.7482, 61.9241],
+    'Switzerland': [8.2275, 46.8182],
+    'Austria': [14.5501, 47.5162],
+    'Portugal': [-8.2245, 39.3999],
+    'Ireland': [-8.2439, 53.4129],
+    'Greece': [21.8243, 39.0742],
+    'Turkey': [35.2433, 38.9637],
+    'South Korea': [127.7669, 35.9078],
+    'Singapore': [103.8198, 1.3521],
+    'Malaysia': [101.9758, 4.2105],
+    'Thailand': [100.9925, 15.8700],
+    'Indonesia': [113.9213, -0.7893],
+    'Philippines': [121.7740, 12.8797],
+    'New Zealand': [174.8860, -40.9006],
+    'Chile': [-71.5430, -35.6751],
+    'Colombia': [-74.2973, 4.5709],
+    'Peru': [-75.0152, -9.1900],
+    'Egypt': [30.8025, 26.8206],
+    'Saudi Arabia': [45.0792, 23.8859],
+    'UAE': [53.8478, 23.4241],
+    'Israel': [34.8516, 31.0461],
+    'San Marino': [12.4578, 43.9424],
+}
+
+# Get company HQ country
+company = env.company
+hq_country = company.country_id.name if company.country_id else 'United Kingdom'
+hq_coords = country_coords.get(hq_country, [0, 0])
+
+# Get all partners grouped by country
+partners = env['res.partner'].search_read(
+    [('country_id', '!=', False)],
+    ['country_id', 'id', 'name', 'email', 'phone']
+)
+
+# Count partners by country
+partner_by_country = defaultdict(list)
+partner_details = {}
+for p in partners:
+    if p['country_id']:
+        country_name = p['country_id'][1]
+        partner_by_country[country_name].append(p['id'])
+        if country_name not in partner_details:
+            partner_details[country_name] = []
+        partner_details[country_name].append({
+            'id': p['id'],
+            'name': p['name'],
+            'email': p.get('email', 'N/A'),
+            'phone': p.get('phone', 'N/A')
+        })
+
+# Get sale orders from last 365 days
+one_year_ago = datetime.date.today() - timedelta(days=365)
+orders = env['sale.order'].search_read(
+    [('state', 'in', ['sale', 'done']), 
+     ('date_order', '>=', str(one_year_ago)),
+     ('partner_id.country_id', '!=', False)],
+    ['partner_id', 'amount_total', 'name', 'date_order']
+)
+
+# Group orders by country
+revenue_by_country = defaultdict(float)
+orders_by_country = defaultdict(list)
+order_details = {}
+for order in orders:
+    partner = env['res.partner'].browse(order['partner_id'][0])
+    if partner.country_id:
+        country_name = partner.country_id.name
+        revenue_by_country[country_name] += order['amount_total']
+        orders_by_country[country_name].append(order['id'])
+        if country_name not in order_details:
+            order_details[country_name] = []
+        order_details[country_name].append({
+            'name': order['name'],
+            'amount': round(order['amount_total'], 2),
+            'date': str(order['date_order'])
+        })
+
+# Prepare scatter data (all countries with partners)
+scatter_data = []
+max_partners = max([len(pids) for pids in partner_by_country.values()]) if partner_by_country else 1
+max_revenue = max(revenue_by_country.values()) if revenue_by_country else 1
+
+for country, partner_ids in partner_by_country.items():
+    coords = country_coords.get(country)
+    if coords:
+        lon, lat = coords
+        partner_count = len(partner_ids)
+        revenue = revenue_by_country.get(country, 0)
+        order_count = len(orders_by_country.get(country, []))
+        
+        # Normalize for visualization
+        size_factor = (partner_count / max_partners) * 15 + 5
+        intensity = (revenue / max_revenue) if max_revenue > 0 else 0
+        
+        # Calculate RGBA color
+        alpha = 0.3 + intensity * 0.7
+        color_str = 'rgba(0, 255, 255, ' + str(round(alpha, 2)) + ')'
+        
+        scatter_data.append({
+            'name': country,
+            'value': [lon, lat, size_factor],
+            'itemStyle': {
+                'color': color_str
+            },
+            'metadata': {
+                'partners': partner_count,
+                'orders': order_count,
+                'revenue': round(revenue, 2),
+                'partner_list': partner_details.get(country, [])[:10],
+                'order_list': order_details.get(country, [])[:10]
+            }
+        })
+
+# Top 5 countries by revenue for 3D bars
+top_countries = sorted(revenue_by_country.items(), key=lambda x: x[1], reverse=True)[:5]
+bar_data = []
+max_bar_revenue = top_countries[0][1] if top_countries else 1
+
+for country, revenue in top_countries:
+    coords = country_coords.get(country)
+    if coords:
+        lon, lat = coords
+        height = (revenue / max_bar_revenue) * 3
+        bar_data.append({
+            'name': country,
+            'value': [lon, lat, height],
+            'itemStyle': {
+                'color': 'rgba(255, 215, 0, 0.8)'
+            },
+            'metadata': {
+                'revenue': round(revenue, 2),
+                'partners': len(partner_by_country.get(country, [])),
+                'orders': len(orders_by_country.get(country, [])),
+                'partner_list': partner_details.get(country, [])[:10],
+                'order_list': order_details.get(country, [])[:10]
+            }
+        })
+
+# Create arcs from countries with orders to HQ
+arc_data = []
+for country in orders_by_country.keys():
+    coords = country_coords.get(country)
+    if coords and country != hq_country:
+        lon, lat = coords
+        arc_data.append({
+            'coords': [[lon, lat], hq_coords],
+            'lineStyle': {
+                'color': 'rgba(255, 215, 0, 0.6)',
+                'width': 2,
+                'curveness': 0.3
+            }
+        })
+
+# Summary stats
+total_countries = len(partner_by_country)
+total_partners = sum(len(pids) for pids in partner_by_country.values())
+total_revenue = sum(revenue_by_country.values())
+total_orders = sum(len(oids) for oids in orders_by_country.values())
+
+result = {
+    'scatter_data': scatter_data,
+    'bar_data': bar_data,
+    'arc_data': arc_data,
+    'hq_coords': hq_coords,
+    'hq_country': hq_country,
+    'stats': {
+        'countries': total_countries,
+        'partners': total_partners,
+        'revenue': round(total_revenue, 2),
+        'orders': total_orders
+    },
+    'top_countries': [{'country': c, 'revenue': round(r, 2)} for c, r in top_countries]
+}
+","{
+  ""globe"": {
+    ""light"": {
+      ""main"": {
+        ""shadow"": true,
+        ""intensity"": 1.5
+      },
+      ""ambient"": {
+        ""intensity"": 0.4
+      }
+    },
+    ""shading"": ""realistic"",
+    ""atmosphere"": {
+      ""show"": true,
+      ""color"": ""#00aaff"",
+      ""offset"": 5,
+      ""glowPower"": 3,
+      ""innerGlowPower"": 2
+    },
+    ""postEffect"": {
+      ""bloom"": {
+        ""enable"": true,
+        ""intensity"": 0.3
+      },
+      ""enable"": true
+    },
+    ""baseTexture"": ""https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/earth_atmos_2048.jpg"",
+    ""environment"": ""#000"",
+    ""viewControl"": {
+      ""distance"": 200,
+      ""autoRotate"": true,
+      ""maxDistance"": 400,
+      ""minDistance"": 150,
+      ""autoRotateSpeed"": 5
+    },
+    ""heightTexture"": ""https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/earth_atmos_2048.jpg"",
+    ""displacementScale"": 0.04,
+    ""realisticMaterial"": {
+      ""metalness"": 0.1,
+      ""roughness"": 0.9
+    }
+  },
+  ""title"": {
+    ""top"": ""5%"",
+    ""left"": ""center"",
+    ""text"": ""Global Sales Command Center"",
+    ""subtext"": ""Real-time worldwide customer distribution and revenue"",
+    ""textStyle"": {
+      ""color"": ""#00ffff"",
+      ""fontSize"": 28,
+      ""fontWeight"": ""bold"",
+      ""textShadowBlur"": 10,
+      ""textShadowColor"": ""#00ffff""
+    },
+    ""subtextStyle"": {
+      ""color"": ""#00aaff"",
+      ""fontSize"": 14
+    }
+  },
+  ""series"": [
+    {
+      ""data"": ""$data.scatter_data"",
+      ""name"": ""Customer Locations"",
+      ""type"": ""scatter3D"",
+      ""blendMode"": ""lighter"",
+      ""itemStyle"": {
+        ""opacity"": 0.9
+      },
+      ""symbolSize"": ""__fn__:function(params) { return params[2]; }"",
+      ""coordinateSystem"": ""globe""
+    },
+    {
+      ""data"": ""$data.bar_data"",
+      ""name"": ""Top Revenue Countries"",
+      ""type"": ""bar3D"",
+      ""barSize"": 1,
+      ""shading"": ""lambert"",
+      ""bevelSize"": 0.2,
+      ""itemStyle"": {
+        ""opacity"": 0.9
+      },
+      ""minHeight"": 0.2,
+      ""bevelSmoothness"": 5,
+      ""coordinateSystem"": ""globe""
+    },
+    {
+      ""data"": ""$data.arc_data"",
+      ""name"": ""Order Flow"",
+      ""type"": ""lines3D"",
+      ""effect"": {
+        ""show"": true,
+        ""period"": 4,
+        ""symbolSize"": 4,
+        ""trailWidth"": 2,
+        ""trailLength"": 0.3,
+        ""trailOpacity"": 0.4
+      },
+      ""blendMode"": ""lighter"",
+      ""lineStyle"": {
+        ""width"": 1,
+        ""opacity"": 0.5
+      },
+      ""coordinateSystem"": ""globe""
+    }
+  ],
+  ""tooltip"": {
+    ""trigger"": ""item"",
+    ""formatter"": ""__fn__:function(params) { if (params.seriesType === 'scatter3D' && params.data.metadata) { return params.data.name + '<br/>Partners: ' + params.data.metadata.partners + '<br/>Orders: ' + params.data.metadata.orders + '<br/>Revenue: $' + params.data.metadata.revenue.toLocaleString(); } else if (params.seriesType === 'bar3D') { return params.data.name + '<br/>Top Revenue Country<br/>$' + params.data.metadata.revenue.toLocaleString(); } return params.name; }""
+  },
+  ""backgroundColor"": ""#000""
+}","Canvas (Default)","","https://cdn.jsdelivr.net/npm/echarts-gl@2/dist/echarts-gl.min.js
+https://cdn.jsdelivr.net/npm/echarts-wordcloud@2/dist/echarts-wordcloud.min.js
+https://cdn.jsdelivr.net/npm/echarts-liquidfill@3/dist/echarts-liquidfill.min.js
+https://cdn.jsdelivr.net/npm/echarts-stat@latest/dist/ecStat.min.js","","
+// Add stats overlay
+const statsDiv = document.createElement('div');
+statsDiv.style.cssText = 'position:absolute;top:15%;right:3%;color:#00ffff;font-family:monospace;background:rgba(0,20,40,0.8);padding:20px;border:2px solid #00aaff;box-shadow:0 0 20px #00aaff;border-radius:8px;z-index:999;';
+statsDiv.innerHTML = `
+  <div style=""font-size:20px;font-weight:bold;margin-bottom:15px;text-shadow:0 0 10px #00ffff;"">GLOBAL STATS</div>
+  <div style=""font-size:14px;line-height:1.8;"">
+    <div><span style=""color:#ffaa00;"">►</span> Countries: ${data.stats.countries}</div>
+    <div><span style=""color:#ffaa00;"">►</span> Customers: ${data.stats.partners.toLocaleString()}</div>
+    <div><span style=""color:#ffaa00;"">►</span> Orders: ${data.stats.orders.toLocaleString()}</div>
+    <div><span style=""color:#ffaa00;"">►</span> Revenue: $${data.stats.revenue.toLocaleString()}</div>
+  </div>
+  <div style=""font-size:16px;font-weight:bold;margin-top:20px;margin-bottom:10px;color:#ffd700;text-shadow:0 0 10px #ffd700;"">TOP MARKETS</div>
+  <div style=""font-size:13px;line-height:1.6;"">
+    ${data.top_countries.slice(0,5).map((c, i) => `<div><span style=""color:#00ff00;"">${i+1}.</span> ${c.country}: $${c.revenue.toLocaleString()}</div>`).join('')}
+  </div>
+`;
+chartDom.appendChild(statsDiv);
+
+// Add HQ indicator
+const hqDiv = document.createElement('div');
+hqDiv.style.cssText = 'position:absolute;bottom:5%;left:3%;color:#00ff00;font-family:monospace;background:rgba(0,40,20,0.8);padding:15px;border:2px solid #00ff00;box-shadow:0 0 15px #00ff00;border-radius:8px;z-index:999;';
+hqDiv.innerHTML = `
+  <div style=""font-size:16px;font-weight:bold;text-shadow:0 0 10px #00ff00;"">🏢 HQ LOCATION</div>
+  <div style=""font-size:14px;margin-top:8px;"">${data.hq_country}</div>
+`;
+chartDom.appendChild(hqDiv);
+
+// Add pulsing animation to stats
+let opacity = 1;
+let direction = -1;
+setInterval(() => {
+  opacity += direction * 0.02;
+  if (opacity <= 0.7 || opacity >= 1) direction *= -1;
+  statsDiv.style.opacity = opacity;
+}, 50);
+
+// Create detail panel (hidden by default)
+const detailPanel = document.createElement('div');
+detailPanel.id = 'countryDetailPanel';
+detailPanel.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:600px;max-height:80vh;overflow-y:auto;background:rgba(0,20,40,0.95);border:3px solid #00ffff;box-shadow:0 0 40px #00ffff;border-radius:12px;padding:25px;color:#00ffff;font-family:monospace;display:none;z-index:9999;';
+chartDom.appendChild(detailPanel);
+
+// Click handler for country details
+chart.on('click', function(params) {
+  if ((params.seriesType === 'scatter3D' || params.seriesType === 'bar3D') && params.data && params.data.metadata) {
+    const meta = params.data.metadata;
+    const countryName = params.data.name;
+    
+    // Build partner list HTML
+    let partnersHTML = '';
+    if (meta.partner_list && meta.partner_list.length > 0) {
+      partnersHTML = meta.partner_list.map((p, i) => `
+        <div style=""padding:8px;background:rgba(0,255,255,0.1);margin:5px 0;border-radius:4px;border-left:3px solid #00aaff;"">
+          <div style=""font-weight:bold;color:#00ffff;"">${i+1}. ${p.name}</div>
+          <div style=""font-size:11px;color:#00aaff;margin-top:3px;"">
+            ${p.email !== 'N/A' ? '📧 ' + p.email : ''} 
+            ${p.phone !== 'N/A' ? '📞 ' + p.phone : ''}
+          </div>
+        </div>
+      `).join('');
+      if (meta.partners > meta.partner_list.length) {
+        partnersHTML += `<div style=""text-align:center;color:#ffaa00;font-size:11px;margin-top:10px;"">+ ${meta.partners - meta.partner_list.length} more customers...</div>`;
+      }
+    } else {
+      partnersHTML = '<div style=""text-align:center;color:#888;"">No customers in this country</div>';
+    }
+    
+    // Build order list HTML
+    let ordersHTML = '';
+    if (meta.order_list && meta.order_list.length > 0) {
+      ordersHTML = meta.order_list.map((o, i) => `
+        <div style=""padding:8px;background:rgba(255,215,0,0.1);margin:5px 0;border-radius:4px;border-left:3px solid #ffd700;"">
+          <div style=""font-weight:bold;color:#ffd700;"">${o.name}</div>
+          <div style=""font-size:11px;color:#ffaa00;margin-top:3px;"">
+            💰 $${o.amount.toLocaleString()} • 📅 ${o.date.split(' ')[0]}
+          </div>
+        </div>
+      `).join('');
+      if (meta.orders > meta.order_list.length) {
+        ordersHTML += `<div style=""text-align:center;color:#ffaa00;font-size:11px;margin-top:10px;"">+ ${meta.orders - meta.order_list.length} more orders...</div>`;
+      }
+    } else {
+      ordersHTML = '<div style=""text-align:center;color:#888;"">No orders in this country</div>';
+    }
+    
+    // Populate panel
+    detailPanel.innerHTML = `
+      <div style=""display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;"">
+        <div style=""font-size:24px;font-weight:bold;text-shadow:0 0 15px #00ffff;"">🌍 ${countryName}</div>
+        <button id=""closeDetailPanel"" style=""background:#ff4444;border:2px solid #ff0000;color:#fff;padding:8px 16px;border-radius:6px;cursor:pointer;font-family:monospace;font-weight:bold;box-shadow:0 0 10px #ff0000;"">✕ CLOSE</button>
+      </div>
+      
+      <div style=""display:grid;grid-template-columns:1fr 1fr 1fr;gap:15px;margin-bottom:25px;"">
+        <div style=""background:rgba(0,255,255,0.2);padding:15px;border-radius:8px;text-align:center;border:2px solid #00aaff;"">
+          <div style=""font-size:28px;font-weight:bold;color:#00ffff;"">${meta.partners}</div>
+          <div style=""font-size:12px;color:#00aaff;margin-top:5px;"">CUSTOMERS</div>
+        </div>
+        <div style=""background:rgba(255,215,0,0.2);padding:15px;border-radius:8px;text-align:center;border:2px solid #ffd700;"">
+          <div style=""font-size:28px;font-weight:bold;color:#ffd700;"">${meta.orders}</div>
+          <div style=""font-size:12px;color:#ffaa00;margin-top:5px;"">ORDERS</div>
+        </div>
+        <div style=""background:rgba(0,255,0,0.2);padding:15px;border-radius:8px;text-align:center;border:2px solid #00ff00;"">
+          <div style=""font-size:24px;font-weight:bold;color:#00ff00;"">$${meta.revenue.toLocaleString()}</div>
+          <div style=""font-size:12px;color:#00aa00;margin-top:5px;"">REVENUE</div>
+        </div>
+      </div>
+      
+      <div style=""margin-bottom:20px;"">
+        <div style=""font-size:18px;font-weight:bold;margin-bottom:12px;color:#00ffff;text-shadow:0 0 10px #00ffff;"">👥 CUSTOMERS (${meta.partners})</div>
+        <div style=""max-height:200px;overflow-y:auto;"">${partnersHTML}</div>
+      </div>
+      
+      <div>
+        <div style=""font-size:18px;font-weight:bold;margin-bottom:12px;color:#ffd700;text-shadow:0 0 10px #ffd700;"">📦 RECENT ORDERS (${meta.orders})</div>
+        <div style=""max-height:200px;overflow-y:auto;"">${ordersHTML}</div>
+      </div>
+    `;
+    
+    // Show panel with animation
+    detailPanel.style.display = 'block';
+    detailPanel.style.opacity = '0';
+    setTimeout(() => {
+      detailPanel.style.transition = 'opacity 0.3s';
+      detailPanel.style.opacity = '1';
+    }, 10);
+    
+    // Close button handler
+    document.getElementById('closeDetailPanel').addEventListener('click', function() {
+      detailPanel.style.opacity = '0';
+      setTimeout(() => {
+        detailPanel.style.display = 'none';
+      }, 300);
+    });
+    
+    // Pause auto-rotation when panel is open
+    chart.setOption({
+      globe: {
+        viewControl: {
+          autoRotate: false
+        }
+      }
+    });
+  }
+});
+
+// Click outside to close
+detailPanel.addEventListener('click', function(e) {
+  if (e.target === detailPanel) {
+    detailPanel.style.opacity = '0';
+    setTimeout(() => {
+      detailPanel.style.display = 'none';
+      // Resume auto-rotation
+      chart.setOption({
+        globe: {
+          viewControl: {
+            autoRotate: true
+          }
+        }
+      });
+    }, 300);
+  }
+});
+"
