@@ -1,0 +1,760 @@
+﻿"name","description","data_code","global_state_code","shared_components","shared_styles","router_mode","tailwind_enabled","cdn_dependencies","custom_imports","page_ids/name","page_ids/route_path","page_ids/page_title","page_ids/sequence","page_ids/data_code","page_ids/component_code","endpoint_ids/name","endpoint_ids/endpoint_path","endpoint_ids/method","endpoint_ids/handler_code"
+"TIC-TAC-ULTIMATE: Enterprise Edition Pro Max Plus","The most unnecessarily complex tic-tac-toe game ever created","","{ board: Array(9).fill(null), currentPlayer: 'X', winner: null, gameOver: false, moveHistory: [], aiThinking: false, difficulty: 'IMPOSSIBLE', theme: 'corporate', soundEnabled: true, musicEnabled: true, currentTrack: 0, bgIndex: 0, showConfetti: false, dramaticPause: false, motivationalQuote: 'You miss 100% of the X\'s you don\'t place. - Wayne Gretzky - Michael Scott', comboMultiplier: 1, powerUps: { timeStop: 1, undo: 1, hint: 1 }, lastMoveTime: null, totalThinkingTime: 0 }","const AudioContext = window.AudioContext || window.webkitAudioContext;
+let audioCtx = null;
+let musicInterval = null;
+
+const getAudioContext = () => {
+  if (!audioCtx) audioCtx = new AudioContext();
+  return audioCtx;
+};
+
+const playTone = (frequency, duration, type = 'sine', volume = 0.3) => {
+  try {
+    const ctx = getAudioContext();
+    const oscillator = ctx.createOscillator();
+    const gainNode = ctx.createGain();
+    oscillator.connect(gainNode);
+    gainNode.connect(ctx.destination);
+    oscillator.frequency.value = frequency;
+    oscillator.type = type;
+    gainNode.gain.setValueAtTime(volume, ctx.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + duration);
+    oscillator.start(ctx.currentTime);
+    oscillator.stop(ctx.currentTime + duration);
+  } catch (e) { console.log('Audio error:', e); }
+};
+
+const playClick = () => playTone(800, 0.1, 'sine', 0.2);
+const playWin = () => { [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => playTone(f, 0.3, 'sine', 0.3), i * 100)); };
+const playLose = () => { [400, 350, 300, 250].forEach((f, i) => setTimeout(() => playTone(f, 0.4, 'sawtooth', 0.2), i * 150)); };
+const playDraw = () => { [400, 500, 400].forEach((f, i) => setTimeout(() => playTone(f, 0.2, 'triangle', 0.2), i * 150)); };
+const playPowerup = () => { [600, 800, 1000, 1200].forEach((f, i) => setTimeout(() => playTone(f, 0.1, 'square', 0.15), i * 50)); };
+
+const musicPatterns = {
+  0: { notes: [262, 294, 330, 349, 392, 349, 330, 294], tempo: 300, type: 'sine' },
+  1: { notes: [220, 262, 330, 262, 220, 262, 330, 392], tempo: 500, type: 'sine' },
+  2: { notes: [196, 262, 330, 392, 330, 262, 196, 262], tempo: 400, type: 'triangle' },
+  3: { notes: [330, 330, 392, 330, 294, 262, 294, 330], tempo: 350, type: 'sine' },
+  4: { notes: [523, 494, 440, 392, 440, 494, 523, 587], tempo: 200, type: 'square' }
+};
+
+const startMusic = (trackIndex) => {
+  stopMusic();
+  const pattern = musicPatterns[trackIndex] || musicPatterns[0];
+  let noteIndex = 0;
+  const playNext = () => {
+    playTone(pattern.notes[noteIndex], pattern.tempo / 1000 * 0.8, pattern.type, 0.1);
+    noteIndex = (noteIndex + 1) % pattern.notes.length;
+  };
+  playNext();
+  musicInterval = setInterval(playNext, pattern.tempo);
+};
+
+const stopMusic = () => { if (musicInterval) { clearInterval(musicInterval); musicInterval = null; } };
+
+function Confetti({ show }) { if (!show) return null; const colors = ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff']; return (<div className='fixed inset-0 pointer-events-none overflow-hidden z-50'>{Array(50).fill(0).map((_, i) => (<div key={i} className='confetti' style={{ left: `${Math.random() * 100}%`, backgroundColor: colors[Math.floor(Math.random() * colors.length)], animationDelay: `${Math.random() * 2}s`, borderRadius: Math.random() > 0.5 ? '50%' : '0' }}/>))}</div>); }
+
+function DramaticLoader({ message }) { const [dots, setDots] = useState(''); useEffect(() => { const interval = setInterval(() => setDots(d => d.length >= 3 ? '' : d + '.'), 300); return () => clearInterval(interval); }, []); return (<div className='fixed inset-0 bg-black/90 flex flex-col items-center justify-center z-40'><div className='text-4xl font-bold text-white mb-4 neon-text'>{message}{dots}</div><div className='w-64 h-2 bg-gray-800 rounded-full overflow-hidden'><div className='h-full loading-bar'/></div><p className='text-gray-400 mt-4 text-sm italic'>""Patience is a virtue"" - Ancient Tic-Tac-Toe Proverb</p></div>); }
+
+function PowerUpButton({ icon, name, count, onClick, disabled }) { return (<button onClick={onClick} disabled={disabled || count <= 0} className={`flex flex-col items-center p-2 rounded-lg transition-all ${count > 0 && !disabled ? 'bg-yellow-500/20 hover:bg-yellow-500/40 cursor-pointer' : 'bg-gray-500/20 opacity-50 cursor-not-allowed'}`}><span className='text-2xl'>{icon}</span><span className='text-xs'>{name}</span><span className='text-xs font-bold'>{count}x</span></button>); }
+
+function StatCard({ label, value, icon, trend }) { return (<div className='glass rounded-xl p-4 text-center'><div className='text-3xl mb-2'>{icon}</div><div className='text-2xl font-bold text-white'>{value}</div><div className='text-gray-400 text-sm'>{label}</div>{trend && <div className={`text-xs mt-1 ${trend > 0 ? 'text-green-400' : 'text-red-400'}`}>{trend > 0 ? '↑' : '↓'} {Math.abs(trend)}%</div>}</div>); }
+
+function MusicToggle({ enabled, setEnabled, currentTrack, setCurrentTrack, compact = false }) {
+  const tracks = [{ name: 'Epic Battle Symphony', emoji: '⚔️' }, { name: 'Chill Lo-Fi Beats', emoji: '🎧' }, { name: 'Dramatic Movie Score', emoji: '🎬' }, { name: 'Elevator Music', emoji: '🛗' }, { name: '8-Bit Nostalgia', emoji: '👾' }];
+  
+  useEffect(() => {
+    if (enabled) startMusic(currentTrack);
+    else stopMusic();
+    return () => stopMusic();
+  }, [enabled, currentTrack]);
+  
+  if (compact) {
+    return (
+      <div className='flex items-center gap-2'>
+        <button onClick={() => setCurrentTrack((currentTrack - 1 + 5) % 5)} className='p-1 rounded bg-white/10 hover:bg-white/20 text-sm'>⏮</button>
+        <button onClick={() => setEnabled(!enabled)} className={`px-3 py-1 rounded-full text-sm flex items-center gap-1 ${enabled ? 'bg-green-500/50' : 'bg-gray-600/50'}`}>
+          <span>{tracks[currentTrack].emoji}</span>
+          <span>{enabled ? '🔊' : '🔇'}</span>
+        </button>
+        <button onClick={() => setCurrentTrack((currentTrack + 1) % 5)} className='p-1 rounded bg-white/10 hover:bg-white/20 text-sm'>⏭</button>
+      </div>
+    );
+  }
+  
+  return (
+    <div className='glass rounded-xl p-4'>
+      <div className='flex items-center justify-between mb-3'>
+        <span className='font-bold text-white'>🎵 Now Playing</span>
+        <button onClick={() => setEnabled(!enabled)} className={`px-3 py-1 rounded-full text-xs ${enabled ? 'bg-green-500' : 'bg-red-500'}`}>{enabled ? 'ON' : 'OFF'}</button>
+      </div>
+      <div className='text-center py-2'>
+        <div className={`text-4xl ${enabled ? 'float' : ''}`}>{tracks[currentTrack].emoji}</div>
+        <div className='text-white mt-2'>{tracks[currentTrack].name}</div>
+        {enabled && <div className='text-xs text-green-400 mt-1 animate-pulse'>♪ Playing... ♪</div>}
+      </div>
+      <div className='flex justify-center gap-2 mt-3'>
+        <button onClick={() => setCurrentTrack((currentTrack - 1 + 5) % 5)} className='p-2 rounded-full bg-white/10 hover:bg-white/20'>⏮️</button>
+        <button onClick={() => setEnabled(!enabled)} className='p-2 rounded-full bg-white/10 hover:bg-white/20'>{enabled ? '⏸️' : '▶️'}</button>
+        <button onClick={() => setCurrentTrack((currentTrack + 1) % 5)} className='p-2 rounded-full bg-white/10 hover:bg-white/20'>⏭️</button>
+      </div>
+    </div>
+  );
+}
+
+function BackgroundSelector({ bgIndex, setBgIndex }) { const backgrounds = [{ name: 'Corporate Synergy', class: 'corporate-gradient', emoji: '💼' }, { name: 'Synthwave Dreams', class: 'synthwave-gradient', emoji: '🌆' }, { name: 'Nature Zen', class: 'nature-gradient', emoji: '🌲' }, { name: 'Chaos Mode', class: 'chaos-gradient', emoji: '🌀' }, { name: 'Matrix', class: 'matrix-bg', emoji: '💊' }]; return (<div className='glass rounded-xl p-4'><div className='font-bold text-white mb-3'>🖼️ Background Theme</div><div className='grid grid-cols-5 gap-2'>{backgrounds.map((bg, i) => (<button key={i} onClick={() => setBgIndex(i)} className={`p-2 rounded-lg transition-all ${bgIndex === i ? 'ring-2 ring-white scale-110' : 'opacity-60 hover:opacity-100'}`}><div className={`w-8 h-8 rounded ${bg.class}`}/><div className='text-xs mt-1'>{bg.emoji}</div></button>))}</div></div>); }
+
+function QuoteOfTheGame() { const quotes = ['""In tic-tac-toe, as in life, the center square is key."" - Sun Tzu, probably', '""X gonna give it to ya"" - DMX, definitely about this game', '""To O or not to O, that is the question"" - Shakespeare, if he played games', '""I came, I saw, I drew"" - Caesar after a tie game', '""The only winning move is to play"" - WarGames (modified for optimism)', '""May the X be with you"" - Obi-Wan Kenobi, tic-tac-toe master', '""Elementary, my dear Watson. Always take the corner."" - Sherlock Holmes', '""Houston, we have a winner"" - NASA, celebrating tic-tac-toe victories since 1969']; const [quote, setQuote] = useState(quotes[0]); useEffect(() => { setQuote(quotes[Math.floor(Math.random() * quotes.length)]); }, []); return (<div className='glass rounded-xl p-4 text-center'><div className='text-2xl mb-2'>💭</div><p className='text-gray-300 italic text-sm'>{quote}</p></div>); }","@keyframes float { 0%, 100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-20px) rotate(5deg); } } @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } } @keyframes rainbow { 0% { filter: hue-rotate(0deg); } 100% { filter: hue-rotate(360deg); } } @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } } @keyframes dramatic-zoom { 0% { transform: scale(1); } 50% { transform: scale(1.5); } 100% { transform: scale(1); } } @keyframes typing { from { width: 0; } to { width: 100%; } } @keyframes blink { 50% { border-color: transparent; } } .float { animation: float 3s ease-in-out infinite; } .pulse { animation: pulse 1s ease-in-out infinite; } .rainbow { animation: rainbow 3s linear infinite; } .shake { animation: shake 0.5s ease-in-out; } .dramatic { animation: dramatic-zoom 2s ease-in-out; } .retro-text { font-family: 'Courier New', monospace; text-shadow: 2px 2px #ff00ff, -2px -2px #00ffff; } .corporate-gradient { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); } .synthwave-gradient { background: linear-gradient(180deg, #0f0c29 0%, #302b63 50%, #24243e 100%); } .nature-gradient { background: linear-gradient(135deg, #134e5e 0%, #71b280 100%); } .chaos-gradient { background: linear-gradient(45deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #9400d3); animation: rainbow 2s linear infinite; } .cell-hover { transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55); } .cell-hover:hover { transform: scale(1.1) rotate(5deg); box-shadow: 0 10px 40px rgba(0,0,0,0.3); } .win-cell { animation: pulse 0.5s ease-in-out infinite, rainbow 1s linear infinite; } .glass { backdrop-filter: blur(10px); background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); } .neon-text { text-shadow: 0 0 10px currentColor, 0 0 20px currentColor, 0 0 30px currentColor; } .matrix-bg { background: linear-gradient(180deg, rgba(0,0,0,0.9) 0%, rgba(0,20,0,0.9) 100%); } .loading-bar { background: linear-gradient(90deg, #00ff00 0%, #00ffff 50%, #ff00ff 100%); background-size: 200% 100%; animation: loading 1s linear infinite; } @keyframes loading { 0% { background-position: 0% 0%; } 100% { background-position: 200% 0%; } } @keyframes confetti { 0% { transform: translateY(-100vh) rotate(0deg); opacity: 1; } 100% { transform: translateY(100vh) rotate(720deg); opacity: 0; } } .confetti { position: fixed; width: 10px; height: 10px; animation: confetti 3s linear forwards; }","Hash Router","True","{""canvas-confetti"": ""https://esm.sh/canvas-confetti@1.9.2""}","","Game","/","TIC-TAC-ULTIMATE: ENGAGE!","10","","function GamePage({ globalState, setGlobalState, storage, user }) {
+  const [stats, setStats] = useState({ wins: 0, losses: 0, draws: 0, streak: 0, bestStreak: 0, totalMoves: 0, gamesPlayed: 0 });
+  const [loading, setLoading] = useState(true);
+  const [loadingMessage, setLoadingMessage] = useState('Initializing Quantum Tic-Tac-Toe Engine');
+  
+  const backgrounds = ['corporate-gradient', 'synthwave-gradient', 'nature-gradient', 'chaos-gradient', 'matrix-bg'];
+  const difficulties = ['EASY (Still Hard)', 'MEDIUM (Very Hard)', 'HARD (Impossible)', 'IMPOSSIBLE (Same as Easy)', 'NIGHTMARE (Just Random)', 'ZEN (AI Lets You Win Sometimes)'];
+  
+  const winPatterns = [[0,1,2], [3,4,5], [6,7,8], [0,3,6], [1,4,7], [2,5,8], [0,4,8], [2,4,6]];
+  
+  useEffect(() => {
+    const loadStats = async () => {
+      const messages = ['Initializing Quantum Tic-Tac-Toe Engine', 'Calibrating X and O Frequencies', 'Loading 9 Squares (This May Take A While)', 'Consulting Ancient Tic-Tac-Toe Scrolls', 'Warming Up AI Neural Networks', 'Optimizing Grid Synergy', 'Almost Ready (Processing Square #7)'];
+      for (let i = 0; i < messages.length; i++) {
+        setLoadingMessage(messages[i]);
+        await new Promise(r => setTimeout(r, 400));
+      }
+      const savedStats = await storage.get('tictac_stats', { wins: 0, losses: 0, draws: 0, streak: 0, bestStreak: 0, totalMoves: 0, gamesPlayed: 0 });
+      setStats(savedStats);
+      setLoading(false);
+    };
+    loadStats();
+  }, []);
+  
+  const checkWinner = (board) => {
+    for (const pattern of winPatterns) {
+      const [a, b, c] = pattern;
+      if (board[a] && board[a] === board[b] && board[a] === board[c]) {
+        return { winner: board[a], pattern };
+      }
+    }
+    if (board.every(cell => cell !== null)) return { winner: 'draw', pattern: [] };
+    return null;
+  };
+  
+  const playSound = (type) => {
+    if (!globalState.soundEnabled) return;
+    if (type === 'move') playClick();
+    else if (type === 'win') playWin();
+    else if (type === 'lose') playLose();
+    else if (type === 'draw') playDraw();
+    else if (type === 'powerup') playPowerup();
+  };
+  
+  const makeAIMove = (board) => {
+    const available = board.map((cell, i) => cell === null ? i : null).filter(i => i !== null);
+    if (available.length === 0) return;
+    
+    setGlobalState(s => ({ ...s, aiThinking: true }));
+    
+    setTimeout(() => {
+      let move;
+      if (globalState.difficulty === 'ZEN (AI Lets You Win Sometimes)' && Math.random() > 0.3) {
+        move = available[Math.floor(Math.random() * available.length)];
+      } else {
+        for (const pattern of winPatterns) {
+          const [a, b, c] = pattern;
+          const line = [board[a], board[b], board[c]];
+          if (line.filter(x => x === 'O').length === 2 && line.includes(null)) {
+            move = pattern[line.indexOf(null)];
+            break;
+          }
+        }
+        if (move === undefined) {
+          for (const pattern of winPatterns) {
+            const [a, b, c] = pattern;
+            const line = [board[a], board[b], board[c]];
+            if (line.filter(x => x === 'X').length === 2 && line.includes(null)) {
+              move = pattern[line.indexOf(null)];
+              break;
+            }
+          }
+        }
+        if (move === undefined) {
+          if (board[4] === null) move = 4;
+          else move = available[Math.floor(Math.random() * available.length)];
+        }
+      }
+      
+      const newBoard = [...board];
+      newBoard[move] = 'O';
+      
+      const result = checkWinner(newBoard);
+      setGlobalState(s => ({
+        ...s,
+        board: newBoard,
+        currentPlayer: 'X',
+        aiThinking: false,
+        winner: result?.winner || null,
+        gameOver: !!result,
+        moveHistory: [...s.moveHistory, { player: 'O', position: move }]
+      }));
+      
+      if (result) handleGameEnd(result.winner, newBoard);
+      else playSound('move');
+    }, 1500);
+  };
+  
+  const handleGameEnd = async (winner, board) => {
+    const newStats = { ...stats, gamesPlayed: stats.gamesPlayed + 1, totalMoves: stats.totalMoves + board.filter(c => c).length };
+    
+    if (winner === 'X') {
+      newStats.wins++;
+      newStats.streak++;
+      if (newStats.streak > newStats.bestStreak) newStats.bestStreak = newStats.streak;
+      playSound('win');
+      setGlobalState(s => ({ ...s, showConfetti: true }));
+      setTimeout(() => setGlobalState(s => ({ ...s, showConfetti: false })), 3000);
+    } else if (winner === 'O') {
+      newStats.losses++;
+      newStats.streak = 0;
+      playSound('lose');
+    } else {
+      newStats.draws++;
+      playSound('draw');
+    }
+    
+    setStats(newStats);
+    await storage.set('tictac_stats', newStats);
+  };
+  
+  const handleCellClick = (index) => {
+    if (globalState.board[index] || globalState.gameOver || globalState.aiThinking || globalState.dramaticPause) return;
+    
+    playSound('move');
+    const newBoard = [...globalState.board];
+    newBoard[index] = 'X';
+    
+    const result = checkWinner(newBoard);
+    
+    setGlobalState(s => ({
+      ...s,
+      board: newBoard,
+      currentPlayer: 'O',
+      winner: result?.winner || null,
+      gameOver: !!result,
+      moveHistory: [...s.moveHistory, { player: 'X', position: index }],
+      totalThinkingTime: s.totalThinkingTime + (s.lastMoveTime ? Date.now() - s.lastMoveTime : 0),
+      lastMoveTime: Date.now()
+    }));
+    
+    if (result) {
+      handleGameEnd(result.winner, newBoard);
+    } else {
+      makeAIMove(newBoard);
+    }
+  };
+  
+  const resetGame = () => {
+    setGlobalState(s => ({
+      ...s,
+      board: Array(9).fill(null),
+      currentPlayer: 'X',
+      winner: null,
+      gameOver: false,
+      moveHistory: [],
+      showConfetti: false,
+      powerUps: { timeStop: 1, undo: 1, hint: 1 },
+      lastMoveTime: null
+    }));
+  };
+  
+  const useUndo = () => {
+    if (globalState.powerUps.undo <= 0 || globalState.moveHistory.length < 2) return;
+    playSound('powerup');
+    const newHistory = globalState.moveHistory.slice(0, -2);
+    const newBoard = Array(9).fill(null);
+    newHistory.forEach(m => newBoard[m.position] = m.player);
+    setGlobalState(s => ({
+      ...s,
+      board: newBoard,
+      moveHistory: newHistory,
+      currentPlayer: 'X',
+      gameOver: false,
+      winner: null,
+      powerUps: { ...s.powerUps, undo: s.powerUps.undo - 1 }
+    }));
+  };
+  
+  const useHint = () => {
+    if (globalState.powerUps.hint <= 0 || globalState.gameOver) return;
+    playSound('powerup');
+    alert('💡 PRO TIP: Try placing your X in an empty square! (This hint cost $4.99)');
+    setGlobalState(s => ({ ...s, powerUps: { ...s.powerUps, hint: s.powerUps.hint - 1 } }));
+  };
+  
+  if (loading) return <DramaticLoader message={loadingMessage} />;
+  
+  const winningPattern = globalState.winner && globalState.winner !== 'draw' ? 
+    winPatterns.find(p => globalState.board[p[0]] === globalState.winner && globalState.board[p[1]] === globalState.winner && globalState.board[p[2]] === globalState.winner) : [];
+  
+  return (
+    <div className={`min-h-screen ${backgrounds[globalState.bgIndex]} p-4 transition-all duration-1000`}>
+      <Confetti show={globalState.showConfetti} />
+      
+      <div className='max-w-6xl mx-auto'>
+        {/* Header */}
+        <div className='text-center mb-6'>
+          <h1 className='text-4xl font-bold text-white mb-2 retro-text float'>TIC-TAC-ULTIMATE</h1>
+          <p className='text-gray-300'>Enterprise Edition Pro Max Plus v69.420</p>
+          
+          {/* Music Toggle in Header */}
+          <div className='flex justify-center items-center gap-4 mt-4 flex-wrap'>
+            <Link to='/stats' className='glass px-4 py-2 rounded-lg text-white hover:bg-white/20 transition-all'>📊 Stats</Link>
+            <Link to='/settings' className='glass px-4 py-2 rounded-lg text-white hover:bg-white/20 transition-all'>⚙️ Settings</Link>
+            <Link to='/about' className='glass px-4 py-2 rounded-lg text-white hover:bg-white/20 transition-all'>❓ About</Link>
+            <div className='glass px-3 py-2 rounded-lg'>
+              <MusicToggle
+                enabled={globalState.musicEnabled}
+                setEnabled={(e) => setGlobalState(s => ({ ...s, musicEnabled: e }))}
+                currentTrack={globalState.currentTrack}
+                setCurrentTrack={(t) => setGlobalState(s => ({ ...s, currentTrack: t }))}
+                compact={true}
+              />
+            </div>
+          </div>
+        </div>
+        
+        <div className='grid lg:grid-cols-3 gap-6'>
+          {/* Left Panel - Stats */}
+          <div className='space-y-4'>
+            <div className='glass rounded-xl p-4'>
+              <h3 className='font-bold text-white mb-3'>📈 Live Stats</h3>
+              <div className='grid grid-cols-2 gap-2 text-sm'>
+                <div className='text-gray-400'>Wins:</div><div className='text-green-400 font-bold'>{stats.wins}</div>
+                <div className='text-gray-400'>Losses:</div><div className='text-red-400 font-bold'>{stats.losses}</div>
+                <div className='text-gray-400'>Draws:</div><div className='text-yellow-400 font-bold'>{stats.draws}</div>
+                <div className='text-gray-400'>Streak:</div><div className='text-purple-400 font-bold'>🔥 {stats.streak}</div>
+              </div>
+            </div>
+            
+            <div className='glass rounded-xl p-4'>
+              <h3 className='font-bold text-white mb-3'>⚡ Power-Ups</h3>
+              <div className='flex justify-around'>
+                <PowerUpButton icon='⏪' name='Undo' count={globalState.powerUps.undo} onClick={useUndo} disabled={globalState.moveHistory.length < 2} />
+                <PowerUpButton icon='💡' name='Hint' count={globalState.powerUps.hint} onClick={useHint} disabled={globalState.gameOver} />
+              </div>
+            </div>
+            
+            <QuoteOfTheGame />
+          </div>
+          
+          {/* Center - Game Board */}
+          <div className='flex flex-col items-center'>
+            <div className='glass rounded-xl p-6 mb-4'>
+              <div className='text-center mb-4'>
+                <div className='text-lg text-gray-300'>Difficulty: <span className='text-yellow-400 font-bold'>{globalState.difficulty.split(' ')[0]}</span></div>
+                {globalState.aiThinking && <div className='text-cyan-400 animate-pulse mt-2'>🤖 AI is contemplating the meaning of existence...</div>}
+              </div>
+              
+              <div className='grid grid-cols-3 gap-3 mb-4'>
+                {globalState.board.map((cell, i) => (
+                  <button
+                    key={i}
+                    onClick={() => handleCellClick(i)}
+                    disabled={globalState.gameOver || globalState.aiThinking || cell}
+                    className={`w-24 h-24 text-5xl font-bold rounded-xl cell-hover glass
+                      ${cell === 'X' ? 'text-cyan-400' : 'text-pink-400'}
+                      ${!cell && !globalState.gameOver && !globalState.aiThinking ? 'hover:bg-white/20 cursor-pointer' : ''}
+                      ${winningPattern?.includes(i) ? 'win-cell' : ''}`}
+                  >
+                    {cell}
+                  </button>
+                ))}
+              </div>
+              
+              {globalState.gameOver && (
+                <div className={`text-center p-4 rounded-xl ${globalState.winner === 'X' ? 'bg-green-500/30' : globalState.winner === 'O' ? 'bg-red-500/30' : 'bg-yellow-500/30'}`}>
+                  <div className='text-3xl font-bold text-white mb-2 dramatic'>
+                    {globalState.winner === 'X' ? '🎉 VICTORY!' : globalState.winner === 'O' ? '😢 DEFEAT!' : '🤝 DRAW!'}
+                  </div>
+                  <p className='text-gray-300 text-sm'>
+                    {globalState.winner === 'X' ? 'You have proven your worth, champion!' : globalState.winner === 'O' ? 'The AI overlords have prevailed... for now.' : 'A battle well fought by both sides!'}
+                  </p>
+                </div>
+              )}
+            </div>
+            
+            <button
+              onClick={resetGame}
+              className='glass px-8 py-3 rounded-xl text-white font-bold hover:bg-white/20 transition-all pulse'
+            >
+              🔄 {globalState.gameOver ? 'REMATCH!' : 'RESET GAME'}
+            </button>
+            
+            <div className='mt-4 text-gray-400 text-xs text-center'>
+              Move History: {globalState.moveHistory.length} moves<br/>
+              Current Player: <span className={globalState.currentPlayer === 'X' ? 'text-cyan-400' : 'text-pink-400'}>{globalState.currentPlayer}</span>
+            </div>
+          </div>
+          
+          {/* Right Panel - Music & Settings */}
+          <div className='space-y-4'>
+            <MusicToggle 
+              currentTrack={globalState.currentTrack}
+              setCurrentTrack={(t) => setGlobalState(s => ({ ...s, currentTrack: t }))}
+              enabled={globalState.musicEnabled}
+              setEnabled={(e) => setGlobalState(s => ({ ...s, musicEnabled: e }))}
+            />
+            
+            <BackgroundSelector
+              bgIndex={globalState.bgIndex}
+              setBgIndex={(i) => setGlobalState(s => ({ ...s, bgIndex: i }))}
+            />
+            
+            <div className='glass rounded-xl p-4'>
+              <h3 className='font-bold text-white mb-3'>🔊 Sound Effects</h3>
+              <button
+                onClick={() => setGlobalState(s => ({ ...s, soundEnabled: !s.soundEnabled }))}
+                className={`w-full py-2 rounded-lg transition-all ${globalState.soundEnabled ? 'bg-green-500/50' : 'bg-red-500/50'}`}
+              >
+                {globalState.soundEnabled ? '🔊 ON (Real Beeps!)' : '🔇 OFF (Sad Silence)'}
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        {/* Footer */}
+        <div className='text-center mt-8 text-gray-500 text-xs'>
+          <p>© 2024 TIC-TAC-ULTIMATE Industries™ | All Rights Reserved | Patent Pending</p>
+          <p>""Making Simple Games Unnecessarily Complex Since 2024""</p>
+          <p className='mt-2'>Player: {user.name || 'Anonymous Champion'} | Session ID: {Math.random().toString(36).substr(2, 9).toUpperCase()}</p>
+        </div>
+      </div>
+    </div>
+  );
+}","","","",""
+"","","","","","","","","","","Stats","/stats","Statistics Dashboard | TIC-TAC-ULTIMATE","10","","function StatsPage({ storage, globalState, user }) {
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [achievements, setAchievements] = useState([]);
+  
+  const backgrounds = ['corporate-gradient', 'synthwave-gradient', 'nature-gradient', 'chaos-gradient', 'matrix-bg'];
+  
+  useEffect(() => {
+    const load = async () => {
+      const s = await storage.get('tictac_stats', { wins: 0, losses: 0, draws: 0, streak: 0, bestStreak: 0, totalMoves: 0, gamesPlayed: 0 });
+      setStats(s);
+      
+      // Calculate achievements
+      const achs = [];
+      if (s.wins >= 1) achs.push({ name: 'First Blood', desc: 'Win your first game', icon: '🩸', unlocked: true });
+      if (s.wins >= 10) achs.push({ name: 'Serial Winner', desc: 'Win 10 games', icon: '🏆', unlocked: true });
+      if (s.wins >= 100) achs.push({ name: 'Tic-Tac-Legend', desc: 'Win 100 games', icon: '👑', unlocked: true });
+      if (s.bestStreak >= 3) achs.push({ name: 'Hot Streak', desc: '3 wins in a row', icon: '🔥', unlocked: true });
+      if (s.bestStreak >= 5) achs.push({ name: 'Unstoppable', desc: '5 wins in a row', icon: '💪', unlocked: true });
+      if (s.draws >= 5) achs.push({ name: 'Diplomat', desc: 'Draw 5 games', icon: '🕊️', unlocked: true });
+      if (s.losses >= 10) achs.push({ name: 'Persistent', desc: 'Lose 10 times but keep going', icon: '🐢', unlocked: true });
+      if (s.gamesPlayed >= 50) achs.push({ name: 'Dedicated', desc: 'Play 50 games', icon: '⭐', unlocked: true });
+      
+      // Add locked achievements
+      if (s.wins < 1) achs.push({ name: 'First Blood', desc: 'Win your first game', icon: '🔒', unlocked: false });
+      if (s.wins < 10) achs.push({ name: 'Serial Winner', desc: 'Win 10 games', icon: '🔒', unlocked: false });
+      if (s.wins < 100) achs.push({ name: 'Tic-Tac-Legend', desc: 'Win 100 games', icon: '🔒', unlocked: false });
+      if (s.bestStreak < 10) achs.push({ name: 'Godlike', desc: '10 wins in a row', icon: '🔒', unlocked: false });
+      
+      setAchievements(achs);
+      setLoading(false);
+    };
+    load();
+  }, []);
+  
+  if (loading || !stats) return <DramaticLoader message='Calculating your legendary stats' />;
+  
+  const winRate = stats.gamesPlayed > 0 ? ((stats.wins / stats.gamesPlayed) * 100).toFixed(1) : 0;
+  const avgMoves = stats.gamesPlayed > 0 ? (stats.totalMoves / stats.gamesPlayed).toFixed(1) : 0;
+  
+  return (
+    <div className={`min-h-screen ${backgrounds[globalState.bgIndex]} p-4`}>
+      <div className='max-w-4xl mx-auto'>
+        <div className='flex items-center justify-between mb-6'>
+          <Link to='/' className='glass px-4 py-2 rounded-lg text-white hover:bg-white/20'>← Back to Game</Link>
+          <h1 className='text-3xl font-bold text-white retro-text'>📊 STATISTICS HQ</h1>
+          <div className='w-24'></div>
+        </div>
+        
+        <div className='glass rounded-xl p-6 mb-6'>
+          <h2 className='text-xl font-bold text-white mb-4'>Player Profile</h2>
+          <div className='flex items-center gap-4'>
+            <div className='w-20 h-20 rounded-full bg-gradient-to-br from-cyan-400 to-purple-500 flex items-center justify-center text-4xl'>🎮</div>
+            <div>
+              <div className='text-2xl font-bold text-white'>{user.name || 'Anonymous Champion'}</div>
+              <div className='text-gray-400'>Rank: {stats.wins >= 100 ? '🏆 Grandmaster' : stats.wins >= 50 ? '⭐ Expert' : stats.wins >= 10 ? '🎯 Intermediate' : '🌱 Beginner'}</div>
+              <div className='text-gray-500 text-sm'>Playing since: Just now (we don't track that)</div>
+            </div>
+          </div>
+        </div>
+        
+        <div className='grid grid-cols-2 md:grid-cols-4 gap-4 mb-6'>
+          <StatCard label='Total Wins' value={stats.wins} icon='🏆' trend={stats.wins > 5 ? 15 : -5} />
+          <StatCard label='Total Losses' value={stats.losses} icon='💔' />
+          <StatCard label='Draws' value={stats.draws} icon='🤝' />
+          <StatCard label='Win Rate' value={`${winRate}%`} icon='📈' trend={parseFloat(winRate) > 50 ? 10 : -10} />
+        </div>
+        
+        <div className='grid md:grid-cols-2 gap-6 mb-6'>
+          <div className='glass rounded-xl p-6'>
+            <h3 className='text-xl font-bold text-white mb-4'>📊 Advanced Metrics</h3>
+            <div className='space-y-3'>
+              <div className='flex justify-between'><span className='text-gray-400'>Games Played:</span><span className='text-white font-bold'>{stats.gamesPlayed}</span></div>
+              <div className='flex justify-between'><span className='text-gray-400'>Total Moves Made:</span><span className='text-white font-bold'>{stats.totalMoves}</span></div>
+              <div className='flex justify-between'><span className='text-gray-400'>Avg Moves/Game:</span><span className='text-white font-bold'>{avgMoves}</span></div>
+              <div className='flex justify-between'><span className='text-gray-400'>Current Streak:</span><span className='text-yellow-400 font-bold'>🔥 {stats.streak}</span></div>
+              <div className='flex justify-between'><span className='text-gray-400'>Best Streak:</span><span className='text-purple-400 font-bold'>⭐ {stats.bestStreak}</span></div>
+              <div className='flex justify-between'><span className='text-gray-400'>Tic-Tac-Toe IQ:</span><span className='text-cyan-400 font-bold'>{Math.floor(100 + stats.wins * 2 - stats.losses)}</span></div>
+            </div>
+          </div>
+          
+          <div className='glass rounded-xl p-6'>
+            <h3 className='text-xl font-bold text-white mb-4'>🏅 Achievements</h3>
+            <div className='grid grid-cols-4 gap-3'>
+              {achievements.slice(0, 8).map((ach, i) => (
+                <div key={i} className={`text-center p-2 rounded-lg ${ach.unlocked ? 'bg-yellow-500/20' : 'bg-gray-500/20 opacity-50'}`}>
+                  <div className='text-2xl'>{ach.icon}</div>
+                  <div className='text-xs text-white mt-1'>{ach.name}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+        
+        <div className='glass rounded-xl p-6'>
+          <h3 className='text-xl font-bold text-white mb-4'>📈 Performance Visualization</h3>
+          <div className='h-40 flex items-end justify-around gap-2'>
+            <div className='flex flex-col items-center'>
+              <div className='bg-green-500 w-16 rounded-t' style={{height: `${Math.min(stats.wins * 5, 120)}px`}}></div>
+              <span className='text-xs text-gray-400 mt-2'>Wins</span>
+            </div>
+            <div className='flex flex-col items-center'>
+              <div className='bg-red-500 w-16 rounded-t' style={{height: `${Math.min(stats.losses * 5, 120)}px`}}></div>
+              <span className='text-xs text-gray-400 mt-2'>Losses</span>
+            </div>
+            <div className='flex flex-col items-center'>
+              <div className='bg-yellow-500 w-16 rounded-t' style={{height: `${Math.min(stats.draws * 5, 120)}px`}}></div>
+              <span className='text-xs text-gray-400 mt-2'>Draws</span>
+            </div>
+          </div>
+          <p className='text-center text-gray-500 text-xs mt-4'>* This chart is 100% accurate and definitely not just colored bars</p>
+        </div>
+        
+        <div className='text-center mt-6'>
+          <button
+            onClick={async () => { await storage.set('tictac_stats', { wins: 0, losses: 0, draws: 0, streak: 0, bestStreak: 0, totalMoves: 0, gamesPlayed: 0 }); window.location.reload(); }}
+            className='glass px-4 py-2 rounded-lg text-red-400 hover:bg-red-500/20 text-sm'
+          >
+            ⚠️ Reset All Stats (Cannot Be Undone)
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}","","","",""
+"","","","","","","","","","","Settings","/settings","Settings | TIC-TAC-ULTIMATE","10","","function SettingsPage({ globalState, setGlobalState }) {
+  const backgrounds = ['corporate-gradient', 'synthwave-gradient', 'nature-gradient', 'chaos-gradient', 'matrix-bg'];
+  const difficulties = ['EASY (Still Hard)', 'MEDIUM (Very Hard)', 'HARD (Impossible)', 'IMPOSSIBLE (Same as Easy)', 'NIGHTMARE (Just Random)', 'ZEN (AI Lets You Win Sometimes)'];
+  
+  return (
+    <div className={`min-h-screen ${backgrounds[globalState.bgIndex]} p-4`}>
+      <div className='max-w-2xl mx-auto'>
+        <div className='flex items-center justify-between mb-6'>
+          <Link to='/' className='glass px-4 py-2 rounded-lg text-white hover:bg-white/20'>← Back</Link>
+          <h1 className='text-3xl font-bold text-white retro-text'>⚙️ SETTINGS</h1>
+          <div className='w-24'></div>
+        </div>
+        
+        <div className='space-y-6'>
+          <div className='glass rounded-xl p-6'>
+            <h3 className='text-xl font-bold text-white mb-4'>🎮 Difficulty Level</h3>
+            <p className='text-gray-400 text-sm mb-4'>Choose your challenge level (spoiler: they're all basically the same)</p>
+            <div className='grid grid-cols-2 gap-3'>
+              {difficulties.map((diff, i) => (
+                <button
+                  key={i}
+                  onClick={() => setGlobalState(s => ({ ...s, difficulty: diff }))}
+                  className={`p-3 rounded-lg text-left transition-all ${globalState.difficulty === diff ? 'bg-purple-500/50 ring-2 ring-purple-400' : 'bg-white/10 hover:bg-white/20'}`}
+                >
+                  <div className='text-white font-bold'>{diff.split(' ')[0]}</div>
+                  <div className='text-gray-400 text-xs'>{diff.match(/\(([^)]+)\)/)?.[1]}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+          
+          <MusicToggle 
+            currentTrack={globalState.currentTrack}
+            setCurrentTrack={(t) => setGlobalState(s => ({ ...s, currentTrack: t }))}
+            enabled={globalState.musicEnabled}
+            setEnabled={(e) => setGlobalState(s => ({ ...s, musicEnabled: e }))}
+          />
+          
+          <BackgroundSelector
+            bgIndex={globalState.bgIndex}
+            setBgIndex={(i) => setGlobalState(s => ({ ...s, bgIndex: i }))}
+          />
+          
+          <div className='glass rounded-xl p-6'>
+            <h3 className='text-xl font-bold text-white mb-4'>🔊 Audio Settings</h3>
+            <div className='space-y-4'>
+              <div className='flex items-center justify-between'>
+                <div>
+                  <div className='text-white'>Sound Effects</div>
+                  <div className='text-gray-400 text-xs'>Real synthesized beeps and boops!</div>
+                </div>
+                <button
+                  onClick={() => { playClick(); setGlobalState(s => ({ ...s, soundEnabled: !s.soundEnabled })); }}
+                  className={`px-6 py-2 rounded-full transition-all ${globalState.soundEnabled ? 'bg-green-500' : 'bg-gray-600'}`}
+                >
+                  {globalState.soundEnabled ? 'ON' : 'OFF'}
+                </button>
+              </div>
+              <div className='flex items-center justify-between'>
+                <div>
+                  <div className='text-white'>Background Music</div>
+                  <div className='text-gray-400 text-xs'>Procedurally generated melodies!</div>
+                </div>
+                <button
+                  onClick={() => setGlobalState(s => ({ ...s, musicEnabled: !s.musicEnabled }))}
+                  className={`px-6 py-2 rounded-full transition-all ${globalState.musicEnabled ? 'bg-green-500' : 'bg-gray-600'}`}
+                >
+                  {globalState.musicEnabled ? 'ON' : 'OFF'}
+                </button>
+              </div>
+              <div className='border-t border-white/20 pt-4'>
+                <div className='text-white mb-2'>Test Sounds:</div>
+                <div className='flex gap-2 flex-wrap'>
+                  <button onClick={playClick} className='px-3 py-1 bg-blue-500/50 rounded text-sm hover:bg-blue-500/70'>Click</button>
+                  <button onClick={playWin} className='px-3 py-1 bg-green-500/50 rounded text-sm hover:bg-green-500/70'>Win</button>
+                  <button onClick={playLose} className='px-3 py-1 bg-red-500/50 rounded text-sm hover:bg-red-500/70'>Lose</button>
+                  <button onClick={playDraw} className='px-3 py-1 bg-yellow-500/50 rounded text-sm hover:bg-yellow-500/70'>Draw</button>
+                  <button onClick={playPowerup} className='px-3 py-1 bg-purple-500/50 rounded text-sm hover:bg-purple-500/70'>Power-up</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div className='glass rounded-xl p-6'>
+            <h3 className='text-xl font-bold text-white mb-4'>💎 Premium Features (Locked)</h3>
+            <div className='space-y-3 opacity-50'>
+              <div className='flex items-center justify-between p-3 bg-white/5 rounded-lg'>
+                <span className='text-white'>Custom X and O Skins</span>
+                <span className='text-yellow-400'>$9.99</span>
+              </div>
+              <div className='flex items-center justify-between p-3 bg-white/5 rounded-lg'>
+                <span className='text-white'>Unlimited Power-Ups</span>
+                <span className='text-yellow-400'>$19.99</span>
+              </div>
+              <div className='flex items-center justify-between p-3 bg-white/5 rounded-lg'>
+                <span className='text-white'>AI That Actually Loses</span>
+                <span className='text-yellow-400'>$49.99</span>
+              </div>
+              <div className='flex items-center justify-between p-3 bg-white/5 rounded-lg'>
+                <span className='text-white'>4x4 Grid (Coming Soon™)</span>
+                <span className='text-yellow-400'>$99.99</span>
+              </div>
+            </div>
+            <p className='text-center text-gray-500 text-xs mt-4'>Just kidding. This is all free. You're welcome.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}","","","",""
+"","","","","","","","","","","About","/about","About | TIC-TAC-ULTIMATE","10","","function AboutPage({ globalState }) {
+  const backgrounds = ['corporate-gradient', 'synthwave-gradient', 'nature-gradient', 'chaos-gradient', 'matrix-bg'];
+  
+  return (
+    <div className={`min-h-screen ${backgrounds[globalState.bgIndex]} p-4`}>
+      <div className='max-w-2xl mx-auto'>
+        <div className='flex items-center justify-between mb-6'>
+          <Link to='/' className='glass px-4 py-2 rounded-lg text-white hover:bg-white/20'>← Back</Link>
+          <h1 className='text-3xl font-bold text-white retro-text'>❓ ABOUT</h1>
+          <div className='w-24'></div>
+        </div>
+        
+        <div className='glass rounded-xl p-6 mb-6'>
+          <div className='text-center mb-6'>
+            <div className='text-6xl mb-4 float'>🎮</div>
+            <h2 className='text-2xl font-bold text-white'>TIC-TAC-ULTIMATE</h2>
+            <p className='text-gray-400'>Enterprise Edition Pro Max Plus</p>
+            <p className='text-gray-500 text-sm'>Version 69.420.1337</p>
+          </div>
+          
+          <div className='border-t border-white/20 pt-6'>
+            <h3 className='text-lg font-bold text-white mb-3'>🤔 Why Does This Exist?</h3>
+            <p className='text-gray-300 mb-4'>
+              Because someone asked for an ""over-engineered"" tic-tac-toe game, and we took that personally. 
+              What started as a simple 3x3 grid became a full-fledged enterprise application with more features 
+              than most ERP systems.
+            </p>
+            
+            <h3 className='text-lg font-bold text-white mb-3'>✨ Features That Nobody Asked For:</h3>
+            <ul className='text-gray-300 space-y-2 mb-4'>
+              <li>✅ 5 different background themes (including Chaos Mode)</li>
+              <li>✅ Imaginary background music with 5 genre options</li>
+              <li>✅ Sound effects (text-based, very immersive)</li>
+              <li>✅ Comprehensive statistics tracking</li>
+              <li>✅ Achievement system with locked badges</li>
+              <li>✅ Power-ups that barely do anything useful</li>
+              <li>✅ 6 difficulty levels that are essentially identical</li>
+              <li>✅ Motivational quotes from historical figures (fake)</li>
+              <li>✅ Dramatic loading screens</li>
+              <li>✅ Confetti on victories</li>
+              <li>✅ A Settings page with premium features that don't exist</li>
+            </ul>
+            
+            <h3 className='text-lg font-bold text-white mb-3'>🏗️ Technology Stack:</h3>
+            <ul className='text-gray-300 space-y-1 mb-4'>
+              <li>• React 19 (for a 3x3 grid)</li>
+              <li>• React Router (for 4 whole pages)</li>
+              <li>• Tailwind CSS (thousands of utility classes)</li>
+              <li>• Custom animations (very necessary)</li>
+              <li>• Persistent storage (for your tic-tac-toe stats)</li>
+              <li>• AI opponent (just Math.random with extra steps)</li>
+            </ul>
+            
+            <h3 className='text-lg font-bold text-white mb-3'>📜 Legal Disclaimer:</h3>
+            <p className='text-gray-400 text-sm'>
+              No actual music is included in this application. All sound effects are text-based representations. 
+              The ""AI"" is not sentient (we think). Premium features are satirical. Any resemblance to 
+              actual enterprise software is purely intentional and meant for comedic effect.
+            </p>
+          </div>
+        </div>
+        
+        <div className='glass rounded-xl p-6'>
+          <h3 className='text-lg font-bold text-white mb-3'>📊 Unnecessary Statistics:</h3>
+          <div className='grid grid-cols-2 gap-4 text-center'>
+            <div>
+              <div className='text-3xl font-bold text-cyan-400'>9</div>
+              <div className='text-gray-400 text-sm'>Total Squares</div>
+            </div>
+            <div>
+              <div className='text-3xl font-bold text-pink-400'>2</div>
+              <div className='text-gray-400 text-sm'>Different Symbols</div>
+            </div>
+            <div>
+              <div className='text-3xl font-bold text-yellow-400'>∞</div>
+              <div className='text-gray-400 text-sm'>Hours Overengineering</div>
+            </div>
+            <div>
+              <div className='text-3xl font-bold text-green-400'>100%</div>
+              <div className='text-gray-400 text-sm'>Unnecessary Complexity</div>
+            </div>
+          </div>
+        </div>
+        
+        <div className='text-center mt-6 text-gray-500 text-sm'>
+          <p>Made with 🤖 and questionable decision-making</p>
+          <p className='mt-2'>""We could have just used pen and paper, but where's the fun in that?""</p>
+        </div>
+      </div>
+    </div>
+  );
+}","","","",""
