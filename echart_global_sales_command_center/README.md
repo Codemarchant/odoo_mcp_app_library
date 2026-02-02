@@ -2,6 +2,8 @@
 
 A cyberpunk-styled interactive 3D globe dashboard built with Apache ECharts-GL, displaying real-time customer distribution, revenue by country, and order flow visualization with clickable country details.
 
+![globe gif](globe.gif)
+
 ## Features
 
 ### 3D Globe Visualization

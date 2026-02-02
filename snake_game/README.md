@@ -2,6 +2,8 @@
 
 A classic Snake game built as an Odoo MCP Studio web application with persistent user stat tracking.
 
+![snake gif](snake.gif)
+
 ## Features
 
 - Classic snake gameplay with keyboard arrow controls

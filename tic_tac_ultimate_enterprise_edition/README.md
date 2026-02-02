@@ -2,6 +2,8 @@
 
 A gloriously over-engineered tic-tac-toe game built as an Odoo MCP Studio web application. Features persistent stat tracking, synthesized audio, procedurally generated background music, dynamic themes, power-ups, achievements, and an absurd amount of unnecessary complexity for a 3x3 grid game.
 
+![tic tac gif](tic_tac.gif)
+
 ## Features
 
 ### Gameplay
