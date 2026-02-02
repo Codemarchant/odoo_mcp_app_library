@@ -2,6 +2,8 @@
 
 A classic Minesweeper game built as an Odoo MCP Studio web application with multiple difficulty levels, global leaderboards, user statistics, and background music.
 
+![minesweeper gif](minesweeper.gif)
+
 ## Features
 
 ### Gameplay

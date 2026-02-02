@@ -2,6 +2,8 @@
 
 A Kermit the Frog themed Breakout game built as an Odoo MCP Studio web application, featuring meme humor, Odoo/Fabien references, explosive bricks, power-ups, and persistent user statistics.
 
+![kermit gif](kermit_breakout.gif)
+
 ## Features
 
 ### Gameplay

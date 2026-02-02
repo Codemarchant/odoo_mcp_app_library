@@ -2,6 +2,8 @@
 
 A faithful recreation of the classic Pac-Man arcade game built as an Odoo MCP Studio web application with authentic gameplay, sound effects, and persistent user stat tracking.
 
+![Flappy gif](pac_man.gif)
+
 ## Features
 
 - Classic 28x31 tile maze layout matching the original arcade game

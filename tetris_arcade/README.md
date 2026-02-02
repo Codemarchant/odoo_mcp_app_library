@@ -2,6 +2,8 @@
 
 A full-featured Tetris game built as an Odoo MCP Studio web application with multiple game modes, background music, dynamic backgrounds, and persistent user statistics.
 
+![tetris gif](tetris.gif)
+
 ## Features
 
 ### Gameplay

@@ -2,6 +2,8 @@
 
 A classic Ping Pong game with AI opponent, progressive difficulty, dynamic visual stages, sound effects, and persistent stat tracking.
 
+![ping pong gif](ping_pong.gif)
+
 ## Features
 
 - Mouse-controlled paddle gameplay against an AI opponent

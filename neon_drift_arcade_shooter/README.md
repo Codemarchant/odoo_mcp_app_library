@@ -2,6 +2,8 @@
 
 A fast-paced vertical arcade shooter built with PIXI.js featuring wave-based gameplay, diverse enemy types, powerful bosses, and an arsenal of power-ups.
 
+![neon drifter gif](neon_drifter.gif)
+
 ## Features
 
 ### Gameplay

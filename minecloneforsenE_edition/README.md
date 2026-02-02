@@ -2,6 +2,8 @@
 
 A comprehensive 2D Minecraft-inspired survival game built as an Odoo MCP Studio web application, featuring Forsen/Twitch meme theming and Odoo references.
 
+![mineclone gif](mineclone.gif)
+
 ## Features
 
 - Procedurally generated infinite world with chunk-based loading
