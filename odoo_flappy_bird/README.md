@@ -2,7 +2,7 @@
 
 A Flappy Bird clone built as an Odoo MCP Studio web application with Odoo theming, sound effects, and persistent user statistics.
 
-![Flappy gif](/odoo_flappy_bird.gif)
+![Flappy gif](odoo_mcp_app_library/odoo_flappy_bird.gif)
 
 ## Features
 
