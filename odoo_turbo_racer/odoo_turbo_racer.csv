@@ -1,0 +1,1074 @@
+﻿"name","slug","description","data_code","global_state_code","shared_components","shared_styles","router_mode","tailwind_enabled","cdn_dependencies","custom_imports","page_ids/name","page_ids/route_path","page_ids/page_title","page_ids/sequence","page_ids/data_code","page_ids/component_code","endpoint_ids/name","endpoint_ids/endpoint_path","endpoint_ids/method","endpoint_ids/handler_code"
+"Odoo Turbo Racing Championship","odoo-racing","An epic Odoo-themed racing game with AI opponents, collision detection, jazz music, and stat tracking","result = {
+    'user_name': env.user.name,
+    'company': env.company.name,
+    'odoo_memes': [
+        'Have you tried upgrading the module?',
+        'sudo odoo-bin -u all --stop-after-init',
+        'It works on my local... *nervous sweating*',
+        'One does not simply understand Odoo ORM',
+        'Keep calm and clear the assets',
+        '404: Documentation not found',
+        'SELECT * FROM despair WHERE developer = true',
+        'My code works, I have no idea why',
+        'git commit -m ""fixed it for real this time""',
+        'The database is down? Have you tried turning it off and on again?',
+        'pip install sanity --upgrade',
+        'Exception: Brain not found',
+        'while(coding) { drinkCoffee(); }',
+        'I dont always test my code, but when I do, I do it in production',
+        'There are only 2 hard things: cache invalidation and naming things',
+        '99 little bugs in the code, take one down, patch it around, 127 bugs in the code',
+        'Works on my machine - ships laptop to client',
+        'Debugging: Being the detective in a crime movie where you are also the murderer',
+        'Code review: Where mass murder is still illegal',
+        'I will fix it later - Narrator: They never fixed it',
+        'Documentation? We dont do that here',
+        'self.env.cr.commit() # YOLO',
+        'raise UserError(""This should never happen"")',
+        'TODO: Remove this before production',
+        'Temporary fix from 2019',
+        'Nobody knows why this works. Do not touch.',
+        'If you are reading this, the code review failed',
+        'Hacked together at 3am. Sorry future me.',
+        'This code is held together by prayers and duct tape',
+        'FIXME: Everything'
+    ]
+}","{
+    gameState: 'menu',
+    playerCar: { x: 400, y: 500, angle: -90, speed: 0, lap: 0, checkpoint: 0 },
+    aiCars: [],
+    raceTime: 0,
+    bestLapTime: null,
+    currentLapStart: 0,
+    soundEnabled: true,
+    musicEnabled: true,
+    currentTrack: 0,
+    volume: 0.5,
+    raceStats: [],
+    totalRaces: 0,
+    totalWins: 0,
+    showMeme: false,
+    currentMeme: ''
+}","function Nav() {
+  return (
+    <nav className=""odoo-gradient text-white p-4 shadow-lg"">
+      <div className=""max-w-6xl mx-auto flex justify-between items-center"">
+        <Link to=""/"" className=""text-2xl font-bold flex items-center gap-2"">
+          <span className=""text-3xl"">🏎️</span>
+          <span>Odoo Racing</span>
+        </Link>
+        <div className=""flex gap-6"">
+          <NavLink to=""/"" className={({isActive}) => `hover:text-yellow-300 transition ${isActive ? 'text-yellow-300 font-bold' : ''}`}>Race</NavLink>
+          <NavLink to=""/stats"" className={({isActive}) => `hover:text-yellow-300 transition ${isActive ? 'text-yellow-300 font-bold' : ''}`}>Stats</NavLink>
+          <NavLink to=""/settings"" className={({isActive}) => `hover:text-yellow-300 transition ${isActive ? 'text-yellow-300 font-bold' : ''}`}>Settings</NavLink>
+          <NavLink to=""/about"" className={({isActive}) => `hover:text-yellow-300 transition ${isActive ? 'text-yellow-300 font-bold' : ''}`}>About</NavLink>
+        </div>
+      </div>
+    </nav>
+  );
+}
+
+function MemePopup({ meme, onClose }) {
+  if (!meme) return null;
+  return (
+    <div className=""fixed inset-0 bg-black/50 flex items-center justify-center z-50"" onClick={onClose}>
+      <div className=""meme-popup bg-white rounded-xl p-8 max-w-md text-center shadow-2xl border-4 border-purple-600"">
+        <div className=""text-6xl mb-4"">🤣</div>
+        <p className=""text-xl font-bold text-purple-800 italic"">""{meme}""</p>
+        <button onClick={onClose} className=""mt-4 bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700"">LOL OK</button>
+      </div>
+    </div>
+  );
+}
+
+function OdooLogo({ size = 40 }) {
+  return (
+    <svg width={size} height={size} viewBox=""0 0 100 100"">
+      <circle cx=""50"" cy=""50"" r=""45"" fill=""#714B67""/>
+      <text x=""50"" y=""65"" textAnchor=""middle"" fill=""white"" fontSize=""40"" fontWeight=""bold"">O</text>
+    </svg>
+  );
+}","@keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+@keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+@keyframes rainbow { 0% { color: #714B67; } 25% { color: #017e84; } 50% { color: #875A7B; } 75% { color: #00A09D; } 100% { color: #714B67; } }
+@keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+@keyframes nitro { 0% { box-shadow: 0 0 20px #00ffff, 0 0 40px #00ffff; } 100% { box-shadow: 0 0 40px #ff00ff, 0 0 80px #ff00ff; } }
+.odoo-gradient { background: linear-gradient(135deg, #714B67 0%, #875A7B 50%, #017e84 100%); }
+.game-text { font-family: 'Press Start 2P', monospace; text-shadow: 2px 2px 0 #000; }
+.nitro-active { animation: nitro 0.2s infinite alternate; }
+.meme-popup { animation: float 2s ease-in-out infinite; }","Hash Router","True","{""chart.js"": ""https://esm.sh/chart.js@4.4.1"", ""react-chartjs-2"": ""https://esm.sh/react-chartjs-2@5.2.0?external=react,react-dom&deps=chart.js@4.4.1""}","import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, BarElement, Title, Tooltip, Legend, ArcElement, Filler } from 'chart.js';
+import { Line, Bar, Doughnut } from 'react-chartjs-2';
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, Title, Tooltip, Legend, ArcElement, Filler);","Game","/","Odoo Turbo Racing - Race!","1","result = {'server_time': str(datetime.datetime.now())}","function GamePage({ data, globalState, setGlobalState, initialData, storage, user }) {
+  const canvasRef = useRef(null);
+  const gameLoopRef = useRef(null);
+  const keysRef = useRef({});
+  const audioCtxRef = useRef(null);
+  const lastSoundRef = useRef({});
+  const musicTimerRef = useRef(null);
+  const [countdown, setCountdown] = useState(null);
+  const [raceResult, setRaceResult] = useState(null);
+  const [showMeme, setShowMeme] = useState(false);
+  const [currentMeme, setCurrentMeme] = useState('');
+  const [nitroBoost, setNitroBoost] = useState(100);
+  const [nitroActive, setNitroActive] = useState(false);
+  const [camera, setCamera] = useState({ x: 0, y: 0 });
+  const [powerups, setPowerups] = useState([]);
+  const [activePowerup, setActivePowerup] = useState(null);
+  const [shieldActive, setShieldActive] = useState(false);
+  const [musicPlaying, setMusicPlaying] = useState(false);
+  const [playerPosition, setPlayerPosition] = useState(1);
+
+  const CANVAS_WIDTH = 900;
+  const CANVAS_HEIGHT = 600;
+  const WORLD_WIDTH = 4000;
+  const WORLD_HEIGHT = 2800;
+  const CAR_WIDTH = 24;
+  const CAR_HEIGHT = 40;
+  const BASE_MAX_SPEED = 9;
+  const NITRO_MULTIPLIER = 1.8;
+  const ACCELERATION = 0.22;
+  const BRAKE_POWER = 0.35;
+  const FRICTION = 0.012;
+  const GRASS_FRICTION = 0.07;
+  const TURN_SPEED = 3.2;
+  const LAPS_TO_WIN = 5;
+  const TRACK_WIDTH = 130;
+
+  const TRACK_PATH = [
+    { x: 500, y: 2400 }, { x: 500, y: 2100 }, { x: 400, y: 1800 },
+    { x: 350, y: 1500 }, { x: 450, y: 1200 }, { x: 650, y: 1000 },
+    { x: 950, y: 850 }, { x: 1300, y: 750 }, { x: 1600, y: 650 },
+    { x: 1900, y: 500 }, { x: 2100, y: 350 }, { x: 2400, y: 250 },
+    { x: 2750, y: 200 }, { x: 3100, y: 300 }, { x: 3350, y: 500 },
+    { x: 3500, y: 750 }, { x: 3550, y: 1050 }, { x: 3450, y: 1350 },
+    { x: 3250, y: 1600 }, { x: 2950, y: 1750 }, { x: 2600, y: 1850 },
+    { x: 2250, y: 1950 }, { x: 1900, y: 2100 }, { x: 1600, y: 2250 },
+    { x: 1350, y: 2400 }, { x: 1100, y: 2500 }, { x: 800, y: 2500 },
+    { x: 500, y: 2400 }
+  ];
+
+  const CHECKPOINTS = [
+    { x: 500, y: 2250, w: 200, h: 80 },
+    { x: 500, y: 1350, w: 80, h: 200 },
+    { x: 1450, y: 700, w: 200, h: 80 },
+    { x: 2600, y: 250, w: 200, h: 80 },
+    { x: 3500, y: 900, w: 80, h: 200 },
+    { x: 3100, y: 1700, w: 200, h: 80 },
+    { x: 1900, y: 2100, w: 200, h: 80 },
+    { x: 950, y: 2500, w: 200, h: 80 }
+  ];
+
+  const POWERUP_ZONES = [
+    { x: 500, y: 1950, r: 60 }, { x: 550, y: 1100, r: 60 },
+    { x: 1100, y: 800, r: 60 }, { x: 1750, y: 575, r: 60 },
+    { x: 2250, y: 300, r: 60 }, { x: 2950, y: 250, r: 60 },
+    { x: 3450, y: 650, r: 60 }, { x: 3500, y: 1200, r: 60 },
+    { x: 3100, y: 1675, r: 60 }, { x: 2425, y: 1900, r: 60 },
+    { x: 1750, y: 2175, r: 60 }, { x: 1225, y: 2450, r: 60 }
+  ];
+
+  const MEME_POSITIONS = [
+    { x: 150, y: 2100 }, { x: 200, y: 1400 }, { x: 750, y: 650 },
+    { x: 1850, y: 300 }, { x: 3000, y: 100 }, { x: 3700, y: 800 },
+    { x: 3350, y: 1850 }, { x: 2100, y: 2250 }, { x: 600, y: 2650 },
+    { x: 1400, y: 1100 }
+  ];
+
+  const WEAK_POWERUPS = [
+    { type: 'nitro_small', emoji: '⚡', color: '#87CEEB', duration: 0, name: 'Small Boost', effect: 'nitro_small' },
+    { type: 'speed_small', emoji: '📦', color: '#FFB6C1', duration: 3000, name: 'Mini Module', effect: 'speed_small' }
+  ];
+  const MID_POWERUPS = [
+    { type: 'speed', emoji: '📦', color: '#FF6B6B', duration: 5000, name: 'Module' },
+    { type: 'shield', emoji: '🛡️', color: '#FFD700', duration: 4000, name: 'Enterprise' },
+    { type: 'nitro', emoji: '⚡', color: '#00BFFF', duration: 0, name: 'Query' },
+    { type: 'slow', emoji: '🐛', color: '#9B59B6', duration: 3000, name: 'Bug' }
+  ];
+  const STRONG_POWERUPS = [
+    { type: 'mega', emoji: '🚀', color: '#E74C3C', duration: 5000, name: 'Mega Deploy' },
+    { type: 'ghost', emoji: '👻', color: '#7F8C8D', duration: 4000, name: 'Ghost Mode' },
+    { type: 'lightning', emoji: '🌩️', color: '#9B59B6', duration: 0, name: 'Lightning' },
+    { type: 'warp', emoji: '🌀', color: '#E91E63', duration: 0, name: 'Git Rebase' }
+  ];
+
+  const AI_COLORS = ['#FF6B6B', '#4ECDC4', '#FFE66D', '#95E1D3'];
+  const AI_NAMES = ['OdooBot', 'ERPinator', 'ModuleMaster', 'QueryQueen'];
+
+  const getAudioCtx = useCallback(() => {
+    if (!audioCtxRef.current || audioCtxRef.current.state === 'closed') {
+      try { audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) { return null; }
+    }
+    if (audioCtxRef.current.state === 'suspended') audioCtxRef.current.resume().catch(() => {});
+    return audioCtxRef.current;
+  }, []);
+
+  const playSound = useCallback((type) => {
+    if (!globalState.soundEnabled) return;
+    const now = Date.now();
+    const cooldowns = { collision: 300, nitro: 80, checkpoint: 150 };
+    if (cooldowns[type] && lastSoundRef.current[type] && now - lastSoundRef.current[type] < cooldowns[type]) return;
+    lastSoundRef.current[type] = now;
+    try {
+      const ctx = getAudioCtx();
+      if (!ctx) return;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      const sounds = {
+        collision: { f: 150, t: 'triangle', d: 0.08, v: 0.08 },
+        checkpoint: { f: 523, t: 'sine', d: 0.1, v: 0.06 },
+        lap: { f: 659, t: 'sine', d: 0.2, v: 0.08 },
+        win: { f: 784, t: 'sine', d: 0.3, v: 0.1 },
+        countdown: { f: 440, t: 'sine', d: 0.12, v: 0.06 },
+        powerup: { f: 880, t: 'sine', d: 0.1, v: 0.06 },
+        nitro: { f: 200, t: 'sawtooth', d: 0.04, v: 0.03 },
+        lightning: { f: 300, t: 'square', d: 0.15, v: 0.07 }
+      };
+      const s = sounds[type] || sounds.checkpoint;
+      osc.frequency.value = s.f;
+      osc.type = s.t;
+      gain.gain.setValueAtTime(s.v * globalState.volume, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + s.d);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + s.d + 0.02);
+    } catch(e) {}
+  }, [globalState.soundEnabled, globalState.volume, getAudioCtx]);
+
+  const stopMusic = useCallback(() => {
+    if (musicTimerRef.current) { clearTimeout(musicTimerRef.current); musicTimerRef.current = null; }
+    setMusicPlaying(false);
+  }, []);
+
+  const startMusic = useCallback(() => {
+    if (!globalState.musicEnabled) return;
+    stopMusic();
+    setMusicPlaying(true);
+    const patterns = [
+      { notes: [261, 329, 392, 329, 261, 392, 523, 392], rhythm: [300, 300, 600, 300, 300, 300, 600, 300], swing: true },
+      { notes: [293, 349, 440, 349, 523, 440, 349, 293], rhythm: [200, 200, 400, 200, 400, 200, 200, 200], swing: false },
+      { notes: [196, 246, 293, 349, 293, 246, 196, 246], rhythm: [400, 400, 400, 800, 400, 400, 400, 400], swing: true },
+      { notes: [174, 220, 261, 329, 392, 329, 261, 220], rhythm: [350, 350, 350, 700, 350, 350, 350, 350], swing: true }
+    ];
+    const p = patterns[globalState.currentTrack] || patterns[0];
+    let noteIdx = 0;
+    const playNote = () => {
+      if (!globalState.musicEnabled || globalState.gameState !== 'racing') { stopMusic(); return; }
+      try {
+        const ctx = getAudioCtx();
+        if (!ctx) return;
+        const osc = ctx.createOscillator();
+        const osc2 = ctx.createOscillator();
+        const gain = ctx.createGain();
+        const gain2 = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc2.connect(gain2); gain2.connect(ctx.destination);
+        const freq = p.notes[noteIdx % p.notes.length];
+        const dur = p.rhythm[noteIdx % p.rhythm.length] / 1000;
+        osc.frequency.value = freq;
+        osc.type = 'sine';
+        osc2.frequency.value = freq * 1.5;
+        osc2.type = 'triangle';
+        const vol = globalState.volume * 0.035;
+        gain.gain.setValueAtTime(vol, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur * 0.9);
+        gain2.gain.setValueAtTime(vol * 0.3, ctx.currentTime);
+        gain2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur * 0.7);
+        osc.start(ctx.currentTime); osc.stop(ctx.currentTime + dur);
+        osc2.start(ctx.currentTime); osc2.stop(ctx.currentTime + dur * 0.8);
+        const nextDelay = p.rhythm[noteIdx % p.rhythm.length] + (p.swing && noteIdx % 2 === 0 ? 50 : 0);
+        noteIdx++;
+        musicTimerRef.current = setTimeout(playNote, nextDelay);
+      } catch(e) { musicTimerRef.current = setTimeout(playNote, 400); }
+    };
+    musicTimerRef.current = setTimeout(playNote, 100);
+  }, [globalState.musicEnabled, globalState.currentTrack, globalState.volume, globalState.gameState, getAudioCtx, stopMusic]);
+
+  useEffect(() => {
+    if (globalState.gameState === 'racing' && globalState.musicEnabled && !musicPlaying) startMusic();
+    else if (globalState.gameState !== 'racing' && musicPlaying) stopMusic();
+  }, [globalState.gameState, globalState.musicEnabled, musicPlaying, startMusic, stopMusic]);
+
+  useEffect(() => { if (musicPlaying) { stopMusic(); setTimeout(startMusic, 100); } }, [globalState.currentTrack]);
+
+  useEffect(() => {
+    setGlobalState(s => ({ ...s, gameState: 'menu' }));
+    return () => { stopMusic(); if (gameLoopRef.current) clearInterval(gameLoopRef.current); };
+  }, []);
+
+  const isOnTrack = useCallback((x, y) => {
+    for (let i = 0; i < TRACK_PATH.length - 1; i++) {
+      const p1 = TRACK_PATH[i], p2 = TRACK_PATH[i + 1];
+      const dx = p2.x - p1.x, dy = p2.y - p1.y, len = Math.sqrt(dx * dx + dy * dy);
+      const t = Math.max(0, Math.min(1, ((x - p1.x) * dx + (y - p1.y) * dy) / (len * len)));
+      if (Math.sqrt((x - (p1.x + t * dx)) ** 2 + (y - (p1.y + t * dy)) ** 2) < TRACK_WIDTH) return true;
+    }
+    return false;
+  }, []);
+
+  const isOnGrass = useCallback((x, y) => !isOnTrack(x, y), [isOnTrack]);
+
+  const getProgress = useCallback((car) => car.lap * CHECKPOINTS.length * 1000 + car.checkpoint * 1000 + (1000 - Math.min(1000, Math.sqrt((car.x - CHECKPOINTS[car.checkpoint]?.x || 0) ** 2 + (car.y - CHECKPOINTS[car.checkpoint]?.y || 0) ** 2))), []);
+
+  const calcPosition = useCallback((playerCar, aiCars) => {
+    const playerProg = getProgress(playerCar);
+    let pos = 1;
+    aiCars.forEach(ai => { if (getProgress(ai) > playerProg) pos++; });
+    return pos;
+  }, [getProgress]);
+
+  const getPowerupForPosition = useCallback((position, totalRacers) => {
+    const rand = Math.random();
+    if (position === 1) return WEAK_POWERUPS[Math.floor(Math.random() * WEAK_POWERUPS.length)];
+    if (position === 2) return rand < 0.7 ? MID_POWERUPS[Math.floor(Math.random() * MID_POWERUPS.length)] : WEAK_POWERUPS[Math.floor(Math.random() * WEAK_POWERUPS.length)];
+    if (position >= totalRacers - 1) return rand < 0.6 ? STRONG_POWERUPS[Math.floor(Math.random() * STRONG_POWERUPS.length)] : MID_POWERUPS[Math.floor(Math.random() * MID_POWERUPS.length)];
+    return MID_POWERUPS[Math.floor(Math.random() * MID_POWERUPS.length)];
+  }, []);
+
+  const spawnPowerups = useCallback(() => {
+    const newPowerups = POWERUP_ZONES.map((zone, i) => {
+      const type = MID_POWERUPS[Math.floor(Math.random() * MID_POWERUPS.length)];
+      return { ...zone, ...type, id: `${Date.now()}-${i}`, x: zone.x + (Math.random() - 0.5) * 40, y: zone.y + (Math.random() - 0.5) * 40 };
+    });
+    setPowerups(newPowerups);
+  }, []);
+
+  const initAICars = useCallback(() => {
+    const cars = AI_NAMES.map((name, i) => ({
+      name, color: AI_COLORS[i],
+      x: 450 + (i % 2) * 80, y: 2350 - Math.floor(i / 2) * 60,
+      angle: -90, speed: 0, lap: 0, checkpoint: 0, targetPoint: 1,
+      skill: 0.85 + i * 0.035, slowed: false, boosted: false, hasShield: false, nitroBoost: 50
+    }));
+    setGlobalState(s => ({ ...s, aiCars: cars }));
+  }, [setGlobalState]);
+
+  const checkCollision = useCallback((c1, c2) => Math.sqrt((c1.x - c2.x) ** 2 + (c1.y - c2.y) ** 2) < 38, []);
+
+  const checkCheckpoint = useCallback((car) => {
+    const cp = CHECKPOINTS[car.checkpoint % CHECKPOINTS.length];
+    return car.x > cp.x - cp.w && car.x < cp.x + cp.w && car.y > cp.y - cp.h && car.y < cp.y + cp.h;
+  }, []);
+
+  const startRace = useCallback(() => {
+    if (gameLoopRef.current) clearInterval(gameLoopRef.current);
+    stopMusic();
+    initAICars();
+    spawnPowerups();
+    const startCar = { x: 500, y: 2400, angle: -90, speed: 0, lap: 0, checkpoint: 0 };
+    setGlobalState(s => ({ ...s, gameState: 'countdown', playerCar: startCar, raceTime: 0 }));
+    setRaceResult(null); setNitroBoost(100); setNitroActive(false); setActivePowerup(null); setShieldActive(false); setPlayerPosition(1);
+    setCamera({ x: 500 - CANVAS_WIDTH/2, y: 2400 - CANVAS_HEIGHT/2 });
+    let count = 3;
+    setCountdown(count); playSound('countdown');
+    const interval = setInterval(() => {
+      count--;
+      if (count > 0) { setCountdown(count); playSound('countdown'); }
+      else if (count === 0) { setCountdown('GO!'); playSound('lap'); }
+      else { setCountdown(null); setGlobalState(s => ({ ...s, gameState: 'racing' })); clearInterval(interval); }
+    }, 1000);
+  }, [initAICars, spawnPowerups, setGlobalState, playSound, stopMusic]);
+
+  const endRace = useCallback(async (winner, finalPosition) => {
+    if (gameLoopRef.current) clearInterval(gameLoopRef.current);
+    stopMusic();
+    setGlobalState(s => ({ ...s, gameState: 'finished' }));
+    setRaceResult({ winner, position: finalPosition, time: globalState.raceTime, isWin: winner === 'You' });
+    if (winner === 'You') {
+      playSound('win');
+      setCurrentMeme(initialData.odoo_memes[Math.floor(Math.random() * initialData.odoo_memes.length)]);
+      setShowMeme(true);
+    }
+    try {
+      const stats = await storage.get('raceStats', []);
+      await storage.set('raceStats', [...stats, { date: new Date().toISOString(), winner, position: finalPosition, time: globalState.raceTime }].slice(-50));
+      await storage.set('totalRaces', (await storage.get('totalRaces', 0)) + 1);
+      if (winner === 'You') await storage.set('totalWins', (await storage.get('totalWins', 0)) + 1);
+    } catch(e) {}
+  }, [setGlobalState, globalState.raceTime, playSound, initialData.odoo_memes, storage, stopMusic]);
+
+  const applyPowerup = useCallback((p, isPlayer = true) => {
+    playSound('powerup');
+    if (p.type === 'nitro' || p.type === 'nitro_small') {
+      if (isPlayer) setNitroBoost(prev => Math.min(100, prev + (p.type === 'nitro_small' ? 30 : 100)));
+    } else if (p.type === 'shield') {
+      if (isPlayer) { setShieldActive(true); setTimeout(() => setShieldActive(false), p.duration); }
+    } else if (p.type === 'slow') {
+      setGlobalState(s => ({ ...s, aiCars: s.aiCars.map(ai => ({ ...ai, slowed: true })) }));
+      setTimeout(() => setGlobalState(s => ({ ...s, aiCars: s.aiCars.map(ai => ({ ...ai, slowed: false })) })), p.duration);
+    } else if (p.type === 'lightning') {
+      playSound('lightning');
+      setGlobalState(s => ({ ...s, aiCars: s.aiCars.map(ai => ({ ...ai, speed: ai.speed * 0.3, slowed: true })) }));
+      setTimeout(() => setGlobalState(s => ({ ...s, aiCars: s.aiCars.map(ai => ({ ...ai, slowed: false })) })), 3000);
+    } else if (p.type === 'warp') {
+      const nextCp = CHECKPOINTS[(globalState.playerCar.checkpoint + 1) % CHECKPOINTS.length];
+      setGlobalState(s => ({ ...s, playerCar: { ...s.playerCar, x: nextCp.x, y: nextCp.y } }));
+    } else if (p.type === 'speed' || p.type === 'speed_small' || p.type === 'mega' || p.type === 'ghost') {
+      if (isPlayer) { setActivePowerup(p.type); setTimeout(() => setActivePowerup(null), p.duration); }
+    }
+  }, [playSound, setGlobalState, globalState.playerCar]);
+
+  const gameLoop = useCallback(() => {
+    if (globalState.gameState !== 'racing') return;
+    const keys = keysRef.current;
+    let { x, y, angle, speed, lap, checkpoint } = globalState.playerCar;
+    const onGrass = isOnGrass(x, y);
+    const speedMult = activePowerup === 'speed' ? 1.3 : activePowerup === 'speed_small' ? 1.15 : activePowerup === 'mega' ? 1.5 : 1;
+    const isNitroOn = (keys[' '] || keys['Shift']) && nitroBoost > 0 && speed > 2 && !onGrass;
+    const nitroMult = isNitroOn ? NITRO_MULTIPLIER : 1;
+    const maxSpd = BASE_MAX_SPEED * (onGrass ? 0.45 : 1) * speedMult * nitroMult;
+    const fric = onGrass ? GRASS_FRICTION : FRICTION;
+
+    if (keys['w'] || keys['W'] || keys['ArrowUp']) speed = Math.min(speed + ACCELERATION * (isNitroOn ? 1.5 : 1), maxSpd);
+    if (keys['s'] || keys['S'] || keys['ArrowDown']) speed = Math.max(speed - BRAKE_POWER, -maxSpd / 3);
+    const turnMod = Math.min(1, Math.abs(speed) / 4);
+    if ((keys['a'] || keys['A'] || keys['ArrowLeft']) && Math.abs(speed) > 0.3) angle -= TURN_SPEED * (speed > 0 ? 1 : -1) * turnMod;
+    if ((keys['d'] || keys['D'] || keys['ArrowRight']) && Math.abs(speed) > 0.3) angle += TURN_SPEED * (speed > 0 ? 1 : -1) * turnMod;
+
+    if (isNitroOn) { setNitroActive(true); setNitroBoost(p => Math.max(0, p - 1.2)); if (Math.random() < 0.06) playSound('nitro'); }
+    else { setNitroActive(false); setNitroBoost(p => Math.min(100, p + 0.15)); }
+
+    speed *= (1 - fric);
+    const rad = angle * Math.PI / 180;
+    let nx = Math.max(30, Math.min(WORLD_WIDTH - 30, x + Math.cos(rad) * speed));
+    let ny = Math.max(30, Math.min(WORLD_HEIGHT - 30, y + Math.sin(rad) * speed));
+
+    const currentPos = calcPosition({ x: nx, y: ny, lap, checkpoint }, globalState.aiCars);
+    setPlayerPosition(currentPos);
+
+    const ghostMode = activePowerup === 'ghost';
+    setPowerups(prev => prev.filter(p => {
+      if (Math.sqrt((nx - p.x) ** 2 + (ny - p.y) ** 2) < 50) {
+        const fairPowerup = getPowerupForPosition(currentPos, 5);
+        applyPowerup(fairPowerup, true);
+        return false;
+      }
+      return true;
+    }));
+
+    let collided = false;
+    const updatedAI = globalState.aiCars.map(ai => {
+      const aiPos = calcPosition(ai, [...globalState.aiCars.filter(a => a.name !== ai.name), globalState.playerCar]);
+      const aiProgress = getProgress(ai);
+      const playerProgress = getProgress({ x: nx, y: ny, lap, checkpoint });
+      const behindPlayer = playerProgress - aiProgress;
+      const rubberBand = behindPlayer > 2000 ? 1.2 : behindPlayer > 1000 ? 1.1 : 1;
+      const aiSlowMult = ai.slowed ? 0.5 : 1;
+      const aiBoosted = ai.boosted ? 1.3 : 1;
+      const useNitro = behindPlayer > 1500 && ai.nitroBoost > 20;
+
+      if (!ghostMode && !shieldActive && !ai.hasShield && checkCollision({ x: nx, y: ny }, ai)) {
+        collided = true;
+        const pa = Math.atan2(ny - ai.y, nx - ai.x);
+        nx += Math.cos(pa) * 6; ny += Math.sin(pa) * 6;
+        speed *= 0.5;
+      }
+
+      let newAI = { ...ai };
+      setPowerups(prev => prev.filter(p => {
+        if (Math.sqrt((ai.x - p.x) ** 2 + (ai.y - p.y) ** 2) < 50) {
+          const fairP = getPowerupForPosition(aiPos, 5);
+          if (fairP.type === 'speed' || fairP.type === 'mega') { newAI.boosted = true; setTimeout(() => setGlobalState(s => ({ ...s, aiCars: s.aiCars.map(a => a.name === ai.name ? { ...a, boosted: false } : a) })), fairP.duration); }
+          if (fairP.type === 'shield') { newAI.hasShield = true; setTimeout(() => setGlobalState(s => ({ ...s, aiCars: s.aiCars.map(a => a.name === ai.name ? { ...a, hasShield: false } : a) })), fairP.duration); }
+          if (fairP.type === 'nitro') newAI.nitroBoost = 100;
+          return false;
+        }
+        return true;
+      }));
+
+      const target = TRACK_PATH[ai.targetPoint % TRACK_PATH.length];
+      const dx = target.x - ai.x, dy = target.y - ai.y, dist = Math.sqrt(dx * dx + dy * dy);
+      const tAngle = Math.atan2(dy, dx) * 180 / Math.PI;
+      let aDiff = tAngle - ai.angle; while (aDiff > 180) aDiff -= 360; while (aDiff < -180) aDiff += 360;
+      const nitroMul = useNitro ? 1.5 : 1;
+      const aiMaxSpeed = BASE_MAX_SPEED * ai.skill * rubberBand * aiSlowMult * aiBoosted * nitroMul;
+      let nAngle = ai.angle + Math.sign(aDiff) * Math.min(Math.abs(aDiff), TURN_SPEED * ai.skill * 1.1);
+      let nSpeed = Math.min(ai.speed + ACCELERATION * ai.skill * 1.1, aiMaxSpeed);
+      nSpeed *= (1 - FRICTION);
+      if (useNitro) newAI.nitroBoost = Math.max(0, ai.nitroBoost - 1.5); else newAI.nitroBoost = Math.min(100, ai.nitroBoost + 0.1);
+      const aRad = nAngle * Math.PI / 180;
+      let ntp = ai.targetPoint, nlap = ai.lap, ncp = ai.checkpoint;
+      if (dist < 100) { ntp = (ai.targetPoint + 1) % TRACK_PATH.length; if (ntp === 0) { nlap++; if (nlap >= LAPS_TO_WIN) { const finalPos = calcPosition(globalState.playerCar, globalState.aiCars); setTimeout(() => endRace(ai.name, finalPos), 50); } } }
+      const cp = CHECKPOINTS[ncp % CHECKPOINTS.length];
+      const nax = ai.x + Math.cos(aRad) * nSpeed, nay = ai.y + Math.sin(aRad) * nSpeed;
+      if (nax > cp.x - cp.w && nax < cp.x + cp.w && nay > cp.y - cp.h && nay < cp.y + cp.h) ncp = (ncp + 1) % CHECKPOINTS.length;
+      return { ...newAI, x: nax, y: nay, angle: nAngle, speed: nSpeed, targetPoint: ntp, lap: nlap, checkpoint: ncp };
+    });
+
+    if (collided) playSound('collision');
+
+    if (checkCheckpoint({ x: nx, y: ny, checkpoint })) {
+      const next = (checkpoint + 1) % CHECKPOINTS.length;
+      if (next === 0 && checkpoint === CHECKPOINTS.length - 1) {
+        lap++; playSound('lap'); spawnPowerups();
+        if (lap >= LAPS_TO_WIN) { const finalPos = calcPosition({ x: nx, y: ny, lap, checkpoint: 0 }, globalState.aiCars); endRace('You', finalPos); return; }
+      } else playSound('checkpoint');
+      checkpoint = next;
+    }
+
+    setCamera(p => ({ x: p.x + (nx - CANVAS_WIDTH/2 - p.x) * 0.1, y: p.y + (ny - CANVAS_HEIGHT/2 - p.y) * 0.1 }));
+    setGlobalState(s => ({ ...s, playerCar: { x: nx, y: ny, angle, speed, lap, checkpoint }, aiCars: updatedAI, raceTime: s.raceTime + 16 }));
+  }, [globalState, isOnGrass, checkCollision, checkCheckpoint, endRace, playSound, nitroBoost, activePowerup, shieldActive, setGlobalState, spawnPowerups, calcPosition, getProgress, getPowerupForPosition, applyPowerup]);
+
+  useEffect(() => {
+    if (globalState.gameState === 'racing') { gameLoopRef.current = setInterval(gameLoop, 16); return () => clearInterval(gameLoopRef.current); }
+  }, [globalState.gameState, gameLoop]);
+
+  useEffect(() => {
+    const kd = (e) => { keysRef.current[e.key] = true; if (['w','a','s','d','W','A','S','D',' ','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Shift'].includes(e.key)) e.preventDefault(); };
+    const ku = (e) => { keysRef.current[e.key] = false; };
+    window.addEventListener('keydown', kd); window.addEventListener('keyup', ku);
+    return () => { window.removeEventListener('keydown', kd); window.removeEventListener('keyup', ku); };
+  }, []);
+
+  useEffect(() => {
+    const canvas = canvasRef.current; if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#228B22'; ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+    ctx.save(); ctx.translate(-camera.x, -camera.y);
+
+    for (let gx = 0; gx < WORLD_WIDTH; gx += 70) for (let gy = 0; gy < WORLD_HEIGHT; gy += 70) if ((gx + gy) % 140 === 0) { ctx.fillStyle = '#1E7A1E'; ctx.fillRect(gx, gy, 70, 70); }
+
+    ctx.strokeStyle = '#2a2a2a'; ctx.lineWidth = TRACK_WIDTH; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.beginPath(); ctx.moveTo(TRACK_PATH[0].x, TRACK_PATH[0].y); TRACK_PATH.forEach(p => ctx.lineTo(p.x, p.y)); ctx.stroke();
+    ctx.strokeStyle = '#444'; ctx.lineWidth = 5; ctx.setLineDash([40, 40]);
+    ctx.beginPath(); ctx.moveTo(TRACK_PATH[0].x, TRACK_PATH[0].y); TRACK_PATH.forEach(p => ctx.lineTo(p.x, p.y)); ctx.stroke(); ctx.setLineDash([]);
+
+    for (let i = 0; i < 12; i++) { ctx.fillStyle = i % 2 === 0 ? '#fff' : '#111'; ctx.fillRect(420 + i * 14, 2375, 14, 50); }
+
+    const memes = initialData.odoo_memes || [];
+    MEME_POSITIONS.forEach((pos, i) => {
+      const meme = memes[i % memes.length] || 'Odoo!';
+      ctx.fillStyle = '#FFFEF0'; ctx.fillRect(pos.x, pos.y, 300, 90);
+      ctx.strokeStyle = '#714B67'; ctx.lineWidth = 5; ctx.strokeRect(pos.x, pos.y, 300, 90);
+      ctx.fillStyle = '#5D4037'; ctx.fillRect(pos.x + 140, pos.y + 90, 20, 70);
+      ctx.fillStyle = '#222'; ctx.font = 'bold 14px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      const words = meme.split(' '); let line1 = '', line2 = '';
+      words.forEach(w => { if ((line1 + w).length < 26) line1 += (line1 ? ' ' : '') + w; else line2 += (line2 ? ' ' : '') + w; });
+      ctx.fillText(line1, pos.x + 150, pos.y + 35);
+      if (line2) ctx.fillText(line2.substring(0, 30), pos.x + 150, pos.y + 58);
+    });
+
+    powerups.forEach(p => {
+      ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x, p.y, 30, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#fff'; ctx.lineWidth = 4; ctx.stroke();
+      ctx.font = '32px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(p.emoji, p.x, p.y);
+    });
+
+    ctx.fillStyle = '#714B67'; ctx.beginPath(); ctx.arc(2000, 1400, 80, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 70px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('O', 2000, 1400);
+
+    const drawCar = (car, color, isPlayer = false) => {
+      ctx.save(); ctx.translate(car.x, car.y); ctx.rotate((car.angle + 90) * Math.PI / 180);
+      if ((isPlayer && shieldActive) || car.hasShield) { ctx.strokeStyle = '#FFD700'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(0, 0, 34, 0, Math.PI * 2); ctx.stroke(); }
+      ctx.fillStyle = color; ctx.beginPath(); ctx.roundRect(-CAR_WIDTH/2, -CAR_HEIGHT/2, CAR_WIDTH, CAR_HEIGHT, 6); ctx.fill();
+      ctx.fillStyle = '#222'; ctx.fillRect(-CAR_WIDTH/2 + 4, -CAR_HEIGHT/2 + 6, CAR_WIDTH - 8, 12);
+      ctx.fillStyle = '#111'; [-CAR_HEIGHT/2 + 6, CAR_HEIGHT/2 - 14].forEach(wy => { ctx.fillRect(-CAR_WIDTH/2 - 4, wy, 5, 10); ctx.fillRect(CAR_WIDTH/2 - 1, wy, 5, 10); });
+      const showFlame = isPlayer ? (nitroActive && nitroBoost > 0) : (car.nitroBoost < 80 && car.speed > 5);
+      if (showFlame) { ctx.fillStyle = '#00BFFF'; ctx.beginPath(); ctx.moveTo(-10, CAR_HEIGHT/2); ctx.lineTo(10, CAR_HEIGHT/2); ctx.lineTo(0, CAR_HEIGHT/2 + 35 + Math.random() * 20); ctx.fill(); }
+      if (car.slowed) { ctx.fillStyle = 'rgba(155,89,182,0.6)'; ctx.beginPath(); ctx.arc(0, 0, 28, 0, Math.PI * 2); ctx.fill(); }
+      if (car.boosted) { ctx.strokeStyle = '#FF6B6B'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(0, 0, 30, 0, Math.PI * 2); ctx.stroke(); }
+      ctx.restore();
+    };
+
+    globalState.aiCars.forEach(ai => drawCar(ai, ai.color));
+    const pColor = activePowerup === 'speed' || activePowerup === 'speed_small' ? '#FF4500' : activePowerup === 'mega' ? '#E74C3C' : activePowerup === 'ghost' ? 'rgba(1,126,132,0.5)' : '#017e84';
+    drawCar(globalState.playerCar, pColor, true);
+    ctx.restore();
+
+    if (countdown) { ctx.fillStyle = 'rgba(0,0,0,0.7)'; ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT); ctx.fillStyle = countdown === 'GO!' ? '#0f0' : '#fff'; ctx.font = 'bold 130px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(countdown, CANVAS_WIDTH/2, CANVAS_HEIGHT/2); }
+  }, [globalState.playerCar, globalState.aiCars, camera, countdown, nitroActive, nitroBoost, powerups, shieldActive, activePowerup, initialData.odoo_memes]);
+
+  const formatTime = (ms) => `${Math.floor(ms/60000)}:${String(Math.floor(ms/1000)%60).padStart(2,'0')}.${String(Math.floor(ms%1000/10)).padStart(2,'0')}`;
+  const onGrass = isOnGrass(globalState.playerCar?.x || 500, globalState.playerCar?.y || 2400);
+
+  return (
+    <div className=""min-h-screen bg-gray-900"">
+      <Nav />
+      <div className=""max-w-6xl mx-auto p-2"">
+        <div className=""flex gap-3 justify-center"">
+          <div className=""relative"">
+            <canvas ref={canvasRef} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} className={`rounded-xl border-4 ${shieldActive ? 'border-yellow-400' : nitroActive ? 'border-cyan-400' : 'border-purple-600'}`} />
+            {globalState.gameState === 'racing' && (
+              <>
+                <div className=""absolute top-2 left-2 bg-black/90 text-white p-2 rounded-lg text-xs"">
+                  <div className=""text-lg font-bold text-yellow-400"">P{playerPosition}</div>
+                  <div className=""text-base font-bold text-cyan-400"">Lap {(globalState.playerCar?.lap || 0) + 1}/{LAPS_TO_WIN}</div>
+                  <div>Time: {formatTime(globalState.raceTime || 0)}</div>
+                  <div>Speed: {Math.round((globalState.playerCar?.speed || 0) * 15)} km/h</div>
+                  {onGrass && <div className=""text-yellow-400 font-bold"">⚠️ GRASS!</div>}
+                  {activePowerup && <div className=""text-green-400 font-bold"">✅ {activePowerup.toUpperCase()}</div>}
+                  {shieldActive && <div className=""text-yellow-300 font-bold"">🛡️ SHIELD</div>}
+                  <div className=""mt-1""><div className=""text-cyan-400 text-xs"">NITRO {Math.round(nitroBoost)}%</div>
+                    <div className=""w-24 h-2 bg-gray-700 rounded mt-0.5""><div className={`h-full rounded ${nitroActive ? 'bg-yellow-400' : 'bg-cyan-500'}`} style={{width: `${nitroBoost}%`}} /></div>
+                  </div>
+                </div>
+                <div className=""absolute top-2 right-2 bg-black/90 text-white p-2 rounded-lg text-xs"">
+                  <div className=""font-bold mb-1"">Race</div>
+                  {[{ name: 'You', ...globalState.playerCar, color: '#017e84' }, ...(globalState.aiCars || [])]
+                    .sort((a, b) => getProgress(b) - getProgress(a))
+                    .map((car, i) => (<div key={car.name} className=""flex items-center gap-1""><span className=""font-bold w-3"">{i + 1}.</span><span className=""w-2 h-2 rounded"" style={{backgroundColor: car.color}} /><span className={car.name === 'You' ? 'text-cyan-400 font-bold' : ''}>{car.name}</span></div>))}
+                </div>
+              </>
+            )}
+            {globalState.gameState === 'menu' && (
+              <div className=""absolute inset-0 bg-black/90 flex items-center justify-center rounded-xl"">
+                <div className=""text-center""><div className=""text-6xl mb-3"">🏎️</div><h2 className=""text-3xl font-bold text-white mb-2"">Odoo Turbo Racing</h2>
+                  <p className=""text-gray-300 text-sm"">WASD = Drive | SPACE = Nitro</p><p className=""text-yellow-400 text-sm mb-2"">⚠️ Stay on track!</p>
+                  <p className=""text-purple-300 text-xs mb-3"">Better powerups when you're behind!</p>
+                  <button onClick={startRace} className=""bg-gradient-to-r from-purple-600 to-teal-500 text-white px-8 py-3 rounded-xl text-xl font-bold hover:scale-105 transition"">🚀 START ({LAPS_TO_WIN} Laps)</button>
+                </div>
+              </div>
+            )}
+            {raceResult && (
+              <div className=""absolute inset-0 bg-black/90 flex items-center justify-center rounded-xl"">
+                <div className=""text-center""><div className=""text-6xl mb-3"">{raceResult.isWin ? '🏆' : '😞'}</div>
+                  <h2 className=""text-3xl font-bold text-white mb-2"">{raceResult.isWin ? 'VICTORY!' : `${raceResult.winner} Wins!`}</h2>
+                  <p className=""text-2xl text-yellow-400 font-bold"">Position: #{raceResult.position}</p>
+                  <p className=""text-gray-400 mb-4"">Time: {formatTime(raceResult.time)}</p>
+                  <button onClick={startRace} className=""bg-gradient-to-r from-purple-600 to-teal-500 text-white px-8 py-3 rounded-xl text-lg font-bold hover:scale-105 transition"">🔄 Race Again</button>
+                </div>
+              </div>
+            )}
+          </div>
+          <div className=""w-44 space-y-2 text-xs"">
+            <div className=""bg-gray-800 p-2 rounded-xl""><h3 className=""text-white font-bold mb-1"">🎮 Controls</h3>
+              <div className=""grid grid-cols-3 gap-0.5 text-center mb-1""><div /><div className=""bg-gray-700 text-white p-1 rounded"">W</div><div /><div className=""bg-gray-700 text-white p-1 rounded"">A</div><div className=""bg-gray-700 text-white p-1 rounded"">S</div><div className=""bg-gray-700 text-white p-1 rounded"">D</div></div>
+              <div className=""bg-cyan-600 text-white p-1 rounded text-center"">SPACE = NITRO</div>
+            </div>
+            <div className=""bg-gray-800 p-2 rounded-xl""><h3 className=""text-white font-bold mb-1"">🎵 Music</h3>
+              <select value={globalState.currentTrack} onChange={(e) => setGlobalState(s => ({...s, currentTrack: parseInt(e.target.value)}))} className=""w-full p-1 rounded bg-gray-700 text-white text-xs"">
+                <option value={0}>Smooth Swing</option><option value={1}>Fast Bebop</option><option value={2}>Slow Blues</option><option value={3}>Cool Ballad</option>
+              </select>
+              <button onClick={() => setGlobalState(s => ({...s, musicEnabled: !s.musicEnabled}))} className={`w-full mt-1 p-1 rounded text-white ${globalState.musicEnabled ? 'bg-green-600' : 'bg-red-600'}`}>{globalState.musicEnabled ? '🔊 Music On' : '🔇 Music Off'}</button>
+            </div>
+            <div className=""bg-gray-800 p-2 rounded-xl""><h3 className=""text-white font-bold mb-1"">🌟 Powerups</h3>
+              <div className=""text-gray-300 space-y-0.5""><div className=""text-yellow-400"">1st: Weak items</div><div className=""text-gray-400"">Mid: Normal items</div><div className=""text-green-400"">Last: OP items!</div></div>
+            </div>
+            <div className=""bg-purple-900 p-2 rounded-xl""><p className=""text-purple-200 italic text-xs"">""{initialData.odoo_memes[(Math.floor(Date.now()/12000)) % initialData.odoo_memes.length]}""</p></div>
+          </div>
+        </div>
+      </div>
+      {showMeme && <MemePopup meme={currentMeme} onClose={() => setShowMeme(false)} />}
+    </div>
+  );
+}","","","",""
+"","","","","","","","","","","","Stats","/stats","Odoo Racing - Your Stats","2","result = {}","function StatsPage({ globalState, storage, user, initialData }) {
+  const [stats, setStats] = useState([]);
+  const [totalRaces, setTotalRaces] = useState(0);
+  const [totalWins, setTotalWins] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadStats = async () => {
+      try {
+        const raceStats = await storage.get('raceStats', []);
+        const races = await storage.get('totalRaces', 0);
+        const wins = await storage.get('totalWins', 0);
+        setStats(raceStats);
+        setTotalRaces(races);
+        setTotalWins(wins);
+      } catch(e) { console.log('Stats load error:', e); }
+      setLoading(false);
+    };
+    loadStats();
+  }, [storage]);
+
+  const winRate = totalRaces > 0 ? ((totalWins / totalRaces) * 100).toFixed(1) : 0;
+  const avgTime = stats.length > 0 ? stats.reduce((a, b) => a + b.time, 0) / stats.length : 0;
+  const bestTime = stats.length > 0 ? Math.min(...stats.map(s => s.time)) : 0;
+
+  const formatTime = (ms) => {
+    const seconds = Math.floor(ms / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${minutes}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const raceTimeData = {
+    labels: stats.slice(-10).map((_, i) => `Race ${i + 1}`),
+    datasets: [{
+      label: 'Race Time (seconds)',
+      data: stats.slice(-10).map(s => s.time / 1000),
+      borderColor: '#714B67',
+      backgroundColor: 'rgba(113, 75, 103, 0.2)',
+      fill: true,
+      tension: 0.4
+    }]
+  };
+
+  const positionData = {
+    labels: ['1st Place', '2nd Place', '3rd Place', '4th+ Place'],
+    datasets: [{
+      data: [
+        stats.filter(s => s.position === 1).length,
+        stats.filter(s => s.position === 2).length,
+        stats.filter(s => s.position === 3).length,
+        stats.filter(s => s.position >= 4).length
+      ],
+      backgroundColor: ['#FFD700', '#C0C0C0', '#CD7F32', '#714B67'],
+      borderWidth: 2,
+      borderColor: '#1a1a2e'
+    }]
+  };
+
+  const winsOverTimeData = {
+    labels: stats.slice(-10).map((_, i) => `Race ${i + 1}`),
+    datasets: [{
+      label: 'Win (1) / Loss (0)',
+      data: stats.slice(-10).map(s => s.position === 1 ? 1 : 0),
+      backgroundColor: stats.slice(-10).map(s => s.position === 1 ? '#00A09D' : '#714B67'),
+      borderRadius: 5
+    }]
+  };
+
+  const randomMeme = initialData.odoo_memes[Math.floor(Math.random() * initialData.odoo_memes.length)];
+
+  if (loading) {
+    return (
+      <div className=""min-h-screen bg-gray-900"">
+        <Nav />
+        <div className=""flex items-center justify-center h-96"">
+          <div className=""text-white text-xl"">Loading stats...</div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className=""min-h-screen bg-gray-900"">
+      <Nav />
+      <div className=""max-w-6xl mx-auto p-6"">
+        <h1 className=""text-4xl font-bold text-white mb-2 text-center"">📊 Racing Statistics</h1>
+        <p className=""text-purple-300 text-center mb-8"">Track your racing journey, {user.name}!</p>
+
+        <div className=""grid grid-cols-1 md:grid-cols-4 gap-4 mb-8"">
+          <div className=""bg-gradient-to-br from-purple-600 to-purple-800 p-6 rounded-xl text-center"">
+            <div className=""text-4xl mb-2"">🏁</div>
+            <div className=""text-3xl font-bold text-white"">{totalRaces}</div>
+            <div className=""text-purple-200"">Total Races</div>
+          </div>
+          <div className=""bg-gradient-to-br from-yellow-500 to-yellow-700 p-6 rounded-xl text-center"">
+            <div className=""text-4xl mb-2"">🏆</div>
+            <div className=""text-3xl font-bold text-white"">{totalWins}</div>
+            <div className=""text-yellow-100"">Victories</div>
+          </div>
+          <div className=""bg-gradient-to-br from-teal-500 to-teal-700 p-6 rounded-xl text-center"">
+            <div className=""text-4xl mb-2"">📈</div>
+            <div className=""text-3xl font-bold text-white"">{winRate}%</div>
+            <div className=""text-teal-100"">Win Rate</div>
+          </div>
+          <div className=""bg-gradient-to-br from-pink-500 to-pink-700 p-6 rounded-xl text-center"">
+            <div className=""text-4xl mb-2"">⚡</div>
+            <div className=""text-3xl font-bold text-white"">{formatTime(bestTime)}</div>
+            <div className=""text-pink-100"">Best Time</div>
+          </div>
+        </div>
+
+        {stats.length === 0 ? (
+          <div className=""bg-gray-800 rounded-xl p-12 text-center"">
+            <div className=""text-6xl mb-4"">🏎️</div>
+            <h2 className=""text-2xl font-bold text-white mb-2"">No races yet!</h2>
+            <p className=""text-gray-400 mb-4"">Complete your first race to start tracking your stats.</p>
+            <Link to=""/"" className=""inline-block bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition"">
+              Start Racing
+            </Link>
+          </div>
+        ) : (
+          <>
+            <div className=""grid grid-cols-1 md:grid-cols-2 gap-6 mb-8"">
+              <div className=""bg-gray-800 p-6 rounded-xl"">
+                <h3 className=""text-xl font-bold text-white mb-4"">⏱️ Race Times (Last 10)</h3>
+                <Line data={raceTimeData} options={{
+                  responsive: true,
+                  plugins: { legend: { labels: { color: '#fff' } } },
+                  scales: {
+                    x: { ticks: { color: '#999' }, grid: { color: '#333' } },
+                    y: { ticks: { color: '#999' }, grid: { color: '#333' } }
+                  }
+                }} />
+              </div>
+              <div className=""bg-gray-800 p-6 rounded-xl"">
+                <h3 className=""text-xl font-bold text-white mb-4"">🥇 Position Distribution</h3>
+                <Doughnut data={positionData} options={{
+                  responsive: true,
+                  plugins: { legend: { labels: { color: '#fff' } } }
+                }} />
+              </div>
+            </div>
+
+            <div className=""bg-gray-800 p-6 rounded-xl mb-8"">
+              <h3 className=""text-xl font-bold text-white mb-4"">🏆 Win Streak (Last 10 Races)</h3>
+              <Bar data={winsOverTimeData} options={{
+                responsive: true,
+                plugins: { legend: { display: false } },
+                scales: {
+                  x: { ticks: { color: '#999' }, grid: { color: '#333' } },
+                  y: { ticks: { color: '#999' }, grid: { color: '#333' }, max: 1 }
+                }
+              }} />
+            </div>
+
+            <div className=""bg-gray-800 p-6 rounded-xl"">
+              <h3 className=""text-xl font-bold text-white mb-4"">📋 Recent Races</h3>
+              <div className=""overflow-x-auto"">
+                <table className=""w-full text-left"">
+                  <thead>
+                    <tr className=""text-gray-400 border-b border-gray-700"">
+                      <th className=""pb-3"">Date</th>
+                      <th className=""pb-3"">Position</th>
+                      <th className=""pb-3"">Time</th>
+                      <th className=""pb-3"">Winner</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {stats.slice(-10).reverse().map((race, i) => (
+                      <tr key={i} className=""border-b border-gray-700 text-white"">
+                        <td className=""py-3"">{new Date(race.date).toLocaleDateString()}</td>
+                        <td className=""py-3"">
+                          <span className={`px-2 py-1 rounded ${race.position === 1 ? 'bg-yellow-600' : race.position === 2 ? 'bg-gray-500' : race.position === 3 ? 'bg-orange-700' : 'bg-gray-700'}`}>
+                            #{race.position}
+                          </span>
+                        </td>
+                        <td className=""py-3"">{formatTime(race.time)}</td>
+                        <td className=""py-3"">{race.winner}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </>
+        )}
+
+        <div className=""mt-8 bg-purple-900 p-6 rounded-xl text-center"">
+          <div className=""text-4xl mb-2"">🤓</div>
+          <p className=""text-purple-200 italic text-lg"">""{randomMeme}""</p>
+        </div>
+      </div>
+    </div>
+  );
+}","","","",""
+"","","","","","","","","","","","Settings","/settings","Odoo Racing - Settings","3","result = {}","function SettingsPage({ globalState, setGlobalState, storage, user, initialData }) {
+  const [cleared, setCleared] = useState(false);
+
+  const JAZZ_TRACKS = [
+    { name: 'Smooth Jazz Vibes', desc: 'Relaxing smooth jazz for focused racing' },
+    { name: 'Bebop Boulevard', desc: 'Upbeat bebop rhythms to keep you moving' },
+    { name: 'Cool Cat Cruisin', desc: 'Cool and collected jazz tones' },
+    { name: 'Midnight Drive', desc: 'Deep night jazz for intense races' }
+  ];
+
+  const handleClearStats = async () => {
+    if (confirm('Are you sure you want to clear all your racing stats? This cannot be undone!')) {
+      await storage.set('raceStats', []);
+      await storage.set('totalRaces', 0);
+      await storage.set('totalWins', 0);
+      setCleared(true);
+      setTimeout(() => setCleared(false), 3000);
+    }
+  };
+
+  return (
+    <div className=""min-h-screen bg-gray-900"">
+      <Nav />
+      <div className=""max-w-2xl mx-auto p-6"">
+        <h1 className=""text-4xl font-bold text-white mb-2 text-center"">⚙️ Settings</h1>
+        <p className=""text-purple-300 text-center mb-8"">Customize your racing experience</p>
+
+        {/* Audio Settings */}
+        <div className=""bg-gray-800 p-6 rounded-xl mb-6"">
+          <h2 className=""text-xl font-bold text-white mb-4"">🔊 Audio Settings</h2>
+          
+          <div className=""space-y-4"">
+            <div className=""flex items-center justify-between"">
+              <div>
+                <div className=""text-white font-medium"">Sound Effects</div>
+                <div className=""text-gray-400 text-sm"">Engine sounds, collisions, checkpoints</div>
+              </div>
+              <button 
+                onClick={() => setGlobalState(s => ({...s, soundEnabled: !s.soundEnabled}))}
+                className={`w-14 h-8 rounded-full transition ${globalState.soundEnabled ? 'bg-teal-500' : 'bg-gray-600'}`}
+              >
+                <div className={`w-6 h-6 bg-white rounded-full transition transform ${globalState.soundEnabled ? 'translate-x-7' : 'translate-x-1'}`} />
+              </button>
+            </div>
+
+            <div className=""flex items-center justify-between"">
+              <div>
+                <div className=""text-white font-medium"">Background Music</div>
+                <div className=""text-gray-400 text-sm"">Jazz soundtrack during races</div>
+              </div>
+              <button 
+                onClick={() => setGlobalState(s => ({...s, musicEnabled: !s.musicEnabled}))}
+                className={`w-14 h-8 rounded-full transition ${globalState.musicEnabled ? 'bg-teal-500' : 'bg-gray-600'}`}
+              >
+                <div className={`w-6 h-6 bg-white rounded-full transition transform ${globalState.musicEnabled ? 'translate-x-7' : 'translate-x-1'}`} />
+              </button>
+            </div>
+
+            <div>
+              <div className=""text-white font-medium mb-2"">Volume: {Math.round(globalState.volume * 100)}%</div>
+              <input 
+                type=""range"" 
+                min=""0"" 
+                max=""1"" 
+                step=""0.1""
+                value={globalState.volume}
+                onChange={(e) => setGlobalState(s => ({...s, volume: parseFloat(e.target.value)}))}
+                className=""w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-purple-500""
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Music Selection */}
+        <div className=""bg-gray-800 p-6 rounded-xl mb-6"">
+          <h2 className=""text-xl font-bold text-white mb-4"">🎵 Jazz Track Selection</h2>
+          <div className=""space-y-3"">
+            {JAZZ_TRACKS.map((track, i) => (
+              <div 
+                key={i}
+                onClick={() => setGlobalState(s => ({...s, currentTrack: i}))}
+                className={`p-4 rounded-lg cursor-pointer transition ${globalState.currentTrack === i ? 'bg-purple-600 border-2 border-purple-400' : 'bg-gray-700 hover:bg-gray-600'}`}
+              >
+                <div className=""flex items-center gap-3"">
+                  <span className=""text-2xl"">{globalState.currentTrack === i ? '🎷' : '🎵'}</span>
+                  <div>
+                    <div className=""text-white font-medium"">{track.name}</div>
+                    <div className=""text-gray-300 text-sm"">{track.desc}</div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Data Management */}
+        <div className=""bg-gray-800 p-6 rounded-xl mb-6"">
+          <h2 className=""text-xl font-bold text-white mb-4"">📊 Data Management</h2>
+          <p className=""text-gray-400 mb-4"">Clear your racing statistics and start fresh.</p>
+          <button 
+            onClick={handleClearStats}
+            className=""bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition""
+          >
+            🗑️ Clear All Stats
+          </button>
+          {cleared && <p className=""text-green-400 mt-2"">Stats cleared successfully!</p>}
+        </div>
+
+        {/* User Info */}
+        <div className=""bg-gray-800 p-6 rounded-xl"">
+          <h2 className=""text-xl font-bold text-white mb-4"">👤 Racer Profile</h2>
+          <div className=""space-y-2 text-gray-300"">
+            <div><span className=""text-gray-500"">Name:</span> {user.name}</div>
+            <div><span className=""text-gray-500"">Email:</span> {user.email}</div>
+            <div><span className=""text-gray-500"">Company:</span> {user.company_name}</div>
+          </div>
+        </div>
+
+        {/* Meme */}
+        <div className=""mt-8 bg-purple-900 p-6 rounded-xl text-center"">
+          <div className=""text-4xl mb-2"">🛠️</div>
+          <p className=""text-purple-200 italic"">
+            ""{initialData.odoo_memes[2]}""
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}","","","",""
+"","","","","","","","","","","","About","/about","Odoo Racing - About","4","result = {}","function AboutPage({ initialData, user }) {
+  const [memeIndex, setMemeIndex] = useState(0);
+
+  const cycleMeme = () => {
+    setMemeIndex((prev) => (prev + 1) % initialData.odoo_memes.length);
+  };
+
+  return (
+    <div className=""min-h-screen bg-gray-900"">
+      <Nav />
+      <div className=""max-w-4xl mx-auto p-6"">
+        <div className=""text-center mb-12"">
+          <h1 className=""text-5xl font-bold text-white mb-4"" style={{animation: 'rainbow 3s infinite'}}>🏎️ Odoo Turbo Racing 🏆</h1>
+          <p className=""text-xl text-purple-300"">The most epic ERP-themed racing game ever created!</p>
+        </div>
+
+        {/* Game Features */}
+        <div className=""grid grid-cols-1 md:grid-cols-2 gap-6 mb-12"">
+          <div className=""bg-gradient-to-br from-purple-800 to-purple-900 p-6 rounded-xl"">
+            <div className=""text-4xl mb-3"">🎮</div>
+            <h3 className=""text-xl font-bold text-white mb-2"">WASD Controls</h3>
+            <p className=""text-purple-200"">Smooth responsive controls with W for acceleration, S for braking, and A/D for steering. Just like navigating through Odoo modules!</p>
+          </div>
+          <div className=""bg-gradient-to-br from-teal-700 to-teal-900 p-6 rounded-xl"">
+            <div className=""text-4xl mb-3"">🤖</div>
+            <h3 className=""text-xl font-bold text-white mb-2"">AI Opponents</h3>
+            <p className=""text-teal-200"">Race against OdooBot, ERPinator, ModuleMaster, and QueryQueen - each with their own racing style and skill level!</p>
+          </div>
+          <div className=""bg-gradient-to-br from-pink-700 to-pink-900 p-6 rounded-xl"">
+            <div className=""text-4xl mb-3"">💥</div>
+            <h3 className=""text-xl font-bold text-white mb-2"">Collision Detection</h3>
+            <p className=""text-pink-200"">Realistic physics engine with car-to-car collisions and track boundary detection. No cheating through walls!</p>
+          </div>
+          <div className=""bg-gradient-to-br from-yellow-600 to-yellow-800 p-6 rounded-xl"">
+            <div className=""text-4xl mb-3"">⚡</div>
+            <h3 className=""text-xl font-bold text-white mb-2"">Nitro Boost</h3>
+            <p className=""text-yellow-100"">Hit SPACE for turbo boost! Limited nitro that recharges over time. Use it wisely to overtake opponents!</p>
+          </div>
+          <div className=""bg-gradient-to-br from-blue-700 to-blue-900 p-6 rounded-xl"">
+            <div className=""text-4xl mb-3"">🎷</div>
+            <h3 className=""text-xl font-bold text-white mb-2"">Jazz Soundtrack</h3>
+            <p className=""text-blue-200"">Four unique procedurally-generated jazz tracks to race to. Because racing and jazz go together like Odoo and Python!</p>
+          </div>
+          <div className=""bg-gradient-to-br from-green-700 to-green-900 p-6 rounded-xl"">
+            <div className=""text-4xl mb-3"">📊</div>
+            <h3 className=""text-xl font-bold text-white mb-2"">Stats & Graphs</h3>
+            <p className=""text-green-200"">Track your racing career with detailed statistics, charts, and win/loss records. Data-driven racing!</p>
+          </div>
+        </div>
+
+        {/* Meme Generator */}
+        <div className=""bg-gray-800 p-8 rounded-xl mb-12"">
+          <h2 className=""text-2xl font-bold text-white mb-4 text-center"">🎲 Odoo Developer Meme Generator</h2>
+          <div className=""bg-purple-900 p-6 rounded-lg mb-4 min-h-24 flex items-center justify-center"">
+            <p className=""text-xl text-purple-100 italic text-center"">
+              ""{initialData.odoo_memes[memeIndex]}""
+            </p>
+          </div>
+          <div className=""text-center"">
+            <button 
+              onClick={cycleMeme}
+              className=""bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition""
+            >
+              🔄 Next Meme
+            </button>
+          </div>
+        </div>
+
+        {/* All Memes List */}
+        <div className=""bg-gray-800 p-6 rounded-xl mb-12"">
+          <h2 className=""text-2xl font-bold text-white mb-4"">📝 Complete Meme Collection</h2>
+          <div className=""grid gap-3"">
+            {initialData.odoo_memes.map((meme, i) => (
+              <div key={i} className=""flex items-start gap-3 bg-gray-700 p-3 rounded-lg"">
+                <span className=""text-2xl"">{['😅', '💻', '🤔', '🧙', '✨', '📚', '😭', '🎉', '🔧', '🔌'][i]}</span>
+                <p className=""text-gray-200 italic"">""{meme}""</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Credits */}
+        <div className=""text-center text-gray-400"">
+          <p>Built with ❤️ using Odoo MCP WebApp Framework</p>
+          <p className=""mt-2"">Powered by React 19 + Chart.js + Tailwind CSS + Pure Awesomeness</p>
+          <div className=""mt-4 flex justify-center gap-4"">
+            <OdooLogo size={60} />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}","","","",""
