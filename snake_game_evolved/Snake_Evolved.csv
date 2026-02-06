@@ -1,0 +1,1406 @@
+﻿"name","slug","description","data_code","global_state_code","shared_components","shared_styles","router_mode","tailwind_enabled","cdn_dependencies","custom_imports","page_ids/name","page_ids/route_path","page_ids/page_title","page_ids/sequence","page_ids/data_code","page_ids/component_code","endpoint_ids/name","endpoint_ids/endpoint_path","endpoint_ids/method","endpoint_ids/handler_code"
+"🐍 Snake Evolved","snake-evolved","Ultimate Snake game with multiple modes, power-ups, particle effects, achievements, themes, combos, global leaderboard, and full statistics","","{ currentTheme: 'neon', currentMode: 'classic', soundEnabled: true, musicEnabled: false, currentTrack: null }","const GRID = 20;
+const CELL = 22;
+
+const THEMES = {
+  neon: { name:'Neon Cyberpunk', bg:'linear-gradient(135deg,#0a0a1a,#1a0a2e,#0a1a2e)', grid:'#111133', border:'#00ffaa', snakeHead:'#00ffaa', snakeBody:'#008866', food:'#ff0066', glow:'rgba(0,255,170,0.4)', accent:'#00ffaa', text:'#e0e0ff' },
+  retro: { name:'Retro Arcade', bg:'linear-gradient(135deg,#1a1a00,#2a2a00,#0a0a00)', grid:'#222200', border:'#44ff00', snakeHead:'#44ff00', snakeBody:'#22aa00', food:'#ff4400', glow:'rgba(68,255,0,0.3)', accent:'#44ff00', text:'#ccff88' },
+  ocean: { name:'Deep Ocean', bg:'linear-gradient(135deg,#001122,#002244,#001133)', grid:'#001830', border:'#00ccff', snakeHead:'#00ccff', snakeBody:'#0088aa', food:'#ff6644', glow:'rgba(0,204,255,0.3)', accent:'#00ccff', text:'#aaddff' },
+  lava: { name:'Volcanic', bg:'linear-gradient(135deg,#1a0500,#2a0800,#1a0200)', grid:'#1a0800', border:'#ff6600', snakeHead:'#ff6600', snakeBody:'#cc4400', food:'#ffcc00', glow:'rgba(255,102,0,0.4)', accent:'#ff6600', text:'#ffddaa' },
+  void: { name:'The Void', bg:'linear-gradient(135deg,#050505,#0a0a0a,#020202)', grid:'#0a0a0a', border:'#8844ff', snakeHead:'#aa66ff', snakeBody:'#6622cc', food:'#ff44aa', glow:'rgba(136,68,255,0.4)', accent:'#8844ff', text:'#ddccff' },
+  matrix: { name:'Matrix', bg:'linear-gradient(135deg,#000a00,#001a00,#000500)', grid:'#001200', border:'#00ff41', snakeHead:'#00ff41', snakeBody:'#00aa2a', food:'#ffffff', glow:'rgba(0,255,65,0.4)', accent:'#00ff41', text:'#88ff88' }
+};
+
+const MODES = {
+  classic: { name:'Classic', icon:'🎮', desc:'Original snake. Hit a wall or yourself and it\'s over.' },
+  portal: { name:'Portal', icon:'🌀', desc:'Walls wrap around. Only self-collision kills.' },
+  blaster: { name:'Snake Blaster', icon:'🔫', desc:'Your snake auto-fires! Destroy enemy waves. Grow longer = more turrets!' },
+  speed: { name:'Speed Rush', icon:'⚡', desc:'Gets faster with every food eaten. How long can you last?' }
+};
+
+const FOOD_TYPES = [
+  { type:'apple', emoji:'🍎', points:10, chance:0.55, color:'#ff3333' },
+  { type:'cherry', emoji:'🍒', points:20, chance:0.2, color:'#ff0066' },
+  { type:'star', emoji:'⭐', points:50, chance:0.1, color:'#ffcc00' },
+  { type:'diamond', emoji:'💎', points:100, chance:0.05, color:'#00ccff' },
+  { type:'golden', emoji:'👑', points:200, chance:0.02, color:'#ffd700' }
+];
+
+const POWERUPS = [
+  { type:'shield', emoji:'🛡️', name:'Shield', desc:'Survive one wall/self hit', duration:8000, color:'#4488ff', chance:0.08 },
+  { type:'ghost', emoji:'👻', name:'Ghost', desc:'Pass through yourself', duration:6000, color:'#aa88ff', chance:0.07 },
+  { type:'magnet', emoji:'🧲', name:'Magnet', desc:'Food spawns nearby', duration:10000, color:'#ff4488', chance:0.06 },
+  { type:'double', emoji:'✖️2', name:'Double Points', desc:'2x points for everything', duration:8000, color:'#ffaa00', chance:0.08 },
+  { type:'slow', emoji:'🐌', name:'Slow-Mo', desc:'Slows the game down', duration:5000, color:'#44ffaa', chance:0.06 }
+];
+
+const BLASTER_POWERUPS = [
+  { type:'freeze', emoji:'❄️', name:'FREEZE', desc:'Freezes all enemies for 4s', color:'#aaddff', chance:1.0 }
+];
+
+const ENEMY_TYPES = [
+  { type:'drone', emoji:'👾', hp:1, speed:4, points:15, color:'#ff4444', behavior:'drift' },
+  { type:'seeker', emoji:'🔴', hp:1, speed:3, points:25, color:'#ff2222', behavior:'chase' },
+  { type:'tank', emoji:'🛡️', hp:4, speed:6, points:60, color:'#ff8800', behavior:'drift' },
+  { type:'boss', emoji:'💀', hp:12, speed:5, points:250, color:'#ff00ff', behavior:'chase' }
+];
+
+const ACHIEVEMENTS = [
+  { id:'first_game', name:'Baby Snake', desc:'Play your first game', icon:'🐣', check: s => s.totalGames >= 1 },
+  { id:'score_100', name:'Century', desc:'Score 100 in a single game', icon:'💯', check: s => s.bestScore >= 100 },
+  { id:'score_500', name:'Snake Master', desc:'Score 500 in a single game', icon:'🏆', check: s => s.bestScore >= 500 },
+  { id:'score_1000', name:'Legendary', desc:'Score 1000 in a single game', icon:'👑', check: s => s.bestScore >= 1000 },
+  { id:'games_10', name:'Dedicated', desc:'Play 10 games', icon:'🎯', check: s => s.totalGames >= 10 },
+  { id:'games_50', name:'Addicted', desc:'Play 50 games', icon:'🔥', check: s => s.totalGames >= 50 },
+  { id:'combo_5', name:'Combo King', desc:'Get a 5x combo', icon:'⚡', check: s => s.bestCombo >= 5 },
+  { id:'combo_10', name:'Unstoppable', desc:'Get a 10x combo', icon:'💥', check: s => s.bestCombo >= 10 },
+  { id:'len_30', name:'Anaconda', desc:'Reach length 30', icon:'🐍', check: s => s.bestLength >= 30 },
+  { id:'len_50', name:'World Serpent', desc:'Reach length 50', icon:'🌍', check: s => s.bestLength >= 50 },
+  { id:'all_modes', name:'Explorer', desc:'Play all 4 game modes', icon:'🗺️', check: s => s.modesPlayed && s.modesPlayed.length >= 4 },
+  { id:'diamond', name:'Diamond Collector', desc:'Eat a diamond food', icon:'💎', check: s => s.diamondsEaten >= 1 },
+  { id:'golden', name:'Crown Royal', desc:'Eat a golden crown food', icon:'🤴', check: s => s.goldensEaten >= 1 },
+  { id:'powerup_all', name:'Power Player', desc:'Collect all 5 power-up types', icon:'⚙️', check: s => s.powerupsCollected && s.powerupsCollected.length >= 5 },
+  { id:'survive_120', name:'Endurance', desc:'Survive 2 minutes in a single game', icon:'⏱️', check: s => s.longestSurvival >= 120 },
+  { id:'portal_master', name:'Warp Master', desc:'Score 300 in Portal mode', icon:'🌀', check: s => s.portalBest >= 300 },
+  { id:'blaster_master', name:'Blaster King', desc:'Score 200 in Snake Blaster', icon:'🔫', check: s => s.blasterBest >= 200 },
+  { id:'speed_master', name:'Speed Demon', desc:'Score 200 in Speed Rush', icon:'🏎️', check: s => s.speedBest >= 200 },
+  { id:'no_powerup', name:'Purist', desc:'Score 200 without collecting any power-up', icon:'🧘', check: s => s.bestNoPowerup >= 200 },
+  { id:'snake_100', name:'Ouroboros', desc:'Reach length 100', icon:'♾️', check: s => s.bestLength >= 100 }
+];
+
+function Nav({ theme }) {
+  const t = THEMES[theme] || THEMES.neon;
+  return (
+    <nav className=""flex items-center justify-between px-4 py-3"" style={{background:'rgba(0,0,0,0.5)', borderBottom:`1px solid ${t.border}33`}}>
+      <Link to=""/"" className=""text-2xl font-black"" style={{color:t.accent}}>🐍 Snake Evolved</Link>
+      <div className=""flex gap-3"">
+        <Link to=""/"" className=""px-3 py-1 rounded text-sm font-semibold hover:opacity-80 transition"" style={{color:t.text}}>Play</Link>
+        <Link to=""/modes"" className=""px-3 py-1 rounded text-sm font-semibold hover:opacity-80 transition"" style={{color:t.text}}>Modes</Link>
+        <Link to=""/achievements"" className=""px-3 py-1 rounded text-sm font-semibold hover:opacity-80 transition"" style={{color:t.text}}>Achievements</Link>
+        <Link to=""/leaderboard"" className=""px-3 py-1 rounded text-sm font-semibold hover:opacity-80 transition"" style={{color:t.text}}>Leaderboard</Link>
+        <Link to=""/stats"" className=""px-3 py-1 rounded text-sm font-semibold hover:opacity-80 transition"" style={{color:t.text}}>Stats</Link>
+        <Link to=""/settings"" className=""px-3 py-1 rounded text-sm font-semibold hover:opacity-80 transition"" style={{color:t.text}}>⚙️</Link>
+      </div>
+    </nav>
+  );
+}
+
+function generateMaze() {
+  const walls = [];
+  const patterns = [
+    [[5,5],[5,6],[5,7],[5,8],[14,12],[14,13],[14,14],[14,15]],
+    [[3,3],[4,3],[5,3],[3,16],[4,16],[5,16],[14,3],[15,3],[16,3],[14,16],[15,16],[16,16]],
+    [[9,4],[10,4],[9,5],[10,5],[9,14],[10,14],[9,15],[10,15],[4,9],[4,10],[15,9],[15,10]],
+    [[2,2],[3,2],[2,3],[17,2],[16,2],[17,3],[2,17],[3,17],[2,16],[17,17],[16,17],[17,16],[8,8],[9,8],[10,8],[11,8],[8,11],[9,11],[10,11],[11,11]]
+  ];
+  return patterns[Math.floor(Math.random()*patterns.length)];
+}
+
+function pickFood() {
+  const r = Math.random();
+  let cum = 0;
+  for (const f of FOOD_TYPES) { cum += f.chance; if (r <= cum) return f; }
+  return FOOD_TYPES[0];
+}
+
+function pickPowerup() {
+  const r = Math.random();
+  let cum = 0;
+  for (const p of POWERUPS) { cum += p.chance; if (r <= cum) return p; }
+  return null;
+}","* { box-sizing: border-box; }
+@keyframes pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.15)} }
+@keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
+@keyframes glow { 0%,100%{filter:brightness(1)} 50%{filter:brightness(1.4)} }
+@keyframes shake { 0%,100%{transform:translate(0)} 25%{transform:translate(-4px,2px)} 50%{transform:translate(4px,-2px)} 75%{transform:translate(-2px,4px)} }
+@keyframes slideUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+@keyframes fadeInScale { from{opacity:0;transform:scale(0.8)} to{opacity:1;transform:scale(1)} }
+@keyframes rainbow { 0%{color:#ff0000} 16%{color:#ff8800} 33%{color:#ffff00} 50%{color:#00ff00} 66%{color:#0088ff} 83%{color:#8800ff} 100%{color:#ff0000} }
+.animate-shake { animation: shake 0.3s ease-in-out; }
+.animate-slideUp { animation: slideUp 0.4s ease-out; }
+.animate-fadeInScale { animation: fadeInScale 0.3s ease-out; }
+.animate-rainbow { animation: rainbow 2s linear infinite; }
+.game-container { position:relative; overflow:hidden; }
+.particle { position:absolute; pointer-events:none; border-radius:50%; }
+.combo-text { position:absolute; pointer-events:none; font-weight:900; font-size:24px; text-shadow:0 0 10px currentColor; }
+.power-up-indicator { animation: glow 1s ease-in-out infinite; }
+::-webkit-scrollbar { width:8px } ::-webkit-scrollbar-track { background:#1a1a2e } ::-webkit-scrollbar-thumb { background:#4a4a6a; border-radius:4px } ::-webkit-scrollbar-thumb:hover { background:#6a6a8a }","Hash Router","True","{""chart.js"": ""https://esm.sh/chart.js@4.4.1"", ""react-chartjs-2"": ""https://esm.sh/react-chartjs-2@5.2.0?external=react,react-dom&deps=chart.js@4.4.1"", ""canvas-confetti"": ""https://esm.sh/canvas-confetti@1.9.3""}","import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Title, Tooltip, Legend, Filler } from 'chart.js';
+import { Line, Bar, Doughnut } from 'react-chartjs-2';
+import confetti from 'canvas-confetti';
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Title, Tooltip, Legend, Filler);","Game","/","","1","","function GamePage({ globalState, setGlobalState, storage, user }) {
+  const theme = THEMES[globalState.currentTheme] || THEMES.neon;
+  const mode = globalState.currentMode || 'classic';
+  const navigate = useNavigate();
+
+  // === MUSIC ENGINE ===
+  const musicCtxRef = useRef(null);
+  const musicNodesRef = useRef(null);
+  const musicPlayingRef = useRef(false);
+
+  const TRACKS = {
+    synthwave: { name: 'Synthwave', icon: '🌃', bpm: 120, baseNote: 55, scale: [0,3,5,7,10,12,15,17], bassPattern: [0,0,7,5,3,3,7,12], padChord: [[0,7,12,15],[3,7,10,15],[5,10,12,17],[3,7,12,15]], color: '#ff44aa' },
+    dark: { name: 'Dark Dungeon', icon: '🕱️', bpm: 90, baseNote: 40, scale: [0,1,5,7,8,12,13], bassPattern: [0,0,7,8,5,5,1,0], padChord: [[0,7,12],[1,5,8],[5,8,12],[0,5,7]], color: '#8844ff' },
+    chippy: { name: '8-Bit Arcade', icon: '👾', bpm: 140, baseNote: 65, scale: [0,2,4,7,9,12,14,16], bassPattern: [0,7,12,7,0,4,9,7], padChord: [[0,4,7],[2,7,9],[4,7,12],[0,7,12]], color: '#44ff00' },
+    jungle: { name: 'Snake Charmer', icon: '🐍', bpm: 100, baseNote: 50, scale: [0,1,4,5,7,8,11,12], bassPattern: [0,0,4,5,7,7,4,1], padChord: [[0,4,7,11],[1,5,8,12],[4,7,11,12],[0,5,7,12]], color: '#ffcc00' }
+  };
+
+  const startMusic = (trackKey) => {
+    stopMusic();
+    const track = TRACKS[trackKey];
+    if (!track) return;
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      musicCtxRef.current = ctx;
+      const master = ctx.createGain();
+      master.gain.value = 0.15;
+      master.connect(ctx.destination);
+
+      const bassGain = ctx.createGain();
+      bassGain.gain.value = 0.5;
+      const bassFilter = ctx.createBiquadFilter();
+      bassFilter.type = 'lowpass';
+      bassFilter.frequency.value = 300;
+      bassGain.connect(bassFilter);
+      bassFilter.connect(master);
+
+      const padGain = ctx.createGain();
+      padGain.gain.value = 0.18;
+      const padFilter = ctx.createBiquadFilter();
+      padFilter.type = 'lowpass';
+      padFilter.frequency.value = 1200;
+      padGain.connect(padFilter);
+      padFilter.connect(master);
+
+      const melGain = ctx.createGain();
+      melGain.gain.value = 0.12;
+      melGain.connect(master);
+
+      const noteFreq = (base, semitones) => base * Math.pow(2, semitones / 12);
+      const beatDur = 60 / track.bpm;
+      let beat = 0;
+      musicPlayingRef.current = true;
+
+      const scheduleLoop = () => {
+        if (!musicPlayingRef.current) return;
+        const now = ctx.currentTime;
+
+        for (let i = 0; i < 8; i++) {
+          const t = now + i * beatDur;
+          const bNote = track.bassPattern[i % track.bassPattern.length];
+          const bOsc = ctx.createOscillator();
+          const bEnv = ctx.createGain();
+          bOsc.type = 'sawtooth';
+          bOsc.frequency.setValueAtTime(noteFreq(track.baseNote, bNote), t);
+          bEnv.gain.setValueAtTime(0.6, t);
+          bEnv.gain.exponentialRampToValueAtTime(0.01, t + beatDur * 0.9);
+          bOsc.connect(bEnv);
+          bEnv.connect(bassGain);
+          bOsc.start(t);
+          bOsc.stop(t + beatDur);
+
+          if (i % 2 === 0) {
+            const chord = track.padChord[Math.floor(i / 2) % track.padChord.length];
+            chord.forEach(semi => {
+              const pOsc = ctx.createOscillator();
+              const pEnv = ctx.createGain();
+              pOsc.type = 'triangle';
+              pOsc.frequency.setValueAtTime(noteFreq(track.baseNote * 2, semi), t);
+              pEnv.gain.setValueAtTime(0.3, t);
+              pEnv.gain.exponentialRampToValueAtTime(0.01, t + beatDur * 2 * 0.95);
+              pOsc.connect(pEnv);
+              pEnv.connect(padGain);
+              pOsc.start(t);
+              pOsc.stop(t + beatDur * 2);
+            });
+          }
+
+          if (Math.random() < 0.6) {
+            const mSemi = track.scale[Math.floor(Math.random() * track.scale.length)];
+            const mOsc = ctx.createOscillator();
+            const mEnv = ctx.createGain();
+            mOsc.type = trackKey === 'chippy' ? 'square' : 'sine';
+            mOsc.frequency.setValueAtTime(noteFreq(track.baseNote * 4, mSemi), t);
+            mEnv.gain.setValueAtTime(0.2, t);
+            mEnv.gain.exponentialRampToValueAtTime(0.01, t + beatDur * 0.8);
+            mOsc.connect(mEnv);
+            mEnv.connect(melGain);
+            mOsc.start(t);
+            mOsc.stop(t + beatDur);
+          }
+        }
+
+        beat += 8;
+        musicNodesRef.current = setTimeout(scheduleLoop, beatDur * 7.5 * 1000);
+      };
+
+      scheduleLoop();
+    } catch(e) { console.error('Music error:', e); }
+  };
+
+  const stopMusic = () => {
+    musicPlayingRef.current = false;
+    if (musicNodesRef.current) clearTimeout(musicNodesRef.current);
+    if (musicCtxRef.current) { try { musicCtxRef.current.close(); } catch(e){} musicCtxRef.current = null; }
+  };
+
+  useEffect(() => {
+    if (globalState.currentTrack && globalState.musicEnabled) startMusic(globalState.currentTrack);
+    else stopMusic();
+    return () => stopMusic();
+  }, [globalState.currentTrack, globalState.musicEnabled]);
+
+  const toggleMusic = (trackKey) => {
+    if (globalState.currentTrack === trackKey && globalState.musicEnabled) {
+      setGlobalState(s => ({...s, musicEnabled: false, currentTrack: null}));
+    } else {
+      setGlobalState(s => ({...s, musicEnabled: true, currentTrack: trackKey}));
+    }
+  };
+  // Blaster gets a bigger arena
+  const GRID = mode === 'blaster' ? 25 : 20;
+  const CELL = mode === 'blaster' ? 20 : 22;
+  const INITIAL_SNAKE = [{ x: Math.floor(GRID/2), y: Math.floor(GRID/2) }];
+  const INITIAL_DIR = { x: 1, y: 0 };
+  const BASE_SPEED = 95;
+
+  const [snake, setSnake] = useState(INITIAL_SNAKE);
+  const [food, setFood] = useState({ x: 15, y: 10, ...FOOD_TYPES[0] });
+  const [powerup, setPowerup] = useState(null);
+  const [activePowers, setActivePowers] = useState({});
+  const [mazeWalls, setMazeWalls] = useState([]);
+  const [score, setScore] = useState(0);
+  const [combo, setCombo] = useState(0);
+  const [maxCombo, setMaxCombo] = useState(0);
+  const [gameOver, setGameOver] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  const [particles, setParticles] = useState([]);
+  const [comboTexts, setComboTexts] = useState([]);
+  const [shaking, setShaking] = useState(false);
+  const [speedLevel, setSpeedLevel] = useState(0);
+  const [highScore, setHighScore] = useState(0);
+  const [totalGames, setTotalGames] = useState(0);
+  const [showCountdown, setShowCountdown] = useState(false);
+  const [countdown, setCountdown] = useState(3);
+  const [startTime, setStartTime] = useState(null);
+  const [foodEatenThisGame, setFoodEatenThisGame] = useState(0);
+  const [powerupsThisGame, setPowerupsThisGame] = useState([]);
+  const [bestLength, setBestLength] = useState(0);
+  const [_rawEnemies, _setRawEnemies] = useState([]);
+  const enemies = useMemo(() => (_rawEnemies||[]).filter(e => e != null && typeof e === 'object' && 'type' in e), [_rawEnemies]);
+  const setEnemies = useCallback((val) => _setRawEnemies(Array.isArray(val) ? val : []), []);
+  const [bullets, setBullets] = useState([]);
+  const [wave, setWave] = useState(1);
+  const [kills, setKills] = useState(0);
+  const [waveEnemiesLeft, setWaveEnemiesLeft] = useState(8);
+  const enemyIdRef = useRef(0);
+  const bulletIdRef = useRef(0);
+  const snakeRef = useRef(INITIAL_SNAKE);
+  useEffect(() => { snakeRef.current = snake; }, [snake]);
+
+  const dirQueueRef = useRef([]);
+  const curDirRef = useRef(INITIAL_DIR);
+  const soundRef = useRef(globalState.soundEnabled);
+  const lastEatRef = useRef(0);
+  const comboTimerRef = useRef(null);
+  const gameTickRef = useRef(null);
+
+  useEffect(() => { soundRef.current = globalState.soundEnabled; }, [globalState.soundEnabled]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const [hs, tg] = await Promise.all([storage.get('highScore', 0), storage.get('totalGames', 0)]);
+        setHighScore(hs); setTotalGames(tg);
+      } catch(e) {}
+    })();
+  }, []);
+
+  const audioCtxRef = useRef(null);
+  const getCtx = () => {
+    if (!audioCtxRef.current) audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtxRef.current.state === 'suspended') audioCtxRef.current.resume();
+    return audioCtxRef.current;
+  };
+  const tone = (f, d, type, v) => { if (!soundRef.current) return; try { const c=getCtx(),o=c.createOscillator(),g=c.createGain(); o.type=type||'sine'; o.frequency.setValueAtTime(f,c.currentTime); g.gain.setValueAtTime(v||0.08,c.currentTime); g.gain.exponentialRampToValueAtTime(0.001,c.currentTime+d); o.connect(g); g.connect(c.destination); o.start(); o.stop(c.currentTime+d); } catch(e){} };
+  const sfx = {
+    eat: () => { tone(880,0.06,'square',0.07); setTimeout(()=>tone(1200,0.08,'sine',0.06),50); },
+    big: () => { [0,60,120,180].forEach((d,i)=>setTimeout(()=>tone(600+i*200,0.1,'sine',0.08),d)); },
+    die: () => { [0,100,200].forEach((d,i)=>setTimeout(()=>tone(300-i*80,0.2,'sawtooth',0.06),d)); },
+    powerup: () => { [0,50,100,150,200].forEach((d,i)=>setTimeout(()=>tone(400+i*150,0.08,'sine',0.06),d)); },
+    combo: (n) => { tone(600+n*50,0.1,'sine',0.08); },
+    achievement: () => { confetti({particleCount:80,spread:70,origin:{y:0.6}}); [0,80,160,240,320].forEach((d,i)=>setTimeout(()=>tone(523+i*100,0.12,'sine',0.08),d)); },
+    countdown: () => { tone(440,0.15,'sine',0.06); },
+    go: () => { tone(880,0.2,'sine',0.1); }
+  };
+
+  const spawnParticles = (x, y, color, count=8) => {
+    const px = x * (CELL+1) + CELL/2;
+    const py = y * (CELL+1) + CELL/2;
+    const newP = Array.from({length:count}, (_,i) => ({
+      id: Date.now()+i+Math.random(),
+      x: px, y: py,
+      vx: (Math.random()-0.5)*8,
+      vy: (Math.random()-0.5)*8,
+      color, size: 3+Math.random()*5,
+      life: 1
+    }));
+    setParticles(p => [...p, ...newP]);
+  };
+
+  const showComboText = (x, y, text, color) => {
+    const px = x * (CELL+1) + CELL/2;
+    const py = y * (CELL+1);
+    setComboTexts(ct => [...ct, { id: Date.now()+Math.random(), x:px, y:py, text, color, life:1 }]);
+  };
+
+  useEffect(() => {
+    if (particles.length === 0 && comboTexts.length === 0) return;
+    const anim = setInterval(() => {
+      setParticles(ps => ps.map(p=>({...p,x:p.x+p.vx,y:p.y+p.vy,vy:p.vy+0.3,life:p.life-0.04})).filter(p=>p.life>0));
+      setComboTexts(cs => cs.map(c=>({...c,y:c.y-1.5,life:c.life-0.025})).filter(c=>c.life>0));
+    }, 30);
+    return () => clearInterval(anim);
+  }, [particles.length > 0 || comboTexts.length > 0]);
+
+  const genFood = (snk, walls=[]) => {
+    const ft = pickFood();
+    let pos;
+    let tries = 0;
+    do {
+      if (activePowers.magnet && snk.length > 0) {
+        const h = snk[0];
+        pos = { x: Math.max(0,Math.min(GRID-1, h.x + Math.floor(Math.random()*7)-3)), y: Math.max(0,Math.min(GRID-1, h.y + Math.floor(Math.random()*7)-3)) };
+      } else {
+        pos = { x: Math.floor(Math.random()*GRID), y: Math.floor(Math.random()*GRID) };
+      }
+      tries++;
+    } while ((snk.some(s=>s.x===pos.x&&s.y===pos.y) || walls.some(w=>w[0]===pos.x&&w[1]===pos.y)) && tries < 100);
+    return { ...pos, ...ft };
+  };
+
+  const genPowerup = (snk, walls=[]) => {
+    const pu = pickPowerup();
+    if (!pu) return null;
+    let pos; let tries=0;
+    do { pos={x:Math.floor(Math.random()*GRID),y:Math.floor(Math.random()*GRID)}; tries++; }
+    while ((snk.some(s=>s.x===pos.x&&s.y===pos.y) || walls.some(w=>w[0]===pos.x&&w[1]===pos.y)) && tries<100);
+    return { ...pos, ...pu };
+  };
+
+  const startGame = () => {
+    const walls = [];
+    setMazeWalls(walls);
+    curDirRef.current = INITIAL_DIR;
+    dirQueueRef.current = [];
+    setSnake(INITIAL_SNAKE);
+    setFood(genFood(INITIAL_SNAKE, walls));
+    setPowerup(null);
+    setActivePowers({});
+    setScore(0); setCombo(0); setMaxCombo(0);
+    setGameOver(false); setIsPlaying(false); setIsPaused(false);
+    setSpeedLevel(0); setParticles([]); setComboTexts([]);
+    setFoodEatenThisGame(0); setPowerupsThisGame([]); setBestLength(1);
+    setEnemies([]); setBullets([]); setWave(1); setKills(0); setWaveEnemiesLeft(5); enemyIdRef.current = 0; bulletIdRef.current = 0;
+    lastEatRef.current = 0;
+    setShowCountdown(true); setCountdown(3);
+    sfx.countdown();
+    let c = 3;
+    const ci = setInterval(() => {
+      c--; setCountdown(c);
+      if (c > 0) sfx.countdown();
+      if (c <= 0) { clearInterval(ci); setShowCountdown(false); setIsPlaying(true); setStartTime(Date.now()); sfx.go(); }
+    }, 700);
+  };
+
+  const saveGame = async (finalScore, finalLen, finalCombo, finalPowerups, finalFoodCount) => {
+    try {
+      const dur = startTime ? Math.floor((Date.now()-startTime)/1000) : 0;
+      const newHS = Math.max(highScore, finalScore);
+      const newTG = totalGames + 1;
+      await Promise.all([storage.set('highScore', newHS), storage.set('totalGames', newTG)]);
+      setHighScore(newHS); setTotalGames(newTG);
+
+      const hist = await storage.get('gameHistory', []);
+      hist.push({ score:finalScore, length:finalLen, combo:finalCombo, duration:dur, mode, powerups:finalPowerups, foodEaten:finalFoodCount, ts:new Date().toISOString() });
+      if (hist.length > 200) hist.splice(0, hist.length - 200);
+      await storage.set('gameHistory', hist);
+
+      const st = await storage.get('playerStats', {});
+      st.totalGames = newTG;
+      st.totalScore = (st.totalScore||0) + finalScore;
+      st.bestScore = Math.max(st.bestScore||0, finalScore);
+      st.bestLength = Math.max(st.bestLength||0, finalLen);
+      st.bestCombo = Math.max(st.bestCombo||0, finalCombo);
+      st.longestSurvival = Math.max(st.longestSurvival||0, dur);
+      if (!st.modesPlayed) st.modesPlayed = [];
+      if (!st.modesPlayed.includes(mode)) st.modesPlayed.push(mode);
+      if (!st.powerupsCollected) st.powerupsCollected = [];
+      finalPowerups.forEach(p => { if (!st.powerupsCollected.includes(p)) st.powerupsCollected.push(p); });
+      st.diamondsEaten = (st.diamondsEaten||0) + (finalPowerups.filter?0:0);
+      if (mode==='portal') st.portalBest = Math.max(st.portalBest||0, finalScore);
+      if (mode==='blaster') st.blasterBest = Math.max(st.blasterBest||0, finalScore);
+      if (mode==='speed') st.speedBest = Math.max(st.speedBest||0, finalScore);
+      if (finalPowerups.length===0) st.bestNoPowerup = Math.max(st.bestNoPowerup||0, finalScore);
+      await storage.set('playerStats', st);
+
+      const prev = await storage.get('achievements', []);
+      const newAch = [];
+      ACHIEVEMENTS.forEach(a => {
+        if (!prev.includes(a.id) && a.check(st)) { newAch.push(a.id); }
+      });
+      if (newAch.length > 0) {
+        await storage.set('achievements', [...prev, ...newAch]);
+        sfx.achievement();
+      }
+
+      if (finalScore > 0) {
+        try {
+          const bestKey = 'best_' + mode;
+          const prev = await storage.get(bestKey, null);
+          if (!prev || finalScore > prev.score) {
+            await storage.set(bestKey, { score: finalScore, length: finalLen, combo: finalCombo, duration: startTime ? Math.floor((Date.now()-startTime)/1000) : 0, ts: new Date().toISOString() });
+          }
+        } catch(e) { console.error('Best score save error:', e); }
+      }
+    } catch(e) { console.error(e); }
+  };
+
+  useEffect(() => {
+    const h = (e) => {
+      if (e.key === ' ') { e.preventDefault(); if(isPlaying&&!gameOver) setIsPaused(p=>!p); return; }
+      if (e.key === 'Escape') { if(isPlaying) setIsPaused(p=>!p); return; }
+      if (!isPlaying || isPaused) return;
+      const last = dirQueueRef.current.length > 0 ? dirQueueRef.current[dirQueueRef.current.length-1] : curDirRef.current;
+      let nd = null;
+      if ((e.key==='ArrowUp'||e.key==='w'||e.key==='W')&&last.y===0) nd={x:0,y:-1};
+      else if ((e.key==='ArrowDown'||e.key==='s'||e.key==='S')&&last.y===0) nd={x:0,y:1};
+      else if ((e.key==='ArrowLeft'||e.key==='a'||e.key==='A')&&last.x===0) nd={x:-1,y:0};
+      else if ((e.key==='ArrowRight'||e.key==='d'||e.key==='D')&&last.x===0) nd={x:1,y:0};
+      if (nd && dirQueueRef.current.length < 3) dirQueueRef.current.push(nd);
+    };
+    window.addEventListener('keydown', h);
+    return () => window.removeEventListener('keydown', h);
+  }, [isPlaying, isPaused, gameOver]);
+
+  // Power-up timers
+  useEffect(() => {
+    const timers = Object.entries(activePowers).map(([type, endTime]) => {
+      const remaining = endTime - Date.now();
+      if (remaining <= 0) {
+        setActivePowers(ap => { const n={...ap}; delete n[type]; return n; });
+        return null;
+      }
+      return setTimeout(() => {
+        setActivePowers(ap => { const n={...ap}; delete n[type]; return n; });
+      }, remaining);
+    }).filter(Boolean);
+    return () => timers.forEach(clearTimeout);
+  }, [Object.keys(activePowers).join(',')]);
+
+  // === BLASTER MODE ===
+  const [blasterPU, setBlasterPU] = useState(null);
+  const frozenRef = useRef(0);
+  const frozen = frozenRef.current > Date.now();
+
+  useEffect(() => {
+    if (!isPlaying || gameOver || isPaused || mode !== 'blaster') return;
+    let lb = [];
+    let le = [];
+    let lk = 0;
+    let lw = 1;
+    let lwr = 5;
+    let tick = 0;
+    let spawnT = 0;
+    let burstCooldown = 0;
+    let bpu = null;
+    let frozenUntil = 0;
+
+    const loop = setInterval(() => {
+      try {
+      tick++;
+      const snk = snakeRef.current;
+      if (!snk || !snk.length) return;
+      le = le.filter(e => e && e.type != null);
+      const head = snk[0];
+      const dir = curDirRef.current;
+      // rapidfire removed - barrage is instant
+      // laser is instant, no piercing tracking needed
+
+      // BURST FIRE: fire 3 bullets over 3 ticks, then cooldown
+      const burstInterval = 18;
+      const burstSize = 3;
+      burstCooldown--;
+      if (burstCooldown <= 0) burstCooldown = burstInterval;
+      const inBurst = burstCooldown > burstInterval - burstSize;
+
+      if (inBurst) {
+        lb.push({ id:bulletIdRef.current++, x:head.x+dir.x*2, y:head.y+dir.y*2, dx:dir.x*2, dy:dir.y*2, main:true, age:0 });
+        if (soundRef.current && burstCooldown===burstInterval) tone(600,0.04,'square',0.04);
+
+        for (let i=10; i<snk.length; i+=10) {
+          const sg = snk[i];
+          const prevSeg = snk[i-1] || head;
+          const tdx = Math.sign(sg.x - prevSeg.x) || (dir.y !== 0 ? 1 : 0);
+          const tdy = Math.sign(sg.y - prevSeg.y) || (dir.x !== 0 ? 1 : 0);
+          const perpX = -tdy, perpY = tdx;
+          lb.push({ id:bulletIdRef.current++, x:sg.x+perpX, y:sg.y+perpY, dx:perpX*2, dy:perpY*2, main:false, age:0 });
+          lb.push({ id:bulletIdRef.current++, x:sg.x-perpX, y:sg.y-perpY, dx:-perpX*2, dy:-perpY*2, main:false, age:0 });
+        }
+      }
+
+      // Move bullets (speed=2 cells per tick)
+      lb = lb.map(b => ({...b, x:b.x+b.dx, y:b.y+b.dy, age:b.age+1})).filter(b => b.x>=-1 && b.x<=GRID && b.y>=-1 && b.y<=GRID && b.age < 12);
+
+      // Spawn enemies
+      spawnT++;
+      const isFrozen = Date.now() < frozenUntil;
+      const sr = Math.max(3, 20 - lw * 4);
+      if (spawnT >= sr && lwr > 0) {
+        spawnT = 0;
+        lwr--;
+        let et;
+        if (lw % 7 === 0 && lwr === 0) et = ENEMY_TYPES[3];
+        else if (lw >= 2 && Math.random() < 0.25 + lw * 0.03) et = ENEMY_TYPES[2];
+        else if (Math.random() < 0.45 + lw * 0.02) et = ENEMY_TYPES[1];
+        else et = ENEMY_TYPES[0];
+        let ex, ey, spawnTries = 0;
+        do {
+          const side = Math.floor(Math.random()*4);
+          if (side===0){ex=0;ey=Math.floor(Math.random()*GRID);}
+          else if(side===1){ex=GRID-1;ey=Math.floor(Math.random()*GRID);}
+          else if(side===2){ex=Math.floor(Math.random()*GRID);ey=0;}
+          else{ex=Math.floor(Math.random()*GRID);ey=GRID-1;}
+          spawnTries++;
+        } while (Math.abs(ex - head.x) + Math.abs(ey - head.y) < 5 && spawnTries < 20);
+        le.push({...et, x:ex, y:ey, id:enemyIdRef.current++, currentHp:et.hp});
+      }
+
+      // Move enemies (skip if frozen)
+      if (!isFrozen) {
+        le = le.map(e => {
+          if (tick % e.speed !== 0) return e;
+          if (e.behavior === 'chase') {
+            const dx=Math.sign(head.x-e.x), dy=Math.sign(head.y-e.y);
+            return Math.abs(head.x-e.x)>Math.abs(head.y-e.y)?{...e,x:e.x+dx}:{...e,y:e.y+dy};
+          }
+          const dirs=[[1,0],[-1,0],[0,1],[0,-1]];
+          const [dx,dy]=dirs[Math.floor(Math.random()*4)];
+          return {...e, x:Math.max(0,Math.min(GRID-1,e.x+dx)), y:Math.max(0,Math.min(GRID-1,e.y+dy))};
+        });
+      }
+
+      // Bullet-enemy collisions — collect effects, defer rendering
+      const usedBullets = new Set();
+      let tickScore = 0;
+      const tickFx = [];
+      le = le.filter(e => {
+        for (let bi=0; bi<lb.length; bi++) {
+          if (usedBullets.has(bi)) continue;
+          const b = lb[bi];
+          if (Math.abs(b.x-e.x)<1.5 && Math.abs(b.y-e.y)<1.5) {
+            usedBullets.add(bi);
+            e.currentHp--;
+            if (e.currentHp <= 0) {
+              lk++;
+              tickScore += e.points;
+              tickFx.push({x:e.x, y:e.y, c:e.color, pts:e.points, big:true});
+              return false;
+            }
+            tickFx.push({x:e.x, y:e.y, c:e.color, pts:0, big:false});
+            return true;
+          }
+        }
+        return true;
+      });
+      lb = lb.filter((_,i) => !usedBullets.has(i));
+
+      // Head collision with enemy
+      const headHit = le.find(e => e.x===head.x && e.y===head.y);
+      if (headHit) {
+        setGameOver(true); setIsPlaying(false);
+        if (soundRef.current) sfx.die();
+        setShaking(true); setTimeout(()=>setShaking(false),500);
+        spawnParticles(head.x, head.y, '#ff3333', 25);
+        setScore(s => { saveGame(s, snk.length, 0, powerupsThisGame, foodEatenThisGame); return s; });
+        return;
+      }
+
+      // Body armor — enemies die on contact with body
+      for (let ei = le.length - 1; ei >= 0; ei--) {
+        const e = le[ei];
+        if (e && snk.findIndex((s,i) => i>0 && s.x===e.x && s.y===e.y) > 0) {
+          lk++;
+          tickScore += Math.floor((e.points||0) * 0.5);
+          tickFx.push({x:e.x, y:e.y, c:'#44aaff', pts:Math.floor((e.points||0)*0.5), big:true, shield:true});
+          le.splice(ei, 1);
+        }
+      }
+
+      // Freeze powerup spawn & pickup
+      if (!bpu && tick % 80 === 0 && Math.random() < 0.2) {
+        let px,py,tries=0;
+        do { px=2+Math.floor(Math.random()*(GRID-4)); py=2+Math.floor(Math.random()*(GRID-4)); tries++; }
+        while (snk.some(s=>s.x===px&&s.y===py) && tries<50);
+        bpu = {type:'freeze', emoji:'❄️', name:'FREEZE', color:'#aaddff', x:px, y:py, spawnTick:tick};
+      }
+      if (bpu && tick - bpu.spawnTick > 120) bpu = null;
+      if (bpu && head.x === bpu.x && head.y === bpu.y) {
+        frozenUntil = Date.now() + 4000;
+        tickFx.push({x:bpu.x, y:bpu.y, c:'#aaddff', pts:0, big:true, msg:'❄️ FREEZE!'});
+        bpu = null;
+      }
+
+      // Wave complete
+      if (lwr <= 0 && le.length === 0) {
+        lw++;
+        lwr = 4 + lw * 6;
+        showComboText(Math.floor(GRID/2), Math.floor(GRID/2), 'WAVE '+lw+' ⚔️', '#ffd700');
+        if (soundRef.current) sfx.big();
+      }
+
+      // Batch ALL state updates at end of tick
+      const safeLe = le.filter(e => e && typeof e === 'object' && e.type);
+      const safeLb = lb.filter(b => b && typeof b === 'object');
+      frozenRef.current = frozenUntil;
+      setBullets(safeLb.map(b=>({...b})));
+      setEnemies(safeLe.map(e=>({...e})));
+      setKills(lk);
+      setWave(lw);
+      setWaveEnemiesLeft(lwr);
+      setBlasterPU(bpu ? {...bpu} : null);
+      // Defer ALL visual effects to after state is committed
+      if (tickScore > 0 || tickFx.length > 0) {
+        const fs = tickFx.slice();
+        const ts = tickScore;
+        setTimeout(() => {
+          if (ts > 0) setScore(s => s + ts);
+          fs.forEach(f => {
+            spawnParticles(f.x, f.y, f.c, f.big ? 10 : 3);
+            if (f.pts > 0) showComboText(f.x, f.y, (f.shield?'🛡️':'')+'+'+f.pts, f.c);
+            if (f.msg) showComboText(f.x, f.y, f.msg, f.c);
+          });
+          if (soundRef.current && fs.some(f=>f.big)) sfx.eat();
+        }, 0);
+      }
+      } catch(err) { console.error('Blaster tick error:', err); }
+    }, 55);
+
+    return () => clearInterval(loop);
+  }, [isPlaying, gameOver, isPaused, mode]);
+
+  // Main game loop
+  useEffect(() => {
+    if (!isPlaying || gameOver || isPaused) return;
+    let spd = BASE_SPEED;
+    if (mode === 'speed') spd = Math.max(40, BASE_SPEED - speedLevel * 1.5);
+    if (activePowers.slow) spd = Math.min(spd * 1.8, 200);
+
+    gameTickRef.current = setInterval(() => {
+      const nd = dirQueueRef.current.length > 0 ? dirQueueRef.current.shift() : curDirRef.current;
+      curDirRef.current = nd;
+
+      setSnake(prev => {
+        const head = prev[0];
+        let nh = { x: head.x + nd.x, y: head.y + nd.y };
+
+        // Portal mode wrap
+        if (mode === 'portal' || mode === 'blaster') {
+          nh.x = (nh.x + GRID) % GRID;
+          nh.y = (nh.y + GRID) % GRID;
+        }
+
+        // Wall collision
+        const hitWall = nh.x < 0 || nh.x >= GRID || nh.y < 0 || nh.y >= GRID;
+        const hitMaze = mazeWalls.some(w => w[0] === nh.x && w[1] === nh.y);
+        const hitSelf = prev.some(s => s.x === nh.x && s.y === nh.y);
+
+        if (hitWall || hitMaze) {
+          if (activePowers.shield) {
+            setActivePowers(ap => { const n={...ap}; delete n.shield; return n; });
+            spawnParticles(head.x, head.y, '#4488ff', 12);
+            setShaking(true); setTimeout(()=>setShaking(false), 300);
+            return prev;
+          }
+          setGameOver(true); setIsPlaying(false); sfx.die();
+          setShaking(true); setTimeout(()=>setShaking(false),500);
+          spawnParticles(head.x, head.y, '#ff3333', 20);
+          setScore(s => { saveGame(s, prev.length, maxCombo, powerupsThisGame, foodEatenThisGame); return s; });
+          return prev;
+        }
+
+        if (hitSelf && !activePowers.ghost && mode !== 'blaster') {
+          if (activePowers.shield) {
+            setActivePowers(ap => { const n={...ap}; delete n.shield; return n; });
+            spawnParticles(head.x, head.y, '#4488ff', 12);
+            return prev;
+          }
+          setGameOver(true); setIsPlaying(false); sfx.die();
+          setShaking(true); setTimeout(()=>setShaking(false),500);
+          spawnParticles(head.x, head.y, '#ff3333', 20);
+          setScore(s => { saveGame(s, prev.length, maxCombo, powerupsThisGame, foodEatenThisGame); return s; });
+          return prev;
+        }
+
+        const ns = [nh, ...prev];
+
+        // Food check
+        if (nh.x === food.x && nh.y === food.y) {
+          const now = Date.now();
+          const timeSinceLast = now - lastEatRef.current;
+          lastEatRef.current = now;
+
+          let newCombo = timeSinceLast < 3000 ? combo + 1 : 1;
+          setCombo(newCombo);
+          setMaxCombo(mc => Math.max(mc, newCombo));
+
+          const mult = activePowers.double ? 2 : 1;
+          const pts = food.points * mult * (newCombo > 1 ? Math.min(newCombo, 10) : 1);
+          setScore(s => s + pts);
+          setFoodEatenThisGame(f => f + 1);
+          if (ns.length > bestLength) setBestLength(ns.length);
+
+          if (food.type === 'diamond') {
+            storage.get('playerStats', {}).then(st => { st.diamondsEaten=(st.diamondsEaten||0)+1; storage.set('playerStats',st); });
+          }
+          if (food.type === 'golden') {
+            storage.get('playerStats', {}).then(st => { st.goldensEaten=(st.goldensEaten||0)+1; storage.set('playerStats',st); });
+          }
+
+          spawnParticles(nh.x, nh.y, food.color, food.points >= 50 ? 16 : 8);
+          if (newCombo > 1) showComboText(nh.x, nh.y, `${newCombo}x COMBO! +${pts}`, theme.accent);
+          else if (pts >= 50) showComboText(nh.x, nh.y, `+${pts}`, food.color);
+
+          if (food.points >= 50) { sfx.big(); } else { sfx.eat(); }
+          if (newCombo > 1) sfx.combo(newCombo);
+
+          setFood(genFood(ns, mazeWalls));
+          if (mode === 'speed') setSpeedLevel(l => l + 1);
+
+          // Maybe spawn powerup
+          if (!powerup && Math.random() < 0.25) setPowerup(genPowerup(ns, mazeWalls));
+
+          if (comboTimerRef.current) clearTimeout(comboTimerRef.current);
+          comboTimerRef.current = setTimeout(() => setCombo(0), 3000);
+
+          return ns;
+        }
+
+        // Powerup check
+        if (powerup && nh.x === powerup.x && nh.y === powerup.y) {
+          setActivePowers(ap => ({...ap, [powerup.type]: Date.now() + powerup.duration}));
+          setPowerupsThisGame(pp => [...pp, powerup.type]);
+          spawnParticles(nh.x, nh.y, powerup.color, 14);
+          showComboText(nh.x, nh.y, powerup.emoji + ' ' + powerup.name, powerup.color);
+          sfx.powerup();
+          setPowerup(null);
+          ns.pop();
+          return ns;
+        }
+
+        ns.pop();
+        return ns;
+      });
+    }, spd);
+
+    return () => clearInterval(gameTickRef.current);
+  }, [isPlaying, gameOver, isPaused, food, powerup, activePowers, speedLevel, mode, mazeWalls, combo, maxCombo, bestLength, foodEatenThisGame, powerupsThisGame]);
+
+  const dirBtn = (dir) => {
+    if (!isPlaying || isPaused) return;
+    const last = dirQueueRef.current.length > 0 ? dirQueueRef.current[dirQueueRef.current.length-1] : curDirRef.current;
+    if ((dir.x!==0&&last.x===0)||(dir.y!==0&&last.y===0)) { if(dirQueueRef.current.length<3) dirQueueRef.current.push(dir); }
+  };
+
+  const isWall = (x,y) => mazeWalls.some(w=>w[0]===x&&w[1]===y);
+
+  const getCellStyle = (x, y) => {
+    try {
+    if (snake[0]?.x===x && snake[0]?.y===y) return { background: `radial-gradient(circle, ${theme.snakeHead}, ${theme.snakeBody})`, borderRadius:'25%', boxShadow:`0 0 8px ${theme.snakeHead}88` };
+    const bi = snake.slice(1).findIndex(s=>s.x===x&&s.y===y);
+    if (bi >= 0) {
+      const isTurret = mode === 'blaster' && (bi+1) % 10 === 0;
+      const alpha = Math.max(0.4, 1 - bi * 0.015);
+      const glow = activePowers.ghost ? `0 0 6px ${theme.snakeBody}66` : isTurret ? `0 0 6px #ffff0088, inset 0 0 4px #ffff0044` : 'none';
+      return { background: isTurret ? `linear-gradient(135deg, ${theme.snakeBody}, #888844)` : theme.snakeBody, opacity: activePowers.ghost ? 0.5 : alpha, borderRadius: isTurret ? '30%' : '20%', boxShadow: glow, border: isTurret ? '1px solid #ffff4488' : 'none' };
+    }
+    if (food?.x===x && food?.y===y) return { background: `radial-gradient(circle, ${food.color}, ${food.color}88)`, borderRadius:'50%', animation:'pulse 0.5s infinite', boxShadow:`0 0 12px ${food.color}aa` };
+    if (powerup?.x===x && powerup?.y===y) return { background: `radial-gradient(circle, ${powerup.color}, ${powerup.color}66)`, borderRadius:'30%', animation:'float 1s ease-in-out infinite', boxShadow:`0 0 15px ${powerup.color}cc` };
+    if (isWall(x,y)) return { background:'#555', borderRadius:'3px' };
+    for (let ei=0; ei<enemies.length; ei++) { const en=enemies[ei]; if (en && en.x===x && en.y===y && en.type) {
+      const c = en.color||'#ff4444';
+      return { background:`radial-gradient(circle, ${c}, ${c}66)`, borderRadius:en.type==='boss'?'20%':'30%', boxShadow:`0 0 ${en.type==='boss'?16:10}px ${c}88`, border: (en.currentHp||1) < (en.hp||1) ? `2px solid rgba(255,255,255,${((en.currentHp||1)/(en.hp||1))*0.3})` : 'none', filter: frozen ? 'brightness(1.5) saturate(0.3)' : undefined };
+    }}
+    if (blasterPU?.x===x && blasterPU?.y===y) return { background:`radial-gradient(circle, ${blasterPU.color}, ${blasterPU.color}44)`, borderRadius:'30%', animation:'float 0.8s ease-in-out infinite', boxShadow:`0 0 18px ${blasterPU.color}cc` };
+    const bullet = (bullets||[]).find(b => b && Math.round(b.x)===x && Math.round(b.y)===y);
+    if (bullet) return { background: bullet.main ? '#ffffff' : '#ffff66', borderRadius:'50%', width: bullet.main ? CELL*0.5 : CELL*0.35, height: bullet.main ? CELL*0.5 : CELL*0.35, margin:'auto', boxShadow: bullet.main ? '0 0 8px #ffffff, 0 0 16px #ffff00' : '0 0 6px #ffff66' };
+    } catch(err) { /* safe fallback */ }
+    return { background: theme.grid };
+  };
+
+  const getCellContent = (x,y) => {
+    try {
+    if (food?.x===x && food?.y===y) return <span style={{fontSize:CELL*0.65+'px',lineHeight:1}}>{food.emoji}</span>;
+    if (powerup?.x===x && powerup?.y===y) return <span style={{fontSize:CELL*0.6+'px',lineHeight:1}}>{powerup.emoji}</span>;
+    if (blasterPU?.x===x && blasterPU?.y===y) return <span style={{fontSize:CELL*0.7+'px',lineHeight:1,filter:'drop-shadow(0 0 4px '+(blasterPU.color||'#fff')+')'}}>{blasterPU.emoji}</span>;
+    for (let ei=0; ei<enemies.length; ei++) { const en=enemies[ei]; if (en && en.x===x && en.y===y && en.type) {
+      const hp = (en.currentHp||1)/(en.hp||1);
+      return <span style={{fontSize:CELL*(en.type==='boss'?0.75:0.55)+'px',lineHeight:1, filter:frozen?'brightness(2) hue-rotate(180deg)':'none', opacity:hp<0.5?0.6+hp:1}}>{en.emoji||'👾'}</span>;
+    }}
+    } catch(err) { /* safe fallback */ }
+    return null;
+  };
+
+  const activePowerList = Object.entries(activePowers);
+
+  return (
+    <div className=""min-h-screen flex flex-col"" style={{background:theme.bg, color:theme.text}}>
+      <Nav theme={globalState.currentTheme} />
+      <div className=""flex-1 flex items-center justify-center p-4"">
+        <div className=""flex flex-col lg:flex-row gap-6 items-start"">
+          {/* Game Board */}
+          <div className=""flex-shrink-0"">
+            <div className={`game-container ${shaking?'animate-shake':''}`} style={{border:`3px solid ${theme.border}`, boxShadow:`0 0 30px ${theme.glow}`, borderRadius:8, background:theme.grid, padding:1}}>
+              <div style={{display:'grid', gridTemplateColumns:`repeat(${GRID},${CELL}px)`, gridTemplateRows:`repeat(${GRID},${CELL}px)`, gap:1, position:'relative'}}>
+                {Array.from({length:GRID*GRID}).map((_,i) => {
+                  const x=i%GRID, y=Math.floor(i/GRID);
+                  return <div key={i} style={{...getCellStyle(x,y), width:CELL, height:CELL, display:'flex', alignItems:'center', justifyContent:'center', transition:'background 0.1s'}}>{getCellContent(x,y)}</div>;
+                })}
+                {particles.map(p => <div key={p.id} className=""particle"" style={{left:p.x,top:p.y,width:p.size,height:p.size,background:p.color,opacity:p.life,transform:`scale(${p.life})`}} />)}
+                {comboTexts.map(c => <div key={c.id} className=""combo-text"" style={{left:c.x,top:c.y,color:c.color,opacity:c.life,transform:`translateX(-50%) scale(${0.8+c.life*0.4})`}}>{c.text}</div>)}
+              </div>
+              {showCountdown && <div style={{position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center',background:'rgba(0,0,0,0.7)',borderRadius:5,zIndex:10}}><span className=""animate-fadeInScale"" style={{fontSize:80,fontWeight:900,color:theme.accent,textShadow:`0 0 30px ${theme.accent}`}}>{countdown || 'GO!'}</span></div>}
+              {isPaused && <div style={{position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center',background:'rgba(0,0,0,0.7)',borderRadius:5,zIndex:10}}><span style={{fontSize:36,fontWeight:900,color:theme.accent}}>⏸ PAUSED</span></div>}
+            </div>
+            {/* Mobile controls */}
+            <div className=""mt-3 lg:hidden flex flex-col items-center gap-1"">
+              <button onClick={()=>dirBtn({x:0,y:-1})} className=""w-12 h-12 rounded-lg text-lg font-bold"" style={{background:theme.border+'33',color:theme.text}}>▲</button>
+              <div className=""flex gap-1"">
+                <button onClick={()=>dirBtn({x:-1,y:0})} className=""w-12 h-12 rounded-lg text-lg font-bold"" style={{background:theme.border+'33',color:theme.text}}>◀</button>
+                <button onClick={()=>dirBtn({x:0,y:1})} className=""w-12 h-12 rounded-lg text-lg font-bold"" style={{background:theme.border+'33',color:theme.text}}>▼</button>
+                <button onClick={()=>dirBtn({x:1,y:0})} className=""w-12 h-12 rounded-lg text-lg font-bold"" style={{background:theme.border+'33',color:theme.text}}>▶</button>
+              </div>
+            </div>
+          </div>
+
+          {/* Sidebar */}
+          <div className=""w-full lg:w-64 flex flex-col gap-3"">
+            {/* Score */}
+            <div className=""rounded-lg p-4"" style={{background:'rgba(0,0,0,0.4)', border:`2px solid ${theme.accent}`}}>
+              <div className=""text-xs uppercase tracking-wider opacity-60"">Score</div>
+              <div className=""text-4xl font-black"" style={{color:theme.accent}}>{score}</div>
+              <div className=""text-sm font-bold mt-1 animate-rainbow"" style={{visibility: combo > 1 ? 'visible' : 'hidden'}}>{combo > 1 ? `${combo}x COMBO` : '\u00A0'}</div>
+            </div>
+
+            {/* High Score */}
+            <div className=""rounded-lg p-3"" style={{background:'rgba(0,0,0,0.3)', border:'1px solid #ffd70044'}}>
+              <div className=""text-xs uppercase tracking-wider opacity-60"">High Score</div>
+              <div className=""text-2xl font-bold"" style={{color:'#ffd700'}}>{Math.max(highScore, score)}</div>
+            </div>
+
+            {/* Mode badge */}
+            <div className=""rounded-lg p-3 text-center"" style={{background:'rgba(0,0,0,0.3)', border:`1px solid ${theme.border}44`}}>
+              <div className=""text-lg"">{MODES[mode].icon} {MODES[mode].name}</div>
+              <div className=""text-xs opacity-50"">Length: {snake.length}{mode==='speed' ? ` • Speed: ${speedLevel}` : ''}</div>
+            </div>
+
+            {/* Blaster Mode Info */}
+            {mode === 'blaster' && (isPlaying || gameOver) && (
+              <div className=""rounded-lg p-3"" style={{background:'rgba(255,50,50,0.1)', border:'1px solid #ff444444'}}>
+                <div className=""text-xs uppercase tracking-wider opacity-60 mb-2"">⚔️ Blaster Mode</div>
+                <div className=""flex justify-between mb-1""><span className=""text-xs opacity-60"">Wave</span><span className=""font-black text-lg"" style={{color:'#ffd700'}}>{wave}</span></div>
+                <div className=""flex justify-between mb-1""><span className=""text-xs opacity-60"">Kills</span><span className=""font-bold"" style={{color:'#ff4444'}}>{kills}</span></div>
+                <div className=""flex justify-between mb-1""><span className=""text-xs opacity-60"">Enemies Left</span><span className=""font-bold opacity-70"">{waveEnemiesLeft + (enemies||[]).length}</span></div>
+                <div className=""flex justify-between""><span className=""text-xs opacity-60"">Turrets</span><span className=""font-bold"" style={{color:'#ffff44'}}>{Math.floor(Math.max(0, snake.length-1)/10)}</span></div>
+                <div className=""text-xs text-center mt-2 opacity-40"">Grow longer = more turrets!</div>
+                <div className=""mt-2 pt-2"" style={{borderTop:'1px solid #ffffff11'}}>
+                  <div className=""text-xs uppercase tracking-wider opacity-40 mb-1"">Combat Power-Ups</div>
+                  <div className=""flex flex-wrap gap-1"">
+                    {(BLASTER_POWERUPS||[]).filter(Boolean).map((p,idx) => p ? <span key={p.type||idx} title={p.desc||''} className=""cursor-help"" style={{fontSize:14}}>{p.emoji||'?'}</span> : null)}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Active Power-ups */}
+            <div className=""rounded-lg p-3"" style={{background: activePowerList.length > 0 ? 'rgba(0,0,0,0.3)' : 'transparent', border: activePowerList.length > 0 ? '1px solid #ffffff22' : 'none', maxHeight: activePowerList.length > 0 ? 200 : 0, overflow:'hidden', padding: activePowerList.length > 0 ? undefined : 0, transition:'max-height 0.3s ease, padding 0.3s ease, background 0.3s ease'}}>
+                <div className=""text-xs uppercase tracking-wider opacity-60 mb-2"">Active Powers</div>
+                {activePowerList.map(([type, endTime]) => {
+                  const pu = POWERUPS.find(p=>p.type===type) || BLASTER_POWERUPS.find(p=>p.type===type);
+                  if (!pu) return null;
+                  const remaining = Math.max(0, Math.ceil((endTime - Date.now())/1000));
+                  return <div key={type} className=""flex items-center gap-2 mb-1 power-up-indicator"" style={{color:pu.color||'#fff'}}><span>{pu.emoji||'✨'}</span><span className=""text-sm font-bold"">{pu.name||type}</span><span className=""text-xs opacity-70"">{remaining}s</span></div>;
+                })}
+              </div>
+
+            {/* Game Over or Status */}
+            {gameOver ? (
+              <div className=""rounded-lg p-4 text-center animate-slideUp"" style={{background:'rgba(255,0,0,0.1)', border:'2px solid #ff333388'}}>
+                <div className=""text-2xl font-black text-red-400"">GAME OVER</div>
+                <div className=""text-sm mt-1"">Score: {score} • Length: {snake.length}</div>
+                {score >= highScore && score > 0 && <div className=""text-yellow-400 text-sm mt-1"">🏆 NEW HIGH SCORE!</div>}
+                {maxCombo > 1 && <div className=""text-xs mt-1 opacity-70"">Best Combo: {maxCombo}x</div>}
+              </div>
+            ) : !isPlaying && !showCountdown ? (
+              <div className=""rounded-lg p-4 text-center"" style={{background:'rgba(0,0,0,0.3)'}}>
+                <div className=""text-sm opacity-60"">Press Start to play!</div>
+                <div className=""text-xs opacity-40 mt-1"">Arrow Keys / WASD • Space to pause</div>
+              </div>
+            ) : null}
+
+            {/* Buttons */}
+            <button onClick={isPlaying ? ()=>setIsPaused(p=>!p) : startGame} className=""w-full py-3 rounded-lg font-bold text-lg transition-all hover:brightness-110"" style={{background:isPlaying?'#3b82f6':theme.accent, color:isPlaying?'white':'#000'}} disabled={showCountdown}>
+              {isPlaying ? (isPaused ? '▶️ Resume' : '⏸ Pause') : (gameOver ? '🔄 Play Again' : '▶️ Start Game')}
+            </button>
+            {isPlaying && <button onClick={startGame} className=""w-full py-2 rounded-lg font-semibold text-sm transition-all"" style={{background:'#f59e0b44',color:'#f59e0b',border:'1px solid #f59e0b44'}}>🔄 Restart</button>}
+
+            {/* Sound toggle */}
+            <button onClick={()=>setGlobalState(s=>({...s,soundEnabled:!s.soundEnabled}))} className=""w-full py-2 rounded-lg text-sm font-semibold"" style={{background:'rgba(0,0,0,0.3)',color:globalState.soundEnabled?theme.accent:'#666',border:`1px solid ${globalState.soundEnabled?theme.accent+'44':'#33333366'}`}}>
+              {globalState.soundEnabled ? '🔊 Sound ON' : '🔇 Sound OFF'}
+            </button>
+
+            {/* Mode Switcher */}
+            <div className=""rounded-lg p-3"" style={{background:'rgba(0,0,0,0.3)', border:`1px solid ${theme.border}22`}}>
+              <div className=""text-xs uppercase tracking-wider opacity-40 mb-2"">Game Mode</div>
+              <div className=""grid grid-cols-2 gap-1"">
+                {Object.entries(MODES).map(([key, m]) => (
+                  <button key={key} onClick={() => { if(!isPlaying) setGlobalState(s=>({...s, currentMode:key})); }} disabled={isPlaying} className=""px-2 py-1.5 rounded text-xs font-bold transition-all"" style={{background: mode===key ? theme.accent+'33' : 'rgba(0,0,0,0.2)', color: mode===key ? theme.accent : isPlaying ? theme.text+'44' : theme.text+'88', border: `1px solid ${mode===key ? theme.accent+'66' : 'transparent'}`, cursor: isPlaying ? 'default' : 'pointer'}}>
+                    {m.icon} {m.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Music */}
+            <div className=""rounded-lg p-3"" style={{background:'rgba(0,0,0,0.3)', border:`1px solid ${theme.border}22`}}>
+              <div className=""text-xs uppercase tracking-wider opacity-40 mb-2"">🎵 Music</div>
+              <div className=""grid grid-cols-2 gap-1"">
+                {Object.entries(TRACKS).map(([key, t]) => (
+                  <button key={key} onClick={() => toggleMusic(key)} className=""px-2 py-1.5 rounded text-xs font-bold transition-all"" style={{background: globalState.currentTrack===key && globalState.musicEnabled ? t.color+'33' : 'rgba(0,0,0,0.2)', color: globalState.currentTrack===key && globalState.musicEnabled ? t.color : theme.text+'88', border: `1px solid ${globalState.currentTrack===key && globalState.musicEnabled ? t.color+'66' : 'transparent'}`}}>
+                    {t.icon} {t.name}
+                  </button>
+                ))}
+              </div>
+              {globalState.musicEnabled && <div className=""text-xs mt-2 text-center animate-rainbow font-bold"">♪ Now Playing: {TRACKS[globalState.currentTrack]?.name}</div>}
+            </div>
+
+            {/* Food legend */}
+            <div className=""rounded-lg p-3"" style={{background:'rgba(0,0,0,0.2)'}}>
+              <div className=""text-xs uppercase tracking-wider opacity-40 mb-2"">Food Values</div>
+              <div className=""flex flex-wrap gap-2"">
+                {FOOD_TYPES.map(f => <span key={f.type} className=""text-xs"" style={{color:f.color}}>{f.emoji} {f.points}pts</span>)}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}","Get Leaderboard","leaderboard","GET","storages = env['mcp.webapp.user.storage'].sudo().search_read(
+    [('webapp_id', '=', 58)],
+    ['user_id', 'data']
+)
+
+boards = {m: [] for m in ['classic', 'portal', 'blaster', 'speed']}
+
+for rec in storages:
+    d = rec.get('data') or {}
+    uname = rec['user_id'][1] if rec.get('user_id') else 'Anonymous'
+    for mode in boards:
+        key = 'best_' + mode
+        entry = d.get(key)
+        if entry and isinstance(entry, dict) and entry.get('score', 0) > 0:
+            boards[mode].append({
+                'name': uname,
+                'score': entry.get('score', 0),
+                'length': entry.get('length', 1),
+                'combo': entry.get('combo', 0),
+                'duration': entry.get('duration', 0),
+                'ts': entry.get('ts', '')
+            })
+
+for m in boards:
+    boards[m].sort(key=lambda x: x['score'], reverse=True)
+    boards[m] = boards[m][:50]
+
+combined = []
+for m, entries in boards.items():
+    for e in entries:
+        combined.append({**e, 'mode': m})
+combined.sort(key=lambda x: x['score'], reverse=True)
+boards['all'] = combined[:50]
+
+result = boards"
+"","","","","","","","","","","","Modes","/modes","","2","","function ModesPage({ globalState, setGlobalState }) {
+  const theme = THEMES[globalState.currentTheme] || THEMES.neon;
+  const navigate = useNavigate();
+  const selectMode = (m) => { setGlobalState(s=>({...s, currentMode:m})); navigate('/'); };
+  return (
+    <div className=""min-h-screen"" style={{background:theme.bg,color:theme.text}}>
+      <Nav theme={globalState.currentTheme} />
+      <div className=""max-w-4xl mx-auto p-8"">
+        <h1 className=""text-4xl font-black text-center mb-2"" style={{color:theme.accent}}>🎮 Game Modes</h1>
+        <p className=""text-center opacity-60 mb-8"">Choose your challenge</p>
+        <div className=""grid grid-cols-1 md:grid-cols-2 gap-6"">
+          {Object.entries(MODES).map(([key, m]) => (
+            <button key={key} onClick={()=>selectMode(key)} className=""text-left rounded-xl p-6 transition-all hover:scale-105 hover:brightness-110"" style={{background: globalState.currentMode===key ? theme.accent+'22' : 'rgba(0,0,0,0.4)', border:`2px solid ${globalState.currentMode===key ? theme.accent : theme.border+'33'}`}}>
+              <div className=""text-4xl mb-3"">{m.icon}</div>
+              <div className=""text-xl font-bold"" style={{color: globalState.currentMode===key ? theme.accent : theme.text}}>{m.name}</div>
+              <div className=""text-sm opacity-60 mt-2"">{m.desc}</div>
+              {globalState.currentMode===key && <div className=""text-xs font-bold mt-3"" style={{color:theme.accent}}>✓ SELECTED</div>}
+            </button>
+          ))}
+        </div>
+        <div className=""mt-8"">
+          <h2 className=""text-2xl font-bold mb-4"" style={{color:theme.accent}}>⚡ Power-Ups</h2>
+          <div className=""grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"">
+            {POWERUPS.map(p => (
+              <div key={p.type} className=""rounded-lg p-4"" style={{background:'rgba(0,0,0,0.3)', border:`1px solid ${p.color}44`}}>
+                <div className=""text-2xl mb-1"">{p.emoji}</div>
+                <div className=""font-bold"" style={{color:p.color}}>{p.name}</div>
+                <div className=""text-xs opacity-60 mt-1"">{p.desc}</div>
+                <div className=""text-xs opacity-40 mt-1"">{p.duration ? (p.duration/1000)+'s duration' : 'Instant'}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className=""mt-8"">
+          <h2 className=""text-2xl font-bold mb-4"" style={{color:theme.accent}}>💣 Blaster Combat Power-Ups</h2>
+          <p className=""text-sm opacity-50 mb-4"">These spawn only in Snake Blaster mode. Collect them to unleash devastation!</p>
+          <div className=""grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"">
+            {BLASTER_POWERUPS.map(p => (
+              <div key={p.type} className=""rounded-lg p-4"" style={{background:'rgba(0,0,0,0.3)', border:`1px solid ${p.color}44`}}>
+                <div className=""text-2xl mb-1"">{p.emoji}</div>
+                <div className=""font-bold"" style={{color:p.color}}>{p.name}</div>
+                <div className=""text-xs opacity-60 mt-1"">{p.desc}</div>
+                <div className=""text-xs opacity-40 mt-1"">{p.duration ? (p.duration/1000)+'s duration' : 'Instant'}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className=""mt-8"">
+          <h2 className=""text-2xl font-bold mb-4"" style={{color:theme.accent}}>🍎 Food Types</h2>
+          <div className=""grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4"">
+            {FOOD_TYPES.map(f => (
+              <div key={f.type} className=""rounded-lg p-4 text-center"" style={{background:'rgba(0,0,0,0.3)', border:`1px solid ${f.color}44`}}>
+                <div className=""text-3xl mb-1"">{f.emoji}</div>
+                <div className=""font-bold"" style={{color:f.color}}>{f.points} pts</div>
+                <div className=""text-xs opacity-40"">{Math.round(f.chance*100)}% spawn</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}","","","",""
+"","","","","","","","","","","","Achievements","/achievements","","3","","function AchievementsPage({ globalState, storage }) {
+  const theme = THEMES[globalState.currentTheme] || THEMES.neon;
+  const [unlocked, setUnlocked] = useState([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    storage.get('achievements', []).then(a => { setUnlocked(a); setLoading(false); }).catch(()=>setLoading(false));
+  }, []);
+
+  const pct = ACHIEVEMENTS.length > 0 ? Math.round(unlocked.length / ACHIEVEMENTS.length * 100) : 0;
+
+  return (
+    <div className=""min-h-screen"" style={{background:theme.bg,color:theme.text}}>
+      <Nav theme={globalState.currentTheme} />
+      <div className=""max-w-4xl mx-auto p-8"">
+        <h1 className=""text-4xl font-black text-center mb-2"" style={{color:theme.accent}}>🏆 Achievements</h1>
+        <p className=""text-center opacity-60 mb-2"">{unlocked.length} / {ACHIEVEMENTS.length} unlocked</p>
+        <div className=""w-full rounded-full h-3 mb-8"" style={{background:'rgba(255,255,255,0.1)'}}>
+          <div className=""h-3 rounded-full transition-all duration-500"" style={{width:pct+'%', background:`linear-gradient(90deg, ${theme.accent}, #ffd700)`}} />
+        </div>
+        {loading ? <div className=""text-center text-xl opacity-60"">Loading...</div> : (
+          <div className=""grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"">
+            {ACHIEVEMENTS.map(a => {
+              const done = unlocked.includes(a.id);
+              return (
+                <div key={a.id} className={`rounded-xl p-5 transition-all ${done?'':'opacity-50 grayscale'}`} style={{background:done?'rgba(0,0,0,0.4)':'rgba(0,0,0,0.2)', border:`2px solid ${done?theme.accent+'88':'#ffffff11'}`}}>
+                  <div className=""text-3xl mb-2"">{a.icon}</div>
+                  <div className=""font-bold"" style={{color:done?theme.accent:theme.text}}>{a.name}</div>
+                  <div className=""text-xs opacity-60 mt-1"">{a.desc}</div>
+                  {done && <div className=""text-xs mt-2"" style={{color:theme.accent}}>✅ Unlocked</div>}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}","","","",""
+"","","","","","","","","","","","Leaderboard","/leaderboard","","4","","function LeaderboardPage({ globalState, api, user }) {
+  const theme = THEMES[globalState.currentTheme] || THEMES.neon;
+  const [boards, setBoards] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState('all');
+
+  const fetchBoard = async () => {
+    setLoading(true);
+    try {
+      const data = await api.get('leaderboard');
+      setBoards(data || {});
+    } catch(e) { console.error('Leaderboard fetch error:', e); }
+    setLoading(false);
+  };
+
+  useEffect(() => { fetchBoard(); }, []);
+
+  const entries = boards[filter] || [];
+  const medals = ['🥇','🥈','🥉'];
+  const modeTabs = ['all','classic','portal','blaster','speed'];
+
+  const formatDuration = (s) => s >= 60 ? `${Math.floor(s/60)}m${s%60}s` : `${s}s`;
+
+  return (
+    <div className=""min-h-screen"" style={{background:theme.bg,color:theme.text}}>
+      <Nav theme={globalState.currentTheme} />
+      <div className=""max-w-3xl mx-auto p-8"">
+        <h1 className=""text-4xl font-black text-center mb-2"" style={{color:theme.accent}}>🌍 Global Leaderboard</h1>
+        <p className=""text-center opacity-60 mb-2"">Best score per player per mode</p>
+        <div className=""text-center mb-6"">
+          <button onClick={fetchBoard} className=""text-xs px-3 py-1 rounded"" style={{background:'rgba(255,255,255,0.1)', color:theme.accent}}>🔄 Refresh</button>
+        </div>
+
+        <div className=""flex justify-center gap-2 mb-6 flex-wrap"">
+          {modeTabs.map(f => (
+            <button key={f} onClick={()=>setFilter(f)} className=""px-4 py-2 rounded-lg text-sm font-bold transition-all"" style={{background:filter===f?theme.accent+'33':'rgba(0,0,0,0.3)', color:filter===f?theme.accent:theme.text+'88', border:`1px solid ${filter===f?theme.accent:theme.border+'33'}`}}>
+              {f === 'all' ? '🏆 All Modes' : (MODES[f]?.icon || '') + ' ' + (MODES[f]?.name || f)}
+              {boards[f] && boards[f].length > 0 && <span className=""ml-1 opacity-50"">({boards[f].length})</span>}
+            </button>
+          ))}
+        </div>
+
+        {loading ? <div className=""text-center text-xl opacity-60 py-12"">Loading leaderboard...</div> : entries.length === 0 ? (
+          <div className=""text-center p-12 rounded-xl"" style={{background:'rgba(0,0,0,0.3)'}}>
+            <div className=""text-5xl mb-4"">🏜️</div>
+            <div className=""text-xl opacity-60"">No scores yet{filter !== 'all' ? ` in ${MODES[filter]?.name || filter} mode` : ''}.</div>
+            <div className=""text-sm opacity-40 mt-2"">Play a game and your best score will appear here!</div>
+            <Link to=""/"" className=""inline-block mt-4 px-6 py-3 rounded-lg font-bold"" style={{background:theme.accent,color:'#000'}}>Play Now</Link>
+          </div>
+        ) : (
+          <div className=""rounded-xl overflow-hidden"" style={{background:'rgba(0,0,0,0.3)', border:`1px solid ${theme.border}33`}}>
+            <div className=""flex items-center gap-4 px-5 py-3"" style={{background:'rgba(0,0,0,0.3)', borderBottom:`1px solid ${theme.border}22`}}>
+              <div className=""w-10 text-xs font-bold opacity-40 text-center"">Rank</div>
+              <div className=""flex-1 text-xs font-bold opacity-40"">Player</div>
+              {filter === 'all' && <div className=""w-20 text-xs font-bold opacity-40 text-center"">Mode</div>}
+              <div className=""w-16 text-xs font-bold opacity-40 text-center"">Length</div>
+              <div className=""w-16 text-xs font-bold opacity-40 text-center"">Combo</div>
+              <div className=""w-16 text-xs font-bold opacity-40 text-center"">Time</div>
+              <div className=""w-20 text-xs font-bold opacity-40 text-right"">Score</div>
+            </div>
+            {entries.map((e, i) => {
+              const isMe = user?.name && e.name === user.name;
+              return (
+                <div key={i} className=""flex items-center gap-4 px-5 py-3 transition-all hover:brightness-110"" style={{borderBottom:`1px solid ${theme.border}08`, background:isMe?theme.accent+'11':'transparent'}}>
+                  <div className=""w-10 text-center"">
+                    {i < 3 ? <span className=""text-xl"">{medals[i]}</span> : <span className=""text-sm font-bold opacity-40"">{i+1}</span>}
+                  </div>
+                  <div className=""flex-1"">
+                    <span className=""font-bold"" style={{color:isMe?theme.accent:theme.text}}>{e.name || 'Anonymous'}</span>
+                    {isMe && <span className=""text-xs ml-1 opacity-50"">(You)</span>}
+                  </div>
+                  {filter === 'all' && <div className=""w-20 text-center text-sm"">{MODES[e.mode]?.icon} <span className=""text-xs opacity-50"">{MODES[e.mode]?.name}</span></div>}
+                  <div className=""w-16 text-center text-sm"" style={{color:'#44aaff'}}>{e.length || '?'}</div>
+                  <div className=""w-16 text-center text-sm"" style={{color:'#ff44aa'}}>{e.combo ? e.combo+'x' : '-'}</div>
+                  <div className=""w-16 text-center text-sm opacity-50"">{e.duration ? formatDuration(e.duration) : '-'}</div>
+                  <div className=""w-20 text-right"">
+                    <span className=""text-xl font-black"" style={{color:i<3?'#ffd700':theme.accent}}>{e.score}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        <div className=""text-center mt-6 text-xs opacity-30"">Shows top 50 per mode • Best score per player</div>
+      </div>
+    </div>
+  );
+}","","","",""
+"","","","","","","","","","","","Statistics","/stats","","5","","function StatsPage({ globalState, storage }) {
+  const theme = THEMES[globalState.currentTheme] || THEMES.neon;
+  const [stats, setStats] = useState(null);
+  const [history, setHistory] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    Promise.all([
+      storage.get('playerStats', {}),
+      storage.get('gameHistory', [])
+    ]).then(([s, h]) => { setStats(s); setHistory(h); setLoading(false); }).catch(()=>setLoading(false));
+  }, []);
+
+  if (loading) return <div className=""min-h-screen flex items-center justify-center"" style={{background:theme.bg}}><div className=""text-2xl"" style={{color:theme.text}}>Loading stats...</div></div>;
+
+  const st = stats || {};
+  const avg = st.totalGames > 0 ? Math.round((st.totalScore||0)/st.totalGames) : 0;
+  const recent = history.slice(-20);
+
+  const scoreChart = {
+    labels: recent.map((_,i)=>`#${history.length-19+i < 1 ? i+1 : history.length-19+i}`),
+    datasets: [{ label:'Score', data:recent.map(g=>g.score||0), borderColor:theme.accent, backgroundColor:theme.accent+'22', fill:true, tension:0.4, pointRadius:3, pointBackgroundColor:theme.accent }]
+  };
+
+  const modeCountMap = {};
+  history.forEach(g => { modeCountMap[g.mode] = (modeCountMap[g.mode]||0)+1; });
+  const modeChart = {
+    labels: Object.keys(modeCountMap).map(m => MODES[m]?.name || m),
+    datasets: [{ data: Object.values(modeCountMap), backgroundColor:['#00ffaa','#ff6644','#ffcc00','#8844ff','#ff44aa','#44aaff'], borderWidth:0 }]
+  };
+
+  const lengthChart = {
+    labels: recent.map((_,i)=>`${i+1}`),
+    datasets: [{ label:'Length', data:recent.map(g=>g.length||1), borderColor:'#ff6644', backgroundColor:'#ff664422', fill:true, tension:0.3 }]
+  };
+
+  const opts = { responsive:true, maintainAspectRatio:false, plugins:{legend:{labels:{color:theme.text+'88'}}}, scales:{x:{ticks:{color:theme.text+'66'},grid:{color:theme.border+'11'}},y:{ticks:{color:theme.text+'66'},grid:{color:theme.border+'11'}}} };
+  const pieOpts = { responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'right',labels:{color:theme.text+'88',padding:12}}} };
+
+  const clearStats = async () => {
+    if(confirm('Clear ALL statistics and achievements? This cannot be undone.')) {
+      await Promise.all([storage.delete('playerStats'),storage.delete('gameHistory'),storage.delete('achievements'),storage.delete('highScore'),storage.delete('totalGames')]);
+      setStats({}); setHistory([]);
+    }
+  };
+
+  return (
+    <div className=""min-h-screen"" style={{background:theme.bg,color:theme.text}}>
+      <Nav theme={globalState.currentTheme} />
+      <div className=""max-w-6xl mx-auto p-8"">
+        <h1 className=""text-4xl font-black text-center mb-8"" style={{color:theme.accent}}>📊 Your Statistics</h1>
+
+        {/* Summary cards */}
+        <div className=""grid grid-cols-2 md:grid-cols-4 gap-4 mb-8"">
+          {[
+            {label:'Best Score',val:st.bestScore||0,color:'#ffd700',icon:'🏆'},
+            {label:'Total Games',val:st.totalGames||0,color:theme.accent,icon:'🎮'},
+            {label:'Avg Score',val:avg,color:'#ff6644',icon:'📈'},
+            {label:'Best Length',val:st.bestLength||0,color:'#44aaff',icon:'🐍'},
+            {label:'Best Combo',val:(st.bestCombo||0)+'x',color:'#ff44aa',icon:'⚡'},
+            {label:'Longest Survival',val:(st.longestSurvival||0)+'s',color:'#44ffaa',icon:'⏱️'},
+            {label:'Modes Played',val:(st.modesPlayed||[]).length+'/4',color:'#8844ff',icon:'🗺️'},
+            {label:'Total Score',val:st.totalScore||0,color:'#ffaa00',icon:'💰'}
+          ].map((c,i)=>(
+            <div key={i} className=""rounded-xl p-4 text-center"" style={{background:'rgba(0,0,0,0.4)',border:`1px solid ${c.color}33`}}>
+              <div className=""text-2xl mb-1"">{c.icon}</div>
+              <div className=""text-2xl font-black"" style={{color:c.color}}>{c.val}</div>
+              <div className=""text-xs opacity-50 mt-1"">{c.label}</div>
+            </div>
+          ))}
+        </div>
+
+        {history.length === 0 ? (
+          <div className=""text-center p-12 rounded-xl"" style={{background:'rgba(0,0,0,0.3)'}}>
+            <div className=""text-5xl mb-4"">🎮</div>
+            <div className=""text-xl opacity-60"">Play some games to see statistics!</div>
+            <Link to=""/"" className=""inline-block mt-4 px-6 py-3 rounded-lg font-bold"" style={{background:theme.accent,color:'#000'}}>Play Now</Link>
+          </div>
+        ) : (
+          <div className=""space-y-8"">
+            <div className=""grid grid-cols-1 lg:grid-cols-2 gap-8"">
+              <div className=""rounded-xl p-6"" style={{background:'rgba(0,0,0,0.3)',border:`1px solid ${theme.border}22`}}>
+                <h3 className=""font-bold text-lg mb-4"">📈 Score Trend (Last 20)</h3>
+                <div style={{height:280}}><Line data={scoreChart} options={opts}/></div>
+              </div>
+              <div className=""rounded-xl p-6"" style={{background:'rgba(0,0,0,0.3)',border:`1px solid ${theme.border}22`}}>
+                <h3 className=""font-bold text-lg mb-4"">🐍 Length Trend (Last 20)</h3>
+                <div style={{height:280}}><Line data={lengthChart} options={opts}/></div>
+              </div>
+            </div>
+            <div className=""grid grid-cols-1 lg:grid-cols-2 gap-8"">
+              <div className=""rounded-xl p-6"" style={{background:'rgba(0,0,0,0.3)',border:`1px solid ${theme.border}22`}}>
+                <h3 className=""font-bold text-lg mb-4"">🎮 Games by Mode</h3>
+                <div style={{height:280}}><Doughnut data={modeChart} options={pieOpts}/></div>
+              </div>
+              <div className=""rounded-xl p-6"" style={{background:'rgba(0,0,0,0.3)',border:`1px solid ${theme.border}22`}}>
+                <h3 className=""font-bold text-lg mb-4"">🕹️ Recent Games</h3>
+                <div className=""overflow-y-auto"" style={{maxHeight:280}}>
+                  {history.slice(-10).reverse().map((g,i) => (
+                    <div key={i} className=""flex items-center justify-between py-2 px-3 rounded mb-1"" style={{background:'rgba(255,255,255,0.03)'}}>
+                      <div><span className=""text-sm"">{MODES[g.mode]?.icon}</span> <span className=""font-bold"" style={{color:theme.accent}}>{g.score}</span><span className=""text-xs opacity-40 ml-2"">len {g.length||'?'} • {g.duration||0}s</span></div>
+                      <div className=""text-xs opacity-30"">{new Date(g.ts).toLocaleDateString()}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div className=""text-center""><button onClick={clearStats} className=""px-6 py-2 rounded-lg text-sm font-semibold"" style={{background:'#ff333322',color:'#ff6666',border:'1px solid #ff333344'}}>🗑️ Clear All Stats</button></div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}","","","",""
+"","","","","","","","","","","","Settings","/settings","","6","","function SettingsPage({ globalState, setGlobalState }) {
+  const theme = THEMES[globalState.currentTheme] || THEMES.neon;
+
+  return (
+    <div className=""min-h-screen"" style={{background:theme.bg,color:theme.text}}>
+      <Nav theme={globalState.currentTheme} />
+      <div className=""max-w-3xl mx-auto p-8"">
+        <h1 className=""text-4xl font-black text-center mb-8"" style={{color:theme.accent}}>⚙️ Settings</h1>
+
+        {/* Themes */}
+        <div className=""mb-10"">
+          <h2 className=""text-2xl font-bold mb-4"" style={{color:theme.accent}}>🎨 Themes</h2>
+          <div className=""grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"">
+            {Object.entries(THEMES).map(([key, t]) => (
+              <button key={key} onClick={()=>setGlobalState(s=>({...s,currentTheme:key}))} className=""rounded-xl p-5 text-left transition-all hover:scale-105"" style={{background:t.bg, border:`3px solid ${globalState.currentTheme===key?t.accent:t.border+'44'}`, boxShadow:globalState.currentTheme===key?`0 0 20px ${t.glow}`:'none'}}>
+                <div className=""flex items-center gap-3 mb-3"">
+                  <div className=""w-5 h-5 rounded-full"" style={{background:t.snakeHead,boxShadow:`0 0 8px ${t.snakeHead}`}} />
+                  <div className=""w-5 h-5 rounded-full"" style={{background:t.food,boxShadow:`0 0 8px ${t.food}`}} />
+                  <div className=""w-5 h-5 rounded-full"" style={{background:t.border,boxShadow:`0 0 8px ${t.border}`}} />
+                </div>
+                <div className=""font-bold"" style={{color:t.accent}}>{t.name}</div>
+                {globalState.currentTheme===key && <div className=""text-xs mt-1"" style={{color:t.accent}}>✓ Active</div>}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Sound */}
+        <div className=""mb-10"">
+          <h2 className=""text-2xl font-bold mb-4"" style={{color:theme.accent}}>🔊 Audio</h2>
+          <div className=""flex gap-4"">
+            <button onClick={()=>setGlobalState(s=>({...s,soundEnabled:!s.soundEnabled}))} className=""flex-1 rounded-xl p-5 transition-all"" style={{background:globalState.soundEnabled?theme.accent+'22':'rgba(0,0,0,0.3)', border:`2px solid ${globalState.soundEnabled?theme.accent:'#ffffff22'}`}}>
+              <div className=""text-3xl mb-2"">{globalState.soundEnabled?'🔊':'🔇'}</div>
+              <div className=""font-bold"">Sound Effects</div>
+              <div className=""text-sm opacity-60"">{globalState.soundEnabled?'On':'Off'}</div>
+            </button>
+          </div>
+        </div>
+
+        {/* Controls Guide */}
+        <div>
+          <h2 className=""text-2xl font-bold mb-4"" style={{color:theme.accent}}>🎮 Controls</h2>
+          <div className=""rounded-xl p-6"" style={{background:'rgba(0,0,0,0.3)', border:`1px solid ${theme.border}22`}}>
+            <div className=""grid grid-cols-2 gap-4 text-sm"">
+              <div><span className=""font-bold"" style={{color:theme.accent}}>↑ ↓ ← →</span> or <span className=""font-bold"" style={{color:theme.accent}}>WASD</span><br/><span className=""opacity-60"">Move snake</span></div>
+              <div><span className=""font-bold"" style={{color:theme.accent}}>Space</span><br/><span className=""opacity-60"">Pause / Resume</span></div>
+              <div><span className=""font-bold"" style={{color:theme.accent}}>Esc</span><br/><span className=""opacity-60"">Pause / Resume</span></div>
+              <div><span className=""font-bold"" style={{color:theme.accent}}>Mobile</span><br/><span className=""opacity-60"">On-screen D-pad</span></div>
+            </div>
+          </div>
+        </div>
+
+        {/* Game Mechanics */}
+        <div className=""mt-10"">
+          <h2 className=""text-2xl font-bold mb-4"" style={{color:theme.accent}}>💡 Tips</h2>
+          <div className=""rounded-xl p-6 space-y-3 text-sm"" style={{background:'rgba(0,0,0,0.3)', border:`1px solid ${theme.border}22`}}>
+            <p>🔥 <span className=""font-bold"" style={{color:theme.accent}}>Combo System:</span> Eat food within 3 seconds of your last meal to build combos. Up to 10x multiplier!</p>
+            <p>⚡ <span className=""font-bold"" style={{color:theme.accent}}>Power-ups:</span> Collect power-ups that spawn randomly. Each has unique effects and duration.</p>
+            <p>🛡️ <span className=""font-bold"" style={{color:theme.accent}}>Shield:</span> Saves you from one collision. Extremely valuable!</p>
+            <p>👻 <span className=""font-bold"" style={{color:theme.accent}}>Ghost:</span> Pass through your own body. Great for tight spots.</p>
+            <p>💎 <span className=""font-bold"" style={{color:theme.accent}}>Rare Foods:</span> Diamond (100pts) and Crown (200pts) are rare but worth hunting.</p>
+            <p>🏆 <span className=""font-bold"" style={{color:theme.accent}}>Achievements:</span> 20 achievements to unlock. Can you get them all?</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}","","","",""
+"","","","","","","","","","","","","","","","","","Submit Score","score","POST","result = {'deprecated': True, 'message': 'Scores now saved via client storage'}"
