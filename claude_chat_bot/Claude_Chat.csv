@@ -1,0 +1,1140 @@
+﻿"id","name","slug","description","thumbnail","track_viewcount","data_code","global_state_code","shared_components","shared_styles","router_mode","tailwind_enabled","cdn_dependencies","custom_imports","pwa_enabled","pwa_theme_color","pwa_background_color","pwa_display","page_ids/id","page_ids/name","page_ids/route_path","page_ids/page_title","page_ids/sequence","page_ids/data_code","page_ids/component_code","page_ids/component_file_ids/id","page_ids/component_file_ids/name","page_ids/component_file_ids/code","page_ids/component_file_ids/sequence","endpoint_ids/id","endpoint_ids/name","endpoint_ids/endpoint_path","endpoint_ids/method","endpoint_ids/handler_code"
+"__export__.mcp_webapp_91_59817af3","Claude Chat","claude-chat","Claude AI chatbot with Odoo MCP tool access. Requires mcp.api.key records: anthropic-api (Anthropic key) and claude-bot (MCP auth key).","iVBORw0KGgoAAAANSUhEUgAAAEUAAAA6CAYAAADm+ZQ9AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAAEnQAABJ0Ad5mH3gAAAK/SURBVGhD7ZpdS1RRFIb7JxEFEX3gTYgJBUERlBdGkEEa3UgXBZFdDAhBQRhKE0U/QhkhmYsZJSYrEoyoC1EYUhhIpaGJ8SesfA+cYZp5Z9Rzzl57xHXxwOHsr7Uf9vnYH4e2Kpti/I9JIZgUgkkhmBSCSSGYFEJHSPm6uBDA0nzQEVKePZ8IYGk+8C5l7eeKXLhyPQDXLI823qVMTk7J4RPdAbhmebTxKqW8UZJbd+7VpOAa91heTbxK+TT/QY6d6a1JwTXusbyaeJNSKf+S4fsjNSEhuIc0VkYLb1IWvnyW413nm6TgHtJYGS28SMFIePh4tElICNJ8jhYvUnK5nBw52UOFALxbCoX3tKwG6lLWS6vSf/MulVEP8iAvq8M1qlKqfzbkZfoNlcBAXpRhdblEVUpmerrtY9MI8qIMq8slalKy2Sz92uzEqbMXJZ/P0zpd4VxKdXv4T2UycvT0Odrp3QCZ72Zm1B4lp1Lwy/5i4hXtaBRQl8Y0wJmU798W5XLfAO1cHK723w7qZm0mReJSiitL8uBRinYoSdAG2mIxxCUxKctLP1RkNII20TaLKSqxpPwtr8vc3GwwpFnAmgwMDcvH+UIQE4t1L0SSghWy9Ou30tVziQboE8SE2EprRRr7bogkBQ12upQ4S5uxHx8M2Ws3BmmAmiAGr48Pw160bdD6JI+knshqcZnGEJfEpYTgB8vFV2lf/rzVk+RvPmbMeIFWfrtfkXMqBVS3J3GYzEWZIYegLGbZrH4XOJcSguk/lgFYp9uBMviqsDpdoSYF2CITobrH5Ui8Q1CG1eUSVSnAFq5bgO2L+u3SRg7cFgewzbAW2LYpASOBbbD7HiXAmxTQ+G458EcxgB3aaYEd7yLYQcAWpEafyth4mqb5oCOk2OHifYBJIZgUgkkhmBSCSSGYFIJJIZiUJjblH6WMsMl7FBDjAAAAAElFTkSuQmCC","","","{}","",".markdown-content h1 { font-size: 1.25rem; font-weight: 700; margin: 0.75rem 0 0.25rem; }
+.markdown-content h2 { font-size: 1.125rem; font-weight: 700; margin: 0.75rem 0 0.25rem; }
+.markdown-content h3 { font-size: 1rem; font-weight: 600; margin: 0.5rem 0 0.25rem; }
+.markdown-content p { margin: 0.25rem 0; line-height: 1.6; }
+.markdown-content code { background: #f1f5f9; padding: 0.125rem 0.375rem; border-radius: 0.25rem; font-size: 0.85em; font-family: ui-monospace, monospace; }
+.markdown-content pre { background: #1e293b; color: #e2e8f0; padding: 0.75rem 1rem; border-radius: 0.5rem; overflow-x: auto; margin: 0.5rem 0; }
+.markdown-content pre code { background: transparent; padding: 0; color: inherit; font-size: 0.85em; }
+.markdown-content ul, .markdown-content ol { margin: 0.25rem 0; padding-left: 1.5rem; }
+.markdown-content li { margin: 0.125rem 0; line-height: 1.6; }
+.markdown-content ul { list-style-type: disc; }
+.markdown-content ol { list-style-type: decimal; }
+.markdown-content blockquote { border-left: 3px solid #d1d5db; padding-left: 0.75rem; margin: 0.5rem 0; color: #6b7280; }
+.markdown-content a { color: #2563eb; text-decoration: underline; }
+.markdown-content table { border-collapse: collapse; margin: 0.5rem 0; width: 100%; }
+.markdown-content th, .markdown-content td { border: 1px solid #e5e7eb; padding: 0.375rem 0.75rem; text-align: left; font-size: 0.875rem; }
+.markdown-content th { background: #f9fafb; font-weight: 600; }
+.markdown-content hr { border: none; border-top: 1px solid #e5e7eb; margin: 0.75rem 0; }
+.markdown-content img { max-width: 100%; border-radius: 0.5rem; }
+@keyframes bounce-dot { 0%, 80%, 100% { transform: translateY(0); } 40% { transform: translateY(-6px); } }
+.typing-dot { animation: bounce-dot 1.4s infinite ease-in-out; }
+.typing-dot:nth-child(2) { animation-delay: 0.2s; }
+.typing-dot:nth-child(3) { animation-delay: 0.4s; }
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #94a3b8; }","Hash Router","True","{""marked"": ""https://esm.sh/marked@15""}","import { marked } from ""marked"";
+marked.setOptions({ breaks: true, gfm: true });","True","#D4A574","#EFEBE5","Fullscreen","__export__.mcp_webapp_page_197_3c8b4a15","Chat","/","Claude Chat","10","","function ChatPage({api, storage, user}) {
+  const THEMES = {
+    claude: {
+      name: 'Claude', swatch: '#D4A574',
+      bg: '#EFEBE5', sidebar: '#111827', sidebarHover: '#1f2937', sidebarActive: '#374151',
+      userBubble: '#2563eb', userText: '#fff',
+      assistantBg: '#ffffff', assistantBorder: '#e5e7eb',
+      headerBg: 'rgba(255,255,255,0.8)', headerBorder: '#e5e7eb',
+      inputBg: 'rgba(255,255,255,0.8)', inputBorder: '#e5e7eb',
+      text: '#1f2937', textSecondary: '#6b7280', accent: '#2563eb',
+      codeBg: '#1e293b', codeText: '#e2e8f0',
+      btnBg: '#f3f4f6', btnBorder: '#d1d5db', btnActiveBg: '#eff6ff', btnActiveBorder: '#93c5fd',
+    },
+    midnight: {
+      name: 'Midnight', swatch: '#3b82f6',
+      bg: '#0f172a', sidebar: '#1e293b', sidebarHover: '#334155', sidebarActive: '#475569',
+      userBubble: '#3b82f6', userText: '#fff',
+      assistantBg: '#1e293b', assistantBorder: '#334155',
+      headerBg: 'rgba(30,41,59,0.9)', headerBorder: '#334155',
+      inputBg: 'rgba(30,41,59,0.9)', inputBorder: '#475569',
+      text: '#e2e8f0', textSecondary: '#94a3b8', accent: '#60a5fa',
+      codeBg: '#0f172a', codeText: '#e2e8f0',
+      btnBg: '#334155', btnBorder: '#475569', btnActiveBg: '#1e3a5f', btnActiveBorder: '#60a5fa',
+    },
+    ocean: {
+      name: 'Ocean', swatch: '#0891b2',
+      bg: '#f0f7ff', sidebar: '#1e3a5f', sidebarHover: '#2a4f7a', sidebarActive: '#366495',
+      userBubble: '#0891b2', userText: '#fff',
+      assistantBg: '#ffffff', assistantBorder: '#bae6fd',
+      headerBg: 'rgba(240,247,255,0.9)', headerBorder: '#bae6fd',
+      inputBg: 'rgba(240,247,255,0.9)', inputBorder: '#bae6fd',
+      text: '#1e3a5f', textSecondary: '#64748b', accent: '#0891b2',
+      codeBg: '#1e293b', codeText: '#e2e8f0',
+      btnBg: '#e0f2fe', btnBorder: '#7dd3fc', btnActiveBg: '#cffafe', btnActiveBorder: '#22d3ee',
+    },
+    forest: {
+      name: 'Forest', swatch: '#059669',
+      bg: '#f0faf4', sidebar: '#1a3c2a', sidebarHover: '#2a5c3a', sidebarActive: '#3a7c4a',
+      userBubble: '#059669', userText: '#fff',
+      assistantBg: '#ffffff', assistantBorder: '#bbf7d0',
+      headerBg: 'rgba(240,250,244,0.9)', headerBorder: '#bbf7d0',
+      inputBg: 'rgba(240,250,244,0.9)', inputBorder: '#bbf7d0',
+      text: '#1a3c2a', textSecondary: '#6b7280', accent: '#059669',
+      codeBg: '#1e293b', codeText: '#e2e8f0',
+      btnBg: '#ecfdf5', btnBorder: '#6ee7b7', btnActiveBg: '#d1fae5', btnActiveBorder: '#34d399',
+    },
+    sunset: {
+      name: 'Sunset', swatch: '#e11d48',
+      bg: '#fff5f5', sidebar: '#4a2030', sidebarHover: '#6a3050', sidebarActive: '#8a4070',
+      userBubble: '#e11d48', userText: '#fff',
+      assistantBg: '#ffffff', assistantBorder: '#fecdd3',
+      headerBg: 'rgba(255,245,245,0.9)', headerBorder: '#fecdd3',
+      inputBg: 'rgba(255,245,245,0.9)', inputBorder: '#fecdd3',
+      text: '#4a2030', textSecondary: '#6b7280', accent: '#e11d48',
+      codeBg: '#1e293b', codeText: '#e2e8f0',
+      btnBg: '#fff1f2', btnBorder: '#fda4af', btnActiveBg: '#ffe4e6', btnActiveBorder: '#fb7185',
+    },
+  };
+
+  const [messages, setMessages] = useState([]);
+  const [chatList, setChatList] = useState([]);
+  const [activeChatId, setActiveChatId] = useState(null);
+  const [model, setModel] = useState('claude-sonnet-4-6');
+  const [models, setModels] = useState([]);
+  const [input, setInput] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 768);
+  const [thinking, setThinking] = useState(false);
+  const [mcpEnabled, setMcpEnabled] = useState(true);
+  const [webSearch, setWebSearch] = useState(true);
+  const [codeExec, setCodeExec] = useState(true);
+  const [expandedThinking, setExpandedThinking] = useState({});
+  const [expandedTools, setExpandedTools] = useState({});
+  const [attachments, setAttachments] = useState([]);
+  const [uploadingFile, setUploadingFile] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [systemPreset, setSystemPreset] = useState('none');
+  const [systemPrompt, setSystemPrompt] = useState('');
+  const [showSettings, setShowSettings] = useState(false);
+  const [customPrompts, setCustomPrompts] = useState({});
+  const [editingNewPrompt, setEditingNewPrompt] = useState(false);
+  const [newPromptName, setNewPromptName] = useState('');
+  const [newPromptText, setNewPromptText] = useState('');
+  const [theme, setTheme] = useState('claude');
+  const [containerId, setContainerId] = useState(null);
+  const messagesEndRef = useRef(null);
+  const inputRef = useRef(null);
+  const fileInputRef = useRef(null);
+  const settingsRef = useRef(null);
+
+  const t = THEMES[theme] || THEMES.claude;
+
+  const greeting = useMemo(() => {
+    const firstName = user.name?.split(' ')[0] || 'there';
+    const greetings = [
+      'Welcome back, ' + firstName,
+      'Hey ' + firstName + "", what's on your mind?"",
+      'Good to see you, ' + firstName,
+      'What can I help with today, ' + firstName + '?',
+      'Hi ' + firstName + ', ready when you are',
+    ];
+    return greetings[Math.floor(Math.random() * greetings.length)];
+  }, []);
+
+  const DEFAULT_PRESETS = {
+    none: {label: 'None', prompt: '', deletable: false},
+    odoo: {label: 'Odoo Expert', prompt: 'You are an expert Odoo ERP consultant. Help with configurations, workflows, customizations, and best practices. Use the available MCP tools to access and query the Odoo instance when helpful. You also have web search capabilities to look up current Odoo documentation, community posts, and technical references. Provide clear, actionable advice.', deletable: false},
+    analyst: {label: 'Data Analyst', prompt: 'You are a business data analyst working with Odoo ERP data. Use MCP tools to query data and provide insights, trends, and recommendations. You can also use web search to find industry benchmarks, market data, and reference material. Present findings clearly with structured tables and summaries when appropriate.', deletable: false},
+    helpdesk: {label: 'Helpdesk Analyst', prompt: 'You are a helpdesk support analyst with access to the Odoo system. Help diagnose and resolve user issues by looking up relevant records, checking configurations, and providing step-by-step solutions. You can use web search to find solutions from Odoo forums, documentation, and knowledge bases. Communicate clearly and empathetically, prioritizing quick resolution.', deletable: false},
+    dev: {label: 'Developer', prompt: 'You are an Odoo technical developer. Help with Python module development, XML views, JavaScript/OWL components, QWeb templates, and ORM queries. Use MCP tools to explore the codebase and database structure. You can also use web search to look up Odoo documentation, API references, and community solutions. Follow Odoo coding conventions.', deletable: false},
+  };
+
+  const allPresets = useMemo(() => {
+    const combined = {...DEFAULT_PRESETS};
+    Object.entries(customPrompts).forEach(([k, v]) => {
+      combined['custom_' + k] = {label: v.label, prompt: v.prompt, deletable: true};
+    });
+    combined.custom = {label: '+ New Prompt...', prompt: '', deletable: false};
+    return combined;
+  }, [customPrompts]);
+
+  useEffect(() => {
+    (async () => {
+      const list = await storage.get('chat_list', []);
+      setChatList(list);
+      const saved = await storage.get('selected_model', 'claude-sonnet-4-6');
+      setModel(saved);
+      const st = await storage.get('extended_thinking', false);
+      setThinking(st);
+      const sm = await storage.get('mcp_enabled', true);
+      setMcpEnabled(sm);
+      const ws = await storage.get('web_search', true);
+      setWebSearch(ws);
+      const ce = await storage.get('code_exec', true);
+      setCodeExec(ce);
+      const sp = await storage.get('system_preset', 'none');
+      setSystemPreset(sp);
+      const spr = await storage.get('system_prompt', '');
+      const cp = await storage.get('custom_prompts', {});
+      setCustomPrompts(cp);
+      const th = await storage.get('theme', 'claude');
+      setTheme(th);
+      const fullPresets = {...DEFAULT_PRESETS};
+      Object.entries(cp).forEach(([k, v]) => {
+        fullPresets['custom_' + k] = {label: v.label, prompt: v.prompt};
+      });
+      setSystemPrompt(spr || (fullPresets[sp]?.prompt || ''));
+      try {
+        const res = await api.get('models');
+        if (res.models) setModels(res.models);
+      } catch(e) {}
+    })();
+  }, []);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({behavior: 'smooth'});
+  }, [messages]);
+
+  useEffect(() => {
+    const h = (e) => { if (showSettings && settingsRef.current && !settingsRef.current.contains(e.target)) setShowSettings(false); };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, [showSettings]);
+
+  const genId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  const fmtSize = (b) => b < 1024 ? b + ' B' : b < 1048576 ? (b/1024).toFixed(1) + ' KB' : (b/1048576).toFixed(1) + ' MB';
+
+  const getFileCategory = (type, name) => {
+    if (type && type.startsWith('image/')) return 'image';
+    if (type === 'application/pdf' || (type && type.startsWith('text/')) || type === 'application/json' || type === 'application/xml' || type === 'application/javascript' || type === 'application/x-yaml') return 'document';
+    const textExts = ['.txt','.md','.csv','.json','.xml','.html','.css','.js','.py','.java','.c','.cpp','.yaml','.yml','.log','.sh','.sql','.toml','.ini','.ts','.tsx','.jsx'];
+    if (name && textExts.some(ext => name.toLowerCase().endsWith(ext))) return 'document';
+    return 'container';
+  };
+
+  const saveChat = async (chatId, msgs, title, contId) => {
+    const now = new Date().toISOString();
+    const chatTitle = title || (() => {
+      const f = msgs.find(m => m.role === 'user');
+      if (!f) return 'New Chat';
+      if (typeof f.content === 'string') return f.content.slice(0, 50);
+      const tb = (Array.isArray(f.content) ? f.content : []).find(b => b.type === 'text');
+      return tb ? tb.text.slice(0, 50) : 'File upload';
+    })();
+    await storage.set('chat_' + chatId, {id: chatId, title: chatTitle, messages: msgs, container_id: contId || null, created_at: now, updated_at: now});
+    setChatList(prev => {
+      const entry = {id: chatId, title: chatTitle, updated_at: now, message_count: msgs.length};
+      const newList = [entry, ...prev.filter(c => c.id !== chatId)];
+      storage.set('chat_list', newList);
+      return newList;
+    });
+  };
+
+  const newChat = () => { setActiveChatId(null); setMessages([]); setInput(''); setAttachments([]); setExpandedTools({}); setContainerId(null); inputRef.current?.focus(); };
+
+  const loadChat = async (chatId) => {
+    const data = await storage.get('chat_' + chatId, null);
+    if (data) { setActiveChatId(chatId); setMessages(data.messages || []); setExpandedTools({}); setAttachments([]); setContainerId(data.container_id || null); if (window.innerWidth < 768) setSidebarOpen(false); }
+  };
+
+  const deleteChat = async (chatId) => {
+    await storage.delete('chat_' + chatId);
+    const newList = chatList.filter(c => c.id !== chatId);
+    setChatList(newList); await storage.set('chat_list', newList);
+    if (activeChatId === chatId) newChat();
+  };
+
+  const clearAllChats = async () => {
+    if (!confirm('Delete all chats? This cannot be undone.')) return;
+    for (const c of chatList) await storage.delete('chat_' + c.id);
+    setChatList([]); await storage.set('chat_list', []); newChat();
+  };
+
+  const handleFileSelect = async (e) => {
+    const files = Array.from(e.target.files);
+    if (files.length === 0) return;
+    e.target.value = '';
+    setUploadingFile(true);
+    for (const file of files) {
+      if (file.size > 25 * 1048576) { alert(file.name + ' exceeds 25MB limit'); continue; }
+      try {
+        const base64 = await new Promise((resolve, reject) => { const rd = new FileReader(); rd.onload = () => resolve(rd.result.split(',')[1]); rd.onerror = () => reject(new Error('Failed to read file')); rd.readAsDataURL(file); });
+        const res = await api.post('files/upload', { file_data: base64, filename: file.name, mime_type: file.type || 'application/octet-stream' });
+        if (res.error) { alert('Upload failed: ' + res.error); }
+        else {
+          const isImg = file.type.startsWith('image/');
+          setAttachments(prev => [...prev, { file_id: res.file_id, name: res.filename || file.name, type: res.mime_type || file.type, size: res.size_bytes || file.size, preview: isImg ? URL.createObjectURL(file) : null }]);
+        }
+      } catch(err) { alert('Upload failed: ' + (err.message || err)); }
+    }
+    setUploadingFile(false);
+  };
+
+  const removeAttachment = (idx) => {
+    setAttachments(prev => { const a = prev[idx]; if (a && a.preview) URL.revokeObjectURL(a.preview); return prev.filter((_, i) => i !== idx); });
+  };
+
+  const downloadFile = async (fileId, filename) => {
+    try {
+      const res = await api.get('files/download?file_id=' + encodeURIComponent(fileId));
+      if (res.error) { alert('Download failed: ' + res.error); return; }
+      const raw = atob(res.content);
+      const arr = new Uint8Array(raw.length);
+      for (let i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
+      const blob = new Blob([arr], {type: res.content_type || 'application/octet-stream'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = filename || res.filename || 'download';
+      document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+    } catch(e) { alert('Download failed: ' + (e.message || e)); }
+  };
+
+  const send = async () => {
+    if ((!input.trim() && attachments.length === 0) || loading) return;
+    const chatId = activeChatId || genId();
+    if (!activeChatId) setActiveChatId(chatId);
+
+    const apiMsgs = messages.map(m => {
+      if (m.apiContent) return {role: m.role, content: m.apiContent};
+      if (typeof m.content === 'string') return {role: m.role, content: m.content};
+      const blocks = Array.isArray(m.content) ? m.content : [];
+      const compaction = blocks.find(b => b.type === 'compaction');
+      if (compaction) {
+        const apiBlocks = [{type: 'compaction', content: compaction.content}, ...blocks.filter(b => b.type === 'text').map(b => ({type: 'text', text: b.text}))];
+        return {role: m.role, content: apiBlocks};
+      }
+      const tp = blocks.filter(b => b.type === 'text').map(b => b.text);
+      return {role: m.role, content: tp.join('\n\n') || '...'};
+    });
+
+    let apiContent;
+    if (attachments.length > 0) {
+      const blocks = [];
+      for (const att of attachments) {
+        const cat = getFileCategory(att.type, att.name);
+        if (cat === 'image') blocks.push({type: 'image', source: {type: 'file', file_id: att.file_id}});
+        else if (cat === 'document') blocks.push({type: 'document', source: {type: 'file', file_id: att.file_id}});
+        else blocks.push({type: 'container_upload', file_id: att.file_id});
+      }
+      if (input.trim()) blocks.push({type: 'text', text: input.trim()});
+      apiContent = blocks;
+    } else {
+      apiContent = input.trim();
+    }
+    apiMsgs.push({role: 'user', content: apiContent});
+
+    const displayContent = attachments.length > 0
+      ? [...attachments.map(a => ({type: 'file_ref', name: a.name, file_type: a.type, size: a.size})),
+         ...(input.trim() ? [{type: 'text', text: input.trim()}] : [])]
+      : input.trim();
+    const userMsg = {role: 'user', content: displayContent, apiContent: attachments.length > 0 ? apiContent : undefined, timestamp: new Date().toISOString()};
+
+    const newMsgs = [...messages, userMsg];
+    setMessages(newMsgs); setInput(''); setAttachments([]); setLoading(true);
+
+    try {
+      const res = await api.post('chat', {
+        messages: apiMsgs, model, thinking,
+        mcp_enabled: mcpEnabled, web_search: webSearch, code_exec: codeExec,
+        system_prompt: systemPrompt || undefined,
+        container_id: containerId || undefined,
+      });
+      const newContainerId = res.container_id || containerId;
+      if (res.container_id) setContainerId(res.container_id);
+      const assistantMsg = {
+        role: 'assistant',
+        content: res.error ? ('Error: ' + (typeof res.error === 'string' ? res.error : JSON.stringify(res.error))) : (res.content && (Array.isArray(res.content) ? res.content.length : res.content) ? res.content : '(empty response)'),
+        thinking_content: res.thinking_content || null,
+        model: res.model, usage: res.usage, timestamp: new Date().toISOString(),
+      };
+      const finalMsgs = [...newMsgs, assistantMsg];
+      setMessages(finalMsgs); await saveChat(chatId, finalMsgs, null, newContainerId);
+    } catch(e) {
+      const errMsg = {role: 'assistant', content: 'Request failed: ' + (typeof e === 'string' ? e : e?.message || JSON.stringify(e)), timestamp: new Date().toISOString()};
+      const finalMsgs = [...newMsgs, errMsg];
+      setMessages(finalMsgs); await saveChat(chatId, finalMsgs, null, containerId);
+    }
+    setLoading(false);
+  };
+
+  const onModelChange = async (e) => { setModel(e.target.value); await storage.set('selected_model', e.target.value); };
+  const toggleThinking = async () => { const v = !thinking; setThinking(v); await storage.set('extended_thinking', v); };
+  const toggleMcp = async () => { const v = !mcpEnabled; setMcpEnabled(v); await storage.set('mcp_enabled', v); };
+  const toggleWebSearch = async () => { const v = !webSearch; setWebSearch(v); await storage.set('web_search', v); };
+  const toggleCodeExec = async () => { const v = !codeExec; setCodeExec(v); await storage.set('code_exec', v); };
+  const changeTheme = async (key) => { setTheme(key); await storage.set('theme', key); };
+
+  const onPresetChange = async (p) => {
+    if (p === 'custom') { setEditingNewPrompt(true); setNewPromptName(''); setNewPromptText(''); return; }
+    setSystemPreset(p); setEditingNewPrompt(false);
+    const pr = allPresets[p]?.prompt || '';
+    setSystemPrompt(pr); await storage.set('system_preset', p); await storage.set('system_prompt', pr);
+  };
+
+  const onPromptChange = async (v) => { setSystemPrompt(v); await storage.set('system_prompt', v); };
+
+  const saveNewPrompt = async () => {
+    if (!newPromptName.trim() || !newPromptText.trim()) return;
+    const key = genId();
+    const updated = {...customPrompts, [key]: {label: newPromptName.trim(), prompt: newPromptText.trim()}};
+    setCustomPrompts(updated); await storage.set('custom_prompts', updated);
+    const presetKey = 'custom_' + key;
+    setSystemPreset(presetKey); setSystemPrompt(newPromptText.trim());
+    await storage.set('system_preset', presetKey); await storage.set('system_prompt', newPromptText.trim());
+    setEditingNewPrompt(false);
+  };
+
+  const deletePrompt = async (presetKey) => {
+    const customKey = presetKey.replace('custom_', '');
+    const updated = {...customPrompts}; delete updated[customKey];
+    setCustomPrompts(updated); await storage.set('custom_prompts', updated);
+    if (systemPreset === presetKey) {
+      setSystemPreset('none'); setSystemPrompt('');
+      await storage.set('system_preset', 'none'); await storage.set('system_prompt', '');
+    }
+  };
+
+  const renderMd = (text) => {
+    const html = marked.parse(text || '');
+    return <div dangerouslySetInnerHTML={{__html: html}} className=""markdown-content""/>;
+  };
+
+  const ToolBlock = ({block, toolKey}) => {
+    const isOpen = expandedTools[toolKey] || false;
+    const toggle = () => setExpandedTools(p => ({...p, [toolKey]: !p[toolKey]}));
+    const isCall = block.type === 'tool_call';
+    const isError = block.is_error;
+    const preview = isCall ? JSON.stringify(block.input).slice(0, 80) : (block.content || '').slice(0, 80);
+    return (
+      <div className=""my-1.5 rounded-lg border overflow-hidden text-sm"" style={{borderColor: t.assistantBorder}}>
+        <button onClick={toggle} className=""w-full px-3 py-2 flex items-center gap-2 transition-colors text-left hover:opacity-80"" style={{background: t.btnBg}}>
+          <span className=""text-[10px] shrink-0"" style={{color: t.textSecondary}}>{isOpen ? '▼' : '▶'}</span>
+          {isCall ? (
+            <><span className=""font-medium text-xs shrink-0"" style={{color: t.accent}}>⚙ {block.name}</span>{!isOpen && <span className=""text-xs truncate"" style={{color: t.textSecondary}}>{preview}</span>}</>
+          ) : (
+            <><span className={'text-xs shrink-0 ' + (isError ? 'text-red-500' : 'text-emerald-600')}>{isError ? '✗ Error' : '✓ Result'}</span>{!isOpen && <span className=""text-xs truncate"" style={{color: t.textSecondary}}>{preview}</span>}</>
+          )}
+        </button>
+        {isOpen && (
+          <div className=""max-h-52 overflow-y-auto px-3 py-2"" style={{background: t.codeBg, color: t.codeText, borderTop: '1px solid ' + t.assistantBorder}}>
+            <pre className=""text-xs whitespace-pre-wrap break-words font-mono"">{isCall ? JSON.stringify(block.input, null, 2) : block.content}</pre>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const WebSearchBlock = ({block}) => {
+    if (block.type === 'web_search') {
+      return (
+        <div className=""my-1.5 flex items-center gap-2 text-xs rounded-lg px-3 py-2"" style={{background: t.btnActiveBg, border: '1px solid ' + t.btnActiveBorder, color: t.accent}}>
+          <span>🔍</span><span className=""font-medium"">Searching:</span><span className=""truncate"" style={{color: t.text}}>{block.query}</span>
+        </div>
+      );
+    }
+    if (block.type === 'web_search_results') {
+      if (!block.results || block.results.length === 0) return null;
+      return (
+        <div className=""my-1.5 rounded-lg border overflow-hidden text-sm"" style={{borderColor: t.btnActiveBorder}}>
+          <div className=""px-3 py-1.5 text-xs font-medium flex items-center gap-1.5"" style={{background: t.btnActiveBg, color: t.accent}}>
+            <span>🌐</span> {block.results.length} source{block.results.length !== 1 ? 's' : ''} found
+          </div>
+          <div>
+            {block.results.slice(0, 5).map((r, i) => (
+              <a key={i} href={r.url} target=""_blank"" rel=""noopener noreferrer"" className=""block px-3 py-1.5 hover:opacity-80 transition-opacity"" style={{borderTop: i > 0 ? '1px solid ' + t.assistantBorder : 'none'}}>
+                <div className=""text-xs font-medium truncate"" style={{color: t.text}}>{r.title}</div>
+                <div className=""text-[11px] truncate"" style={{color: t.textSecondary}}>{r.url}{r.page_age ? ' \u00b7 ' + r.page_age : ''}</div>
+              </a>
+            ))}
+          </div>
+        </div>
+      );
+    }
+    return null;
+  };
+
+  const WebFetchBlock = ({block}) => {
+    const key = 'wf-' + (block.id || block.url || Math.random());
+    const isOpen = expandedTools[key] || false;
+    const toggle = () => setExpandedTools(p => ({...p, [key]: !p[key]}));
+    if (block.type === 'web_fetch') {
+      return (
+        <div className=""my-1.5 flex items-center gap-2 text-xs rounded-lg px-3 py-2"" style={{background: t.btnActiveBg, border: '1px solid ' + t.btnActiveBorder, color: t.accent}}>
+          <span>🌐</span><span className=""font-medium"">Fetching:</span><span className=""truncate"" style={{color: t.text}}>{block.url}</span>
+        </div>
+      );
+    }
+    if (block.type === 'web_fetch_result') {
+      return (
+        <div className=""my-1.5 rounded-lg border overflow-hidden text-sm"" style={{borderColor: t.assistantBorder}}>
+          <button onClick={toggle} className=""w-full px-3 py-2 flex items-center gap-2 text-left hover:opacity-80"" style={{background: t.btnBg}}>
+            <span className=""text-[10px]"" style={{color: t.textSecondary}}>{isOpen ? '▼' : '▶'}</span>
+            <span>🌐</span>
+            {block.error
+              ? <span className=""text-red-500 text-xs"">Fetch failed: {block.error}</span>
+              : <span className=""text-xs truncate"" style={{color: t.text}}>{block.url || 'Fetched content'}</span>}
+          </button>
+          {isOpen && block.content_preview && (
+            <div className=""px-3 py-2 text-xs max-h-40 overflow-y-auto whitespace-pre-wrap font-mono"" style={{background: t.codeBg, color: t.codeText, borderTop: '1px solid ' + t.assistantBorder}}>
+              {block.content_preview}
+            </div>
+          )}
+        </div>
+      );
+    }
+    return null;
+  };
+
+  const CodeExecBlock = ({block}) => {
+    const key = 'ce-' + (block.id || Math.random());
+    const isOpen = expandedTools[key] || false;
+    const toggle = () => setExpandedTools(p => ({...p, [key]: !p[key]}));
+    if (block.type === 'code_exec') {
+      return (
+        <div className=""my-1.5 rounded-lg overflow-hidden text-sm"">
+          <div className=""px-3 py-2 text-xs font-mono"" style={{background: t.codeBg, color: t.codeText}}>
+            <span style={{color: '#4ade80'}}>$ </span>{block.command}
+          </div>
+        </div>
+      );
+    }
+    if (block.type === 'code_exec_result') {
+      const ok = block.return_code === 0;
+      return (
+        <div className=""my-1.5 rounded-lg border overflow-hidden text-sm"" style={{borderColor: ok ? '#86efac' : '#fca5a5'}}>
+          <button onClick={toggle} className=""w-full px-3 py-1.5 flex items-center gap-2 text-left text-xs"" style={{background: ok ? '#f0fdf4' : '#fef2f2', color: ok ? '#166534' : '#991b1b'}}>
+            <span>{ok ? '✓' : '✗'}</span>
+            <span>{ok ? 'Executed successfully' : 'Exit code: ' + block.return_code}</span>
+            {!isOpen && block.stdout && <span className=""truncate ml-2"" style={{color: t.textSecondary}}>{block.stdout.slice(0, 60)}</span>}
+          </button>
+          {isOpen && (
+            <div className=""max-h-60 overflow-y-auto px-3 py-2 text-xs font-mono whitespace-pre-wrap"" style={{background: t.codeBg, color: t.codeText}}>
+              {block.stdout && <div>{block.stdout}</div>}
+              {block.stderr && <div style={{color: '#f87171'}}>{block.stderr}</div>}
+            </div>
+          )}
+          {block.files && block.files.length > 0 && (
+            <div className=""px-3 py-2 flex flex-wrap gap-2"" style={{borderTop: '1px solid ' + t.assistantBorder}}>
+              {block.files.map((f, i) => (
+                <button key={i} onClick={() => downloadFile(f.file_id, f.filename)} className=""text-xs px-2 py-1 rounded flex items-center gap-1 hover:opacity-80"" style={{background: t.btnActiveBg, color: t.accent, border: '1px solid ' + t.btnActiveBorder}}>
+                  ⬇ {f.filename || 'Download'}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      );
+    }
+    return null;
+  };
+
+  const FileEditorBlock = ({block}) => {
+    const key = 'fe-' + (block.id || Math.random());
+    const isOpen = expandedTools[key] || false;
+    const toggle = () => setExpandedTools(p => ({...p, [key]: !p[key]}));
+    if (block.type === 'file_editor') {
+      return (
+        <div className=""my-1.5 flex items-center gap-2 text-xs rounded-lg px-3 py-2 font-mono"" style={{background: t.codeBg, color: t.codeText}}>
+          <span>📝</span><span className=""font-medium"">{block.command}:</span><span className=""truncate opacity-75"">{block.path}</span>
+        </div>
+      );
+    }
+    if (block.type === 'file_editor_result') {
+      return (
+        <div className=""my-1.5 rounded-lg border overflow-hidden text-sm"" style={{borderColor: t.assistantBorder}}>
+          <button onClick={toggle} className=""w-full px-3 py-2 flex items-center gap-2 text-left text-xs hover:opacity-80"" style={{background: t.btnBg}}>
+            <span className=""text-[10px]"" style={{color: t.textSecondary}}>{isOpen ? '▼' : '▶'}</span>
+            <span className=""text-emerald-600"">📄 File {block.is_update ? 'updated' : 'operation complete'}</span>
+          </button>
+          {isOpen && block.content && (
+            <div className=""max-h-52 overflow-y-auto px-3 py-2 text-xs font-mono whitespace-pre-wrap"" style={{background: t.codeBg, color: t.codeText, borderTop: '1px solid ' + t.assistantBorder}}>
+              {block.content}
+            </div>
+          )}
+        </div>
+      );
+    }
+    return null;
+  };
+
+  const CitationLinks = ({citations}) => {
+    if (!citations || citations.length === 0) return null;
+    const unique = citations.filter((c, i, arr) => arr.findIndex(x => x.url === c.url) === i);
+    return (
+      <div className=""mt-2 pt-2"" style={{borderTop: '1px solid ' + t.assistantBorder}}>
+        <div className=""text-[11px] mb-1"" style={{color: t.textSecondary}}>Sources:</div>
+        <div className=""flex flex-wrap gap-1.5"">
+          {unique.map((c, i) => (
+            <a key={i} href={c.url} target=""_blank"" rel=""noopener noreferrer""
+              className=""inline-flex items-center gap-1 text-[11px] rounded px-1.5 py-0.5 transition-opacity hover:opacity-80 max-w-[200px]""
+              style={{color: t.accent, background: t.btnActiveBg}}>
+              <span className=""truncate"">{c.title || c.url}</span>
+            </a>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  const renderContent = (content, msgIdx) => {
+    if (typeof content === 'string') return renderMd(content);
+    if (!Array.isArray(content)) return renderMd(String(content));
+    return content.map((block, i) => {
+      const key = msgIdx + '-' + i;
+      if (block.type === 'text') return <div key={key}>{renderMd(block.text)}{block.citations && <CitationLinks citations={block.citations}/>}</div>;
+      if (block.type === 'tool_call' || block.type === 'tool_result') return <ToolBlock key={key} block={block} toolKey={key}/>;
+      if (block.type === 'web_search' || block.type === 'web_search_results') return <WebSearchBlock key={key} block={block}/>;
+      if (block.type === 'web_fetch' || block.type === 'web_fetch_result') return <WebFetchBlock key={key} block={block}/>;
+      if (block.type === 'code_exec' || block.type === 'code_exec_result') return <CodeExecBlock key={key} block={block}/>;
+      if (block.type === 'file_editor' || block.type === 'file_editor_result') return <FileEditorBlock key={key} block={block}/>;
+      if (block.type === 'server_tool') return <ToolBlock key={key} block={{type: 'tool_call', name: block.name, input: block.input}} toolKey={key}/>;
+      if (block.type === 'compaction') return <div key={key} className=""flex items-center gap-2 text-xs py-1.5 px-3 rounded-lg my-1"" style={{background: t.btnActiveBg, border: '1px solid ' + t.btnActiveBorder, color: t.accent}}>↻ Context compacted — earlier messages summarized to save space</div>;
+      return null;
+    });
+  };
+
+  const renderUserContent = (content) => {
+    if (typeof content === 'string') return <p className=""whitespace-pre-wrap"">{content}</p>;
+    if (!Array.isArray(content)) return <p className=""whitespace-pre-wrap"">{String(content)}</p>;
+    return content.map((block, i) => {
+      if (block.type === 'text') return <p key={i} className=""whitespace-pre-wrap"">{block.text}</p>;
+      if (block.type === 'file_ref') {
+        const isImg = block.file_type?.startsWith('image/');
+        return <div key={i} className=""flex items-center gap-2 py-1.5 px-2.5 my-1 rounded-lg bg-white/20 text-xs"">
+          <span>{isImg ? '🖼' : '📄'}</span><span className=""truncate"">{block.name}</span><span className=""opacity-60"">{fmtSize(block.size)}</span>
+        </div>;
+      }
+      return null;
+    });
+  };
+
+  const filteredChats = chatList.filter(c => !searchQuery || (c.title || '').toLowerCase().includes(searchQuery.toLowerCase()));
+
+  const toggleBtnStyle = (active, color) => ({
+    background: active ? t.btnActiveBg : t.btnBg,
+    borderColor: active ? t.btnActiveBorder : t.btnBorder,
+    color: active ? (color || t.accent) : t.textSecondary,
+  });
+
+  return (
+    <div className=""h-screen"" style={{background: t.bg, color: t.text}}>
+      <style>{[
+        '.markdown-content { color: ' + t.text + '; }',
+        '.markdown-content code { background: ' + t.codeBg + '; color: ' + t.codeText + '; padding: 2px 6px; border-radius: 4px; font-size: 0.85em; }',
+        '.markdown-content pre { background: ' + t.codeBg + '; color: ' + t.codeText + '; padding: 12px; border-radius: 8px; overflow-x: auto; }',
+        '.markdown-content pre code { background: transparent; padding: 0; }',
+        '.markdown-content a { color: ' + t.accent + '; }',
+        '.markdown-content blockquote { border-left: 3px solid ' + t.accent + '; padding-left: 12px; color: ' + t.textSecondary + '; }',
+        '.markdown-content table { border-collapse: collapse; width: 100%; }',
+        '.markdown-content th, .markdown-content td { border: 1px solid ' + t.assistantBorder + '; padding: 6px 10px; text-align: left; }',
+        '.markdown-content th { background: ' + (theme === 'midnight' ? '#334155' : t.btnBg) + '; }',
+        '.markdown-content img { max-width: 100%; border-radius: 8px; }',
+        '.markdown-content ul, .markdown-content ol { padding-left: 1.5em; }',
+        '.typing-dot { animation: bounce 1.4s infinite; }',
+        '.typing-dot:nth-child(2) { animation-delay: 0.2s; }',
+        '.typing-dot:nth-child(3) { animation-delay: 0.4s; }',
+        '@keyframes bounce { 0%,80%,100%{transform:translateY(0)} 40%{transform:translateY(-6px)} }',
+      ].join('\n')}</style>
+
+      {sidebarOpen && <div className=""fixed inset-0 bg-black/30 z-20 md:hidden"" onClick={() => setSidebarOpen(false)}/>}
+
+      <div className={'fixed inset-y-0 left-0 z-30 flex flex-col text-white transition-all duration-200 ' + (sidebarOpen ? 'w-72' : 'w-0 overflow-hidden')} style={{background: t.sidebar}}>
+        <div className=""p-3 border-b border-white/10 shrink-0 space-y-2"">
+          <button onClick={() => { newChat(); if (window.innerWidth < 768) setSidebarOpen(false); }}
+            className=""w-full rounded-lg px-3 py-2.5 text-sm flex items-center gap-2 justify-center transition-colors hover:opacity-80"" style={{background: t.sidebarHover}}>+ New Chat</button>
+          <div className=""relative"">
+            <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
+              placeholder=""Search chats..."" className=""w-full rounded-lg pl-8 pr-3 py-2 text-sm placeholder-gray-400 focus:outline-none"" style={{background: t.sidebarActive, border: '1px solid ' + t.sidebarHover}}/>
+            <span className=""absolute left-2.5 top-2 text-gray-400 text-sm"">🔍</span>
+            {searchQuery && <button onClick={() => setSearchQuery('')} className=""absolute right-2 top-2 text-gray-400 hover:text-white text-xs"">✕</button>}
+          </div>
+        </div>
+        <div className=""flex-1 overflow-y-auto"">
+          {filteredChats.map(chat => (
+            <div key={chat.id} onClick={() => loadChat(chat.id)}
+              className={'px-3 py-2.5 cursor-pointer border-b border-white/5 flex items-center group transition-colors'}
+              style={{background: activeChatId === chat.id ? t.sidebarActive : 'transparent'}}
+              onMouseEnter={e => { if (activeChatId !== chat.id) e.currentTarget.style.background = t.sidebarHover; }}
+              onMouseLeave={e => { if (activeChatId !== chat.id) e.currentTarget.style.background = 'transparent'; }}>
+              <div className=""truncate flex-1 text-sm"">{chat.title || 'Untitled'}</div>
+              <button onClick={(e) => {e.stopPropagation(); deleteChat(chat.id);}}
+                className=""opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-400 ml-2 shrink-0 transition-opacity"">✕</button>
+            </div>
+          ))}
+          {filteredChats.length === 0 && searchQuery && <div className=""p-4 text-gray-400 text-sm text-center"">No matches</div>}
+          {chatList.length === 0 && !searchQuery && <div className=""p-4 text-gray-400 text-sm text-center"">No chats yet</div>}
+        </div>
+        <div className=""p-3 border-t border-white/10 shrink-0 space-y-3"">
+          <div>
+            <label className=""text-xs text-gray-400 mb-1 block"">Model</label>
+            <select value={model} onChange={onModelChange} className=""w-full rounded-lg px-2 py-1.5 text-sm text-white focus:outline-none"" style={{background: t.sidebarActive, border: '1px solid ' + t.sidebarHover}}>
+              {models.length > 0 ? models.map(m => <option key={m.id} value={m.id}>{m.name || m.id}</option>) : <option value={model}>{model}</option>}
+            </select>
+          </div>
+          <div>
+            <label className=""text-xs text-gray-400 mb-1 block"">Theme</label>
+            <div className=""flex gap-2"">
+              {Object.entries(THEMES).map(([key, th]) => (
+                <button key={key} onClick={() => changeTheme(key)} title={th.name}
+                  className=""w-7 h-7 rounded-full transition-transform hover:scale-110""
+                  style={{background: th.swatch, border: theme === key ? '2px solid #fff' : '2px solid transparent'}}/>
+              ))}
+            </div>
+          </div>
+          {chatList.length > 0 && (
+            <button onClick={clearAllChats} className=""w-full text-gray-500 hover:text-red-400 text-xs py-1 transition-colors"">Clear all chats</button>
+          )}
+        </div>
+      </div>
+
+      <div className={'h-full flex flex-col transition-all duration-200 ' + (sidebarOpen ? 'md:ml-72' : '')}>
+        <div className=""backdrop-blur-sm border-b px-3 sm:px-4 py-2 flex items-center gap-1.5 sm:gap-2 shrink-0"" style={{background: t.headerBg, borderColor: t.headerBorder}}>
+          <button onClick={() => setSidebarOpen(!sidebarOpen)} className=""text-xl leading-none shrink-0 hover:opacity-70"" style={{color: t.textSecondary}}>☰</button>
+          <h1 className=""font-semibold hidden lg:block"" style={{color: t.text}}>Claude Chat</h1>
+          <div className=""flex-1""/>
+          <button onClick={toggleWebSearch} title={webSearch ? 'Web search enabled' : 'Web search disabled'}
+            className=""px-2 py-1.5 rounded-lg text-xs border transition-colors shrink-0"" style={toggleBtnStyle(webSearch)}>🌐 Web</button>
+          <button onClick={toggleCodeExec} title={codeExec ? 'Code execution enabled' : 'Code execution disabled'}
+            className=""px-2 py-1.5 rounded-lg text-xs border transition-colors shrink-0"" style={toggleBtnStyle(codeExec)}>⌘ Code</button>
+          <button onClick={toggleMcp} title={mcpEnabled ? 'MCP tools enabled' : 'MCP tools disabled'}
+            className=""px-2 py-1.5 rounded-lg text-xs border transition-colors shrink-0"" style={toggleBtnStyle(mcpEnabled)}>⚙ MCP</button>
+          <button onClick={toggleThinking} title={thinking ? 'Extended thinking enabled' : 'Extended thinking disabled'}
+            className=""px-2 py-1.5 rounded-lg text-xs border transition-colors shrink-0"" style={toggleBtnStyle(thinking)}>🧠 Think</button>
+          <div className=""relative"" ref={settingsRef}>
+            <button onClick={() => setShowSettings(!showSettings)} title=""System prompt""
+              className=""px-2 py-1.5 rounded-lg text-xs border transition-colors shrink-0"" style={toggleBtnStyle(!!systemPrompt)}>📝 Prompt</button>
+            {showSettings && (
+              <div className=""fixed sm:absolute inset-x-3 sm:inset-x-auto sm:right-0 top-14 sm:top-full sm:mt-1.5 w-auto sm:w-96 rounded-xl shadow-2xl border p-4 z-40 max-h-[80vh] overflow-y-auto"" style={{background: t.assistantBg, borderColor: t.assistantBorder, color: t.text}}>
+                <h3 className=""font-semibold text-sm mb-3"">System Prompt</h3>
+                {!editingNewPrompt ? (
+                  <>
+                    <div className=""space-y-1.5 mb-3 max-h-48 overflow-y-auto"">
+                      {Object.entries(allPresets).map(([k, v]) => {
+                        if (k === 'custom') return (
+                          <button key={k} onClick={() => onPresetChange('custom')}
+                            className=""w-full text-left px-3 py-2 rounded-lg text-sm border border-dashed transition-colors hover:opacity-80"" style={{borderColor: t.textSecondary, color: t.textSecondary}}>
+                            + New Prompt...
+                          </button>
+                        );
+                        const isActive = systemPreset === k;
+                        return (
+                          <div key={k} className=""flex items-center gap-2 px-3 py-2 rounded-lg text-sm cursor-pointer transition-colors"" style={{background: isActive ? t.btnActiveBg : 'transparent', border: '1px solid ' + (isActive ? t.btnActiveBorder : 'transparent')}}>
+                            <div className=""flex-1 min-w-0"" onClick={() => onPresetChange(k)}>
+                              <div className=""font-medium"" style={{color: isActive ? t.accent : t.text}}>{v.label}</div>
+                              {v.prompt && <div className=""text-xs mt-0.5 truncate"" style={{color: t.textSecondary}}>{v.prompt.slice(0, 80)}</div>}
+                            </div>
+                            {v.deletable && (
+                              <button onClick={(e) => { e.stopPropagation(); deletePrompt(k); }}
+                                className=""hover:text-red-500 transition-colors shrink-0 text-xs p-1"" style={{color: t.textSecondary}}>\u2715</button>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {systemPreset !== 'none' && allPresets[systemPreset] && (
+                      <div className=""mb-3"">
+                        <label className=""text-xs mb-1 block"" style={{color: t.textSecondary}}>Active prompt text:</label>
+                        <textarea value={systemPrompt} onChange={e => onPromptChange(e.target.value)}
+                          className=""w-full border rounded-lg px-3 py-2 text-sm resize-none focus:outline-none""
+                          style={{background: t.inputBg, borderColor: t.inputBorder, color: t.text}}
+                          placeholder=""System instructions..."" rows={4}/>
+                        <div className=""text-xs mt-1"" style={{color: t.textSecondary}}>{systemPrompt.length} chars</div>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className=""space-y-3"">
+                    <input value={newPromptName} onChange={e => setNewPromptName(e.target.value)}
+                      placeholder=""Prompt name (e.g. Marketing Writer)""
+                      className=""w-full border rounded-lg px-3 py-2 text-sm focus:outline-none"" style={{background: t.inputBg, borderColor: t.inputBorder, color: t.text}}/>
+                    <textarea value={newPromptText} onChange={e => setNewPromptText(e.target.value)}
+                      placeholder=""System prompt instructions...""
+                      className=""w-full border rounded-lg px-3 py-2 text-sm resize-none focus:outline-none"" style={{background: t.inputBg, borderColor: t.inputBorder, color: t.text}} rows={5}/>
+                    <div className=""flex gap-2 justify-end"">
+                      <button onClick={() => setEditingNewPrompt(false)} className=""text-sm px-3 py-1.5 hover:opacity-70"" style={{color: t.textSecondary}}>Cancel</button>
+                      <button onClick={saveNewPrompt} disabled={!newPromptName.trim() || !newPromptText.trim()}
+                        className=""text-sm text-white rounded-lg px-4 py-1.5 font-medium transition-colors disabled:opacity-40"" style={{background: t.accent}}>Save Prompt</button>
+                    </div>
+                  </div>
+                )}
+                <div className=""flex justify-between items-center pt-2 mt-2"" style={{borderTop: '1px solid ' + t.assistantBorder}}>
+                  {systemPrompt && !editingNewPrompt ? <button onClick={() => onPresetChange('none')} className=""text-xs hover:text-red-500"" style={{color: t.textSecondary}}>Clear</button> : <span/>}
+                  <button onClick={() => { setShowSettings(false); setEditingNewPrompt(false); }} className=""text-sm font-medium"" style={{color: t.accent}}>Done</button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className=""flex-1 overflow-y-auto px-3 sm:px-4 py-6"">
+          {messages.length === 0 && (
+            <div className=""flex items-center justify-center h-full"">
+              <div className=""text-center px-4"">
+                <div className=""text-5xl mb-4"">✦</div>
+                <div className=""text-xl font-medium"" style={{color: t.text}}>{greeting}</div>
+                <div className=""text-sm mt-2"" style={{color: t.textSecondary}}>Claude has access to your Odoo data via MCP tools.</div>
+                <div className=""flex gap-2 justify-center mt-4 flex-wrap"">
+                  {webSearch && <span className=""text-xs px-2 py-1 rounded-full"" style={{background: t.btnActiveBg, color: t.accent}}>🌐 Web Search</span>}
+                  {codeExec && <span className=""text-xs px-2 py-1 rounded-full"" style={{background: t.btnActiveBg, color: t.accent}}>⌘ Code</span>}
+                  {mcpEnabled && <span className=""text-xs px-2 py-1 rounded-full"" style={{background: t.btnActiveBg, color: t.accent}}>⚙ MCP</span>}
+                  {thinking && <span className=""text-xs px-2 py-1 rounded-full"" style={{background: t.btnActiveBg, color: t.accent}}>🧠 Thinking</span>}
+                  {systemPrompt && <span className=""text-xs px-2 py-1 rounded-full"" style={{background: t.btnActiveBg, color: t.accent}}>📝 {systemPreset !== 'none' && allPresets[systemPreset] ? allPresets[systemPreset].label : 'Custom'}</span>}
+                </div>
+              </div>
+            </div>
+          )}
+          <div className=""max-w-4xl mx-auto space-y-4"">
+            {messages.map((msg, i) => (
+              <div key={i} className={'flex ' + (msg.role === 'user' ? 'justify-end' : 'justify-start')}>
+                <div className={'rounded-2xl px-3.5 sm:px-4 py-3 ' + (msg.role === 'user' ? 'max-w-[92%] sm:max-w-[85%]' : 'w-full')}
+                  style={msg.role === 'user'
+                    ? {background: t.userBubble, color: t.userText}
+                    : {background: t.assistantBg, border: '1px solid ' + t.assistantBorder, boxShadow: '0 1px 2px rgba(0,0,0,0.05)'}}>
+                  {msg.role === 'assistant' && msg.thinking_content && (
+                    <div className=""mb-2"">
+                      <button onClick={() => setExpandedThinking(p => ({...p, [i]: !p[i]}))} className=""text-xs flex items-center gap-1"" style={{color: t.accent}}>
+                        🧠 {expandedThinking[i] ? 'Hide' : 'Show'} thinking
+                      </button>
+                      {expandedThinking[i] && (
+                        <div className=""mt-1.5 p-2.5 rounded-lg text-xs max-h-60 overflow-y-auto whitespace-pre-wrap"" style={{background: t.btnActiveBg, border: '1px solid ' + t.btnActiveBorder, color: t.text}}>{msg.thinking_content}</div>
+                      )}
+                    </div>
+                  )}
+                  {msg.role === 'user' ? renderUserContent(msg.content) : renderContent(msg.content, i)}
+                  {msg.model && <div className=""text-xs mt-2 pt-1.5"" style={{borderTop: '1px solid ' + t.assistantBorder, color: t.textSecondary}}>{msg.model}{msg.usage ? ' · ' + (msg.usage.input_tokens || 0) + '→' + (msg.usage.output_tokens || 0) + ' tok' + (msg.usage.cache_read_input_tokens ? ' · ⚡' + msg.usage.cache_read_input_tokens + ' cached' : '') : ''}{msg.usage?.server_tool_use?.web_search_requests ? ' · 🔍' + msg.usage.server_tool_use.web_search_requests : ''}{msg.usage?.server_tool_use?.code_execution_requests ? ' · ⌘' + msg.usage.server_tool_use.code_execution_requests : ''}</div>}
+                </div>
+              </div>
+            ))}
+            {loading && (
+              <div className=""flex justify-start"">
+                <div className=""rounded-2xl px-5 py-4"" style={{background: t.assistantBg, border: '1px solid ' + t.assistantBorder, boxShadow: '0 1px 2px rgba(0,0,0,0.05)'}}>
+                  <div className=""flex gap-1.5"">
+                    <div className=""typing-dot w-2 h-2 rounded-full"" style={{background: t.textSecondary}}/>
+                    <div className=""typing-dot w-2 h-2 rounded-full"" style={{background: t.textSecondary}}/>
+                    <div className=""typing-dot w-2 h-2 rounded-full"" style={{background: t.textSecondary}}/>
+                  </div>
+                </div>
+              </div>
+            )}
+            <div ref={messagesEndRef}/>
+          </div>
+        </div>
+
+        {attachments.length > 0 && (
+          <div className=""px-3 sm:px-4 pt-2 shrink-0"">
+            <div className=""max-w-4xl mx-auto flex gap-2 flex-wrap"">
+              {attachments.map((att, i) => (
+                <div key={i} className=""relative group"">
+                  {att.preview
+                    ? <img src={att.preview} className=""h-16 w-16 object-cover rounded-lg border shadow-sm"" style={{borderColor: t.assistantBorder}}/>
+                    : <div className=""h-16 px-3 flex items-center gap-2 rounded-lg border shadow-sm text-xs"" style={{background: t.btnBg, borderColor: t.assistantBorder, color: t.text}}>📄 <span className=""max-w-[100px] truncate"">{att.name}</span></div>}
+                  <button onClick={() => removeAttachment(i)}
+                    className=""absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full text-[10px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow"">✕</button>
+                </div>
+              ))}
+              {uploadingFile && <div className=""h-16 px-4 flex items-center text-xs"" style={{color: t.textSecondary}}>Uploading...</div>}
+            </div>
+          </div>
+        )}
+
+        <div className=""border-t backdrop-blur-sm px-3 sm:px-4 py-3 shrink-0"" style={{background: t.inputBg, borderColor: t.headerBorder}}>
+          <div className=""max-w-4xl mx-auto flex gap-2 items-end"">
+            <input ref={fileInputRef} type=""file"" accept=""image/png,image/jpeg,image/gif,image/webp,application/pdf,.txt,.md,.csv,.json,.xml,.html,.css,.js,.py,.java,.c,.cpp,.yaml,.yml,.log,.sh,.sql,.toml,.ini,.ts,.tsx,.jsx,.xlsx,.xls"" multiple onChange={handleFileSelect} className=""hidden""/>
+            <button onClick={() => fileInputRef.current?.click()} title=""Attach files""
+              className=""p-2 rounded-lg transition-colors shrink-0 mb-0.5 hover:opacity-70"" style={{color: t.textSecondary}}>📎</button>
+            <textarea ref={inputRef} value={input}
+              onChange={e => setInput(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }}}
+              placeholder=""Send a message..."" rows={1}
+              className=""flex-1 rounded-xl px-3 sm:px-4 py-2.5 resize-none focus:outline-none focus:ring-2 text-sm""
+              style={{minHeight: '44px', maxHeight: '120px', background: t.assistantBg, border: '1px solid ' + t.inputBorder, color: t.text, '--tw-ring-color': t.accent}}
+              onInput={e => { e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px'; }}
+            />
+            <button onClick={send} disabled={loading || (!input.trim() && attachments.length === 0)}
+              className=""text-white rounded-xl px-4 sm:px-5 py-2.5 font-medium transition-colors text-sm shrink-0 disabled:opacity-40 disabled:cursor-not-allowed""
+              style={{background: t.accent}}>
+              {loading ? '...' : 'Send'}
+            </button>
+          </div>
+          <div className=""max-w-4xl mx-auto mt-1 text-xs text-center hidden sm:block"" style={{color: t.textSecondary}}>Enter to send · Shift+Enter for new line · 📎 for files</div>
+        </div>
+      </div>
+    </div>
+  );
+}","","","","","__export__.mcp_webapp_endpoint_58_d679849f","Send Chat Message","chat","POST","try:
+    api_rec = env['mcp.api.key'].sudo().search([('name', '=', 'anthropic-api')], limit=1)
+    if not api_rec or not api_rec.api_key:
+        result = {'error': 'Anthropic API key not configured. Create an mcp.api.key record named anthropic-api.'}
+    else:
+        mcp_rec = env['mcp.api.key'].sudo().search([('name', '=', 'claude-bot')], limit=1)
+        base_url = env['ir.config_parameter'].sudo().get_param('web.base.url')
+        msgs = body.get('messages', [])
+        mdl = body.get('model', 'claude-sonnet-4-6')
+        use_thinking = body.get('thinking', False)
+        use_mcp = body.get('mcp_enabled', True)
+        use_web = body.get('web_search', False)
+        use_code = body.get('code_exec', True)
+        system_prompt = body.get('system_prompt', '')
+        container_id = body.get('container_id')
+        full_system = system_prompt or ''
+        if use_code:
+            code_instructions = '\n\nIMPORTANT: When you create, modify, or generate files that the user may want to download, ALWAYS copy the final file to the $OUTPUT_DIR directory (e.g. `cp /tmp/result.csv $OUTPUT_DIR/result.csv`). Files placed in $OUTPUT_DIR are automatically made available for download in the UI. Do NOT provide raw file paths — the app handles download buttons automatically for any files in $OUTPUT_DIR.'
+            full_system = (full_system + code_instructions) if full_system else code_instructions.strip()
+        payload = {'model': mdl, 'max_tokens': 16000, 'messages': msgs, 'cache_control': {'type': 'ephemeral'}}
+        if full_system:
+            payload['system'] = [{'type': 'text', 'text': full_system, 'cache_control': {'type': 'ephemeral'}}]
+        if use_thinking:
+            payload['thinking'] = {'type': 'enabled', 'budget_tokens': 10000}
+            payload['max_tokens'] = 32000
+        if container_id and use_code:
+            payload['container'] = container_id
+        cm_models = ('claude-opus-4-6', 'claude-sonnet-4-6')
+        tools = []
+        if use_mcp and mcp_rec and mcp_rec.api_key:
+            payload['mcp_servers'] = [{'type': 'url', 'url': base_url.rstrip('/') + '/mcp', 'name': 'odoo', 'authorization_token': mcp_rec.api_key}]
+            tools.append({'type': 'mcp_toolset', 'mcp_server_name': 'odoo'})
+        if use_web:
+            ws_type = 'web_search_20260209' if mdl in cm_models else 'web_search_20250305'
+            wf_type = 'web_fetch_20260209' if mdl in cm_models else 'web_fetch_20250910'
+            tools.append({'type': ws_type, 'name': 'web_search', 'max_uses': 10})
+            tools.append({'type': wf_type, 'name': 'web_fetch', 'max_uses': 10})
+        if use_code and not (use_web and mdl in cm_models):
+            tools.append({'type': 'code_execution_20250825', 'name': 'code_execution'})
+        if tools:
+            payload['tools'] = tools
+        cm_edits = []
+        if use_thinking and mdl in cm_models:
+            cm_edits.append({'type': 'clear_thinking_20251015', 'keep': {'type': 'thinking_turns', 'value': 2}})
+        if tools and mdl in cm_models:
+            cm_edits.append({'type': 'clear_tool_uses_20250919', 'trigger': {'type': 'input_tokens', 'value': 50000}, 'keep': {'type': 'tool_uses', 'value': 5}})
+        if mdl in cm_models:
+            cm_edits.append({'type': 'compact_20260112', 'trigger': {'type': 'input_tokens', 'value': 100000}})
+        if cm_edits:
+            payload['context_management'] = {'edits': cm_edits}
+        betas = []
+        if mdl in cm_models:
+            betas.extend(['compact-2026-01-12', 'context-management-2025-06-27'])
+        if use_mcp and mcp_rec and mcp_rec.api_key:
+            betas.append('mcp-client-2025-11-20')
+        has_files = False
+        for m in msgs:
+            mc = m.get('content', '')
+            if isinstance(mc, list):
+                for b in mc:
+                    if isinstance(b, dict) and (b.get('source', {}).get('type') == 'file' or b.get('type') == 'container_upload'):
+                        has_files = True
+                        break
+            if has_files:
+                break
+        if has_files or use_code:
+            betas.append('files-api-2025-04-14')
+        headers = {
+            'x-api-key': api_rec.api_key,
+            'anthropic-version': '2023-06-01',
+            'content-type': 'application/json',
+        }
+        if betas:
+            headers['anthropic-beta'] = ','.join(betas)
+        resp = requests.post(
+            'https://api.anthropic.com/v1/messages',
+            headers=headers,
+            json=payload,
+            timeout=300,
+        )
+        data = json.loads(resp.text)
+        if data.get('error'):
+            result = {'role': 'assistant', 'content': '', 'error': data['error'].get('message', str(data['error']))}
+        else:
+            content_blocks = []
+            thinking_parts = []
+            for block in data.get('content', []):
+                btype = block.get('type', '')
+                if btype == 'thinking':
+                    thinking_parts.append(block.get('thinking', ''))
+                elif btype == 'compaction':
+                    content_blocks.append({'type': 'compaction', 'content': block.get('content', '')})
+                elif btype == 'text':
+                    tb = {'type': 'text', 'text': block['text']}
+                    citations = []
+                    for c in (block.get('citations') or []):
+                        if isinstance(c, dict):
+                            citations.append({'url': c.get('url', ''), 'title': c.get('title', ''), 'cited_text': c.get('cited_text', '')})
+                    if citations:
+                        tb['citations'] = citations
+                    content_blocks.append(tb)
+                elif btype == 'mcp_tool_use':
+                    content_blocks.append({'type': 'tool_call', 'name': block.get('name', ''), 'input': block.get('input', {}), 'server': block.get('server_name', 'odoo')})
+                elif btype == 'mcp_tool_result':
+                    sub = block.get('content', [])
+                    txt = ''
+                    if isinstance(sub, list):
+                        texts = [c.get('text', '') for c in sub if isinstance(c, dict) and c.get('type') == 'text']
+                        txt = texts[0] if texts else json.dumps(sub, indent=2, default=str)
+                    else:
+                        txt = str(sub)
+                    content_blocks.append({'type': 'tool_result', 'content': txt[:3000], 'is_error': block.get('is_error', False)})
+                elif btype == 'server_tool_use':
+                    name = block.get('name', '')
+                    inp = block.get('input', {})
+                    bid = block.get('id', '')
+                    if name == 'web_search':
+                        content_blocks.append({'type': 'web_search', 'query': inp.get('query', ''), 'id': bid})
+                    elif name == 'web_fetch':
+                        content_blocks.append({'type': 'web_fetch', 'url': inp.get('url', ''), 'id': bid})
+                    elif name == 'bash_code_execution':
+                        content_blocks.append({'type': 'code_exec', 'command': inp.get('command', ''), 'id': bid})
+                    elif name == 'text_editor_code_execution':
+                        content_blocks.append({'type': 'file_editor', 'command': inp.get('command', ''), 'path': inp.get('path', ''), 'file_text': inp.get('file_text', ''), 'id': bid})
+                    else:
+                        content_blocks.append({'type': 'server_tool', 'name': name, 'input': inp, 'id': bid})
+                elif btype == 'web_search_tool_result':
+                    results = []
+                    for r in (block.get('content') or []):
+                        if isinstance(r, dict) and r.get('type') == 'web_search_result':
+                            results.append({'title': r.get('title', ''), 'url': r.get('url', ''), 'page_age': r.get('page_age', '')})
+                    content_blocks.append({'type': 'web_search_results', 'results': results})
+                elif btype == 'web_fetch_tool_result':
+                    wfc = block.get('content', {})
+                    if isinstance(wfc, dict) and wfc.get('type') == 'web_fetch_result':
+                        url = wfc.get('url', '')
+                        doc = wfc.get('content', {})
+                        preview = ''
+                        if isinstance(doc, dict):
+                            src = doc.get('source', {})
+                            if src.get('type') == 'text':
+                                preview = (src.get('data', '') or '')[:500]
+                        content_blocks.append({'type': 'web_fetch_result', 'url': url, 'content_preview': preview})
+                    elif isinstance(wfc, dict) and wfc.get('type') == 'web_fetch_tool_error':
+                        content_blocks.append({'type': 'web_fetch_result', 'url': '', 'error': wfc.get('error_code', 'unknown')})
+                    else:
+                        content_blocks.append({'type': 'web_fetch_result', 'url': '', 'content_preview': str(wfc)[:500]})
+                elif btype == 'bash_code_execution_tool_result':
+                    c = block.get('content', {})
+                    if isinstance(c, dict) and c.get('type') == 'bash_code_execution_result':
+                        files_out = []
+                        for f in (c.get('content') or []):
+                            if isinstance(f, dict) and f.get('file_id'):
+                                files_out.append({'file_id': f['file_id'], 'filename': f.get('filename', 'download')})
+                        block_data = {
+                            'type': 'code_exec_result',
+                            'stdout': (c.get('stdout') or '')[:5000],
+                            'stderr': (c.get('stderr') or '')[:2000],
+                            'return_code': c.get('return_code', -1),
+                        }
+                        if files_out:
+                            block_data['files'] = files_out
+                        content_blocks.append(block_data)
+                    elif isinstance(c, dict) and c.get('type') == 'bash_code_execution_tool_result_error':
+                        content_blocks.append({'type': 'code_exec_result', 'stdout': '', 'stderr': c.get('error_code', 'error'), 'return_code': 1})
+                    else:
+                        content_blocks.append({'type': 'code_exec_result', 'stdout': str(c)[:5000], 'stderr': '', 'return_code': 0})
+                elif btype == 'text_editor_code_execution_tool_result':
+                    c = block.get('content', {})
+                    if isinstance(c, dict):
+                        content_blocks.append({
+                            'type': 'file_editor_result',
+                            'content': c.get('content', '') or json.dumps(c, default=str)[:3000],
+                            'file_type': c.get('file_type', ''),
+                            'is_update': c.get('is_file_update', False),
+                        })
+                    else:
+                        content_blocks.append({'type': 'file_editor_result', 'content': str(c)[:3000]})
+            res_container = data.get('container', {})
+            result = {
+                'role': 'assistant',
+                'content': content_blocks if content_blocks else [{'type': 'text', 'text': '(empty response)'}],
+                'thinking_content': '\n\n'.join(thinking_parts) if thinking_parts else None,
+                'model': data.get('model', ''),
+                'usage': data.get('usage', {}),
+                'stop_reason': data.get('stop_reason', ''),
+                'container_id': res_container.get('id') if isinstance(res_container, dict) else None,
+                'context_management': data.get('context_management'),
+            }
+except Exception as e:
+    result = {'role': 'assistant', 'content': '', 'error': str(e)}"
+"","","","","","","","","","","","","","","","","","","","","","","","","","","","","","__export__.mcp_webapp_endpoint_62_087094b5","List Files","files","GET","try:
+    api_rec = env['mcp.api.key'].sudo().search([('name', '=', 'anthropic-api')], limit=1)
+    if not api_rec or not api_rec.api_key:
+        result = {'error': 'API key not configured'}
+    else:
+        headers = {
+            'x-api-key': api_rec.api_key,
+            'anthropic-version': '2023-06-01',
+            'anthropic-beta': 'files-api-2025-04-14',
+        }
+        resp = requests.get(
+            'https://api.anthropic.com/v1/files',
+            headers=headers,
+            timeout=60,
+        )
+        data = json.loads(resp.text)
+        if resp.status_code >= 400:
+            result = {'error': data.get('error', {}).get('message', str(data))}
+        else:
+            result = {'files': data.get('data', [])}
+except Exception as e:
+    result = {'error': str(e)}"
+"","","","","","","","","","","","","","","","","","","","","","","","","","","","","","__export__.mcp_webapp_endpoint_61_c0a7cfe0","Download File","files/download","GET","try:
+    api_rec = env['mcp.api.key'].sudo().search([('name', '=', 'anthropic-api')], limit=1)
+    if not api_rec or not api_rec.api_key:
+        result = {'error': 'API key not configured'}
+    else:
+        file_id = query_params.get('file_id')
+        if not file_id:
+            result = {'error': 'file_id parameter required'}
+        else:
+            headers = {
+                'x-api-key': api_rec.api_key,
+                'anthropic-version': '2023-06-01',
+                'anthropic-beta': 'files-api-2025-04-14',
+            }
+            resp = requests.get(
+                'https://api.anthropic.com/v1/files/' + str(file_id) + '/content',
+                headers=headers,
+                timeout=120,
+            )
+            if resp.status_code >= 400:
+                result = {'error': 'Download failed: ' + str(resp.status_code)}
+            else:
+                result = {
+                    'content': b64encode(resp.content).decode('utf-8'),
+                    'content_type': resp.headers.get('content-type', 'application/octet-stream'),
+                    'filename': file_id,
+                }
+except Exception as e:
+    result = {'error': str(e)}"
+"","","","","","","","","","","","","","","","","","","","","","","","","","","","","","__export__.mcp_webapp_endpoint_60_c8f0083d","Upload File","files/upload","POST","try:
+    api_rec = env['mcp.api.key'].sudo().search([('name', '=', 'anthropic-api')], limit=1)
+    if not api_rec or not api_rec.api_key:
+        result = {'error': 'API key not configured'}
+    else:
+        file_data = body.get('file_data')
+        filename = body.get('filename', 'file')
+        mime_type = body.get('mime_type', 'application/octet-stream')
+        if not file_data:
+            result = {'error': 'No file_data provided'}
+        else:
+            file_bytes = b64decode(file_data)
+            headers = {
+                'x-api-key': api_rec.api_key,
+                'anthropic-version': '2023-06-01',
+                'anthropic-beta': 'files-api-2025-04-14',
+            }
+            resp = requests.post(
+                'https://api.anthropic.com/v1/files',
+                headers=headers,
+                files={'file': (filename, file_bytes, mime_type)},
+                timeout=120,
+            )
+            data = json.loads(resp.text)
+            if resp.status_code >= 400:
+                result = {'error': data.get('error', {}).get('message', str(data))}
+            else:
+                result = {
+                    'file_id': data.get('id'),
+                    'filename': data.get('filename'),
+                    'size_bytes': data.get('size_bytes'),
+                    'mime_type': data.get('mime_type'),
+                }
+except Exception as e:
+    result = {'error': str(e)}"
+"","","","","","","","","","","","","","","","","","","","","","","","","","","","","","__export__.mcp_webapp_endpoint_59_f04a8d32","List Models","models","GET","api_rec = env['mcp.api.key'].sudo().search([('name', '=', 'anthropic-api')], limit=1)
+if not api_rec or not api_rec.api_key:
+    result = {'models': [{'id': 'claude-sonnet-4-6', 'name': 'Claude Sonnet 4.6'}, {'id': 'claude-haiku-4-5-20251001', 'name': 'Claude Haiku 4.5'}]}
+else:
+    resp = requests.get(
+        'https://api.anthropic.com/v1/models',
+        headers={'x-api-key': api_rec.api_key, 'anthropic-version': '2023-06-01'},
+        params={'limit': 100},
+        timeout=30,
+    )
+    data = resp.json()
+    result = {'models': [{'id': m['id'], 'name': m.get('display_name', m['id'])} for m in data.get('data', [])]}"
