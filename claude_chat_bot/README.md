@@ -109,7 +109,15 @@ Opus 4.6 and Sonnet 4.6 automatically use the latest tool versions (`web_search_
 | User | The Odoo user whose permissions Claude should operate with |
 | Scope | `odoo.read odoo.write odoo.execute offline_access` (default) |
 
-The `claude-bot` key allows Claude to call back into your Odoo instance using MCP tools (search records, create records, etc.). The permissions are tied to the **User** configured on the key — ensure that user has appropriate (minimal) tool allowlists in MCP Configuration.
+The `claude-bot` key allows Claude to call back into your Odoo instance using MCP tools (search records, create records, etc.).
+
+> **Important — MCP permissions are tied to the API key, not the logged-in user.** All MCP tool requests execute as the **User** configured on the `claude-bot` key record, regardless of which user is logged into the webapp. This means every webapp user gets the same level of Odoo data access through Claude's MCP tools.
+>
+> For example, if the `claude-bot` key is tied to an admin user, a portal user chatting with Claude would have Claude querying Odoo with admin-level access. To mitigate this:
+>
+> - **Match the key user to your audience** — If the webapp is shared with portal users, configure the key with a user that has portal-level permissions and appropriate group memberships.
+> - **Use minimal tool allowlists** — Configure the key's user in MCP Configuration with only the tools and models they need (e.g., read-only access to specific models).
+> - **Per-team or per-role keys** — For different access levels, duplicate the webapp and configure separate `claude-bot` keys tied to different users. See [Rate Limiting with Workspaces](#rate-limiting-with-workspaces) below for this pattern.
 
 ### Step 3: Open the Application
 
