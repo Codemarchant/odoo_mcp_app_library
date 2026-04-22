@@ -1065,7 +1065,7 @@ marked.setOptions({ breaks: true, gfm: true });","True","#D4A574","#EFEBE5","Ful
                 'context_management': data.get('context_management'),
             }
 except Exception as e:
-    logger.exception('[claude-chat webapp 128] Send Chat Message endpoint error')
+    logger.exception('[claude-chat webapp Send Chat Message endpoint error')
     result = {'role': 'assistant', 'content': '', 'error': str(e)}"
 "","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","__export__.mcp_webapp_endpoint_62_087094b5","List Files","files","GET","try:
     api_rec = env['mcp.api.key'].sudo().search([('name', '=', 'anthropic-api')], limit=1)
