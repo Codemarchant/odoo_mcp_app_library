@@ -333,6 +333,7 @@ marked.setOptions({ breaks: true, gfm: true });","True","#D4A574","#EFEBE5","Ful
         role: 'assistant',
         content: res.error ? ('Error: ' + (typeof res.error === 'string' ? res.error : JSON.stringify(res.error))) : (res.content && (Array.isArray(res.content) ? res.content.length : res.content) ? res.content : '(empty response)'),
         thinking_content: res.thinking_content || null,
+        apiContent: (Array.isArray(res.api_content) && res.api_content.length > 0) ? res.api_content : null,
         model: res.model, usage: res.usage, timestamp: new Date().toISOString(),
       };
       const finalMsgs = [...newMsgs, assistantMsg];
@@ -850,18 +851,24 @@ marked.setOptions({ breaks: true, gfm: true });","True","#D4A574","#EFEBE5","Ful
     </div>
   );
 }","","","","","__export__.mcp_webapp_endpoint_58_d679849f","Send Chat Message","chat","POST","try:
+    def _cap(s, n):
+        s = str(s or '')
+        return s if len(s) <= n else s[:n] + '\n\n[... truncated %d chars]' % (len(s) - n)
     api_rec = env['mcp.api.key'].sudo().search([('name', '=', 'anthropic-api')], limit=1)
     if not api_rec or not api_rec.api_key:
         result = {'error': 'Anthropic API key not configured. Create an mcp.api.key record named anthropic-api.'}
     else:
         mcp_rec = env['mcp.api.key'].sudo().search([('name', '=', 'claude-bot')], limit=1)
-        base_url = env['ir.config_parameter'].sudo().get_param('web.base.url')
+        base_url = (env['ir.config_parameter'].sudo().get_param('web.base.url') or '').rstrip('/')
+        db_name = env.cr.dbname
         msgs = body.get('messages', [])
         mdl = body.get('model', 'claude-sonnet-4-6')
         use_thinking = body.get('thinking', False)
         use_mcp = body.get('mcp_enabled', True)
         use_web = body.get('web_search', False)
         use_code = body.get('code_exec', True)
+        if use_mcp and (not mcp_rec or not mcp_rec.api_key):
+            raise Exception('MCP tools are enabled but the claude-bot API key is not configured. Create an mcp.api.key record named ""claude-bot"", or disable the MCP toggle in chat settings.')
         system_prompt = body.get('system_prompt', '')
         container_id = body.get('container_id')
         full_system = system_prompt or ''
@@ -871,15 +878,23 @@ marked.setOptions({ breaks: true, gfm: true });","True","#D4A574","#EFEBE5","Ful
         payload = {'model': mdl, 'max_tokens': 16000, 'messages': msgs, 'cache_control': {'type': 'ephemeral'}}
         if full_system:
             payload['system'] = [{'type': 'text', 'text': full_system, 'cache_control': {'type': 'ephemeral'}}]
-        if use_thinking:
-            payload['thinking'] = {'type': 'enabled', 'budget_tokens': 10000}
+        is_adaptive_model = mdl.startswith('claude-opus-4-7')
+        if is_adaptive_model:
             payload['max_tokens'] = 32000
+        if use_thinking:
+            if is_adaptive_model:
+                payload['thinking'] = {'type': 'adaptive', 'display': 'summarized'}
+                payload['output_config'] = {'effort': 'high'}
+                payload['max_tokens'] = 64000
+            else:
+                payload['thinking'] = {'type': 'enabled', 'budget_tokens': 10000}
+                payload['max_tokens'] = 32000
         if container_id and use_code:
             payload['container'] = container_id
-        cm_models = ('claude-opus-4-6', 'claude-sonnet-4-6')
+        cm_models = ('claude-opus-4-6', 'claude-sonnet-4-6', 'claude-opus-4-7')
         tools = []
         if use_mcp and mcp_rec and mcp_rec.api_key:
-            payload['mcp_servers'] = [{'type': 'url', 'url': base_url.rstrip('/') + '/mcp', 'name': 'odoo', 'authorization_token': mcp_rec.api_key}]
+            payload['mcp_servers'] = [{'type': 'url', 'url': base_url + '/' + db_name + '/mcp', 'name': 'odoo', 'authorization_token': mcp_rec.api_key}]
             tools.append({'type': 'mcp_toolset', 'mcp_server_name': 'odoo'})
         if use_web:
             ws_type = 'web_search_20260209' if mdl in cm_models else 'web_search_20250305'
@@ -894,7 +909,7 @@ marked.setOptions({ breaks: true, gfm: true });","True","#D4A574","#EFEBE5","Ful
         if use_thinking and mdl in cm_models:
             cm_edits.append({'type': 'clear_thinking_20251015', 'keep': {'type': 'thinking_turns', 'value': 2}})
         if tools and mdl in cm_models:
-            cm_edits.append({'type': 'clear_tool_uses_20250919', 'trigger': {'type': 'input_tokens', 'value': 50000}, 'keep': {'type': 'tool_uses', 'value': 5}})
+            cm_edits.append({'type': 'clear_tool_uses_20250919', 'trigger': {'type': 'input_tokens', 'value': 80000}, 'keep': {'type': 'tool_uses', 'value': 8}, 'clear_at_least': {'type': 'input_tokens', 'value': 20000}})
         if mdl in cm_models:
             cm_edits.append({'type': 'compact_20260112', 'trigger': {'type': 'input_tokens', 'value': 100000}})
         if cm_edits:
@@ -909,7 +924,7 @@ marked.setOptions({ breaks: true, gfm: true });","True","#D4A574","#EFEBE5","Ful
             mc = m.get('content', '')
             if isinstance(mc, list):
                 for b in mc:
-                    if isinstance(b, dict) and (b.get('source', {}).get('type') == 'file' or b.get('type') == 'container_upload'):
+                    if isinstance(b, dict) and (((b.get('source') or {}).get('type') == 'file') or b.get('type') == 'container_upload'):
                         has_files = True
                         break
             if has_files:
@@ -927,15 +942,24 @@ marked.setOptions({ breaks: true, gfm: true });","True","#D4A574","#EFEBE5","Ful
             'https://api.anthropic.com/v1/messages',
             headers=headers,
             json=payload,
-            timeout=1800,
+            timeout=600,
         )
-        data = json.loads(resp.text)
-        if data.get('error'):
-            result = {'role': 'assistant', 'content': '', 'error': data['error'].get('message', str(data['error']))}
+        try:
+            data = json.loads(resp.text)
+        except Exception:
+            raise Exception('Anthropic API returned HTTP %s with non-JSON body: %s' % (resp.status_code, (resp.text or '')[:300]))
+        if not isinstance(data, dict):
+            raise Exception('Anthropic API returned unexpected response shape (HTTP %s)' % resp.status_code)
+        err = data.get('error')
+        if err:
+            msg = err.get('message', str(err)) if isinstance(err, dict) else str(err)
+            result = {'role': 'assistant', 'content': '', 'error': msg}
         else:
             content_blocks = []
             thinking_parts = []
-            for block in data.get('content', []):
+            for block in (data.get('content') or []):
+                if not isinstance(block, dict):
+                    continue
                 btype = block.get('type', '')
                 if btype == 'thinking':
                     thinking_parts.append(block.get('thinking', ''))
@@ -953,17 +977,17 @@ marked.setOptions({ breaks: true, gfm: true });","True","#D4A574","#EFEBE5","Ful
                 elif btype == 'mcp_tool_use':
                     content_blocks.append({'type': 'tool_call', 'name': block.get('name', ''), 'input': block.get('input', {}), 'server': block.get('server_name', 'odoo')})
                 elif btype == 'mcp_tool_result':
-                    sub = block.get('content', [])
+                    sub = block.get('content') or []
                     txt = ''
                     if isinstance(sub, list):
                         texts = [c.get('text', '') for c in sub if isinstance(c, dict) and c.get('type') == 'text']
                         txt = texts[0] if texts else json.dumps(sub, indent=2, default=str)
                     else:
                         txt = str(sub)
-                    content_blocks.append({'type': 'tool_result', 'content': txt[:3000], 'is_error': block.get('is_error', False)})
+                    content_blocks.append({'type': 'tool_result', 'content': _cap(txt, 300000), 'is_error': block.get('is_error', False)})
                 elif btype == 'server_tool_use':
                     name = block.get('name', '')
-                    inp = block.get('input', {})
+                    inp = block.get('input') or {}
                     bid = block.get('id', '')
                     if name == 'web_search':
                         content_blocks.append({'type': 'web_search', 'query': inp.get('query', ''), 'id': bid})
@@ -988,9 +1012,9 @@ marked.setOptions({ breaks: true, gfm: true });","True","#D4A574","#EFEBE5","Ful
                         doc = wfc.get('content', {})
                         preview = ''
                         if isinstance(doc, dict):
-                            src = doc.get('source', {})
-                            if src.get('type') == 'text':
-                                preview = (src.get('data', '') or '')[:500]
+                            src = doc.get('source') or {}
+                            if isinstance(src, dict) and src.get('type') == 'text':
+                                preview = (src.get('data') or '')[:500]
                         content_blocks.append({'type': 'web_fetch_result', 'url': url, 'content_preview': preview})
                     elif isinstance(wfc, dict) and wfc.get('type') == 'web_fetch_tool_error':
                         content_blocks.append({'type': 'web_fetch_result', 'url': '', 'error': wfc.get('error_code', 'unknown')})
@@ -1005,8 +1029,8 @@ marked.setOptions({ breaks: true, gfm: true });","True","#D4A574","#EFEBE5","Ful
                                 files_out.append({'file_id': f['file_id'], 'filename': f.get('filename', 'download')})
                         block_data = {
                             'type': 'code_exec_result',
-                            'stdout': (c.get('stdout') or '')[:5000],
-                            'stderr': (c.get('stderr') or '')[:2000],
+                            'stdout': _cap(c.get('stdout'), 500000),
+                            'stderr': _cap(c.get('stderr'), 100000),
                             'return_code': c.get('return_code', -1),
                         }
                         if files_out:
@@ -1015,22 +1039,24 @@ marked.setOptions({ breaks: true, gfm: true });","True","#D4A574","#EFEBE5","Ful
                     elif isinstance(c, dict) and c.get('type') == 'bash_code_execution_tool_result_error':
                         content_blocks.append({'type': 'code_exec_result', 'stdout': '', 'stderr': c.get('error_code', 'error'), 'return_code': 1})
                     else:
-                        content_blocks.append({'type': 'code_exec_result', 'stdout': str(c)[:5000], 'stderr': '', 'return_code': 0})
+                        content_blocks.append({'type': 'code_exec_result', 'stdout': _cap(c, 100000), 'stderr': '', 'return_code': 0})
                 elif btype == 'text_editor_code_execution_tool_result':
                     c = block.get('content', {})
                     if isinstance(c, dict):
                         content_blocks.append({
                             'type': 'file_editor_result',
-                            'content': c.get('content', '') or json.dumps(c, default=str)[:3000],
+                            'content': _cap(c.get('content') or json.dumps(c, default=str), 300000),
                             'file_type': c.get('file_type', ''),
                             'is_update': c.get('is_file_update', False),
                         })
                     else:
-                        content_blocks.append({'type': 'file_editor_result', 'content': str(c)[:3000]})
+                        content_blocks.append({'type': 'file_editor_result', 'content': _cap(c, 300000)})
             res_container = data.get('container', {})
+            api_raw = data.get('content') or []
             result = {
                 'role': 'assistant',
                 'content': content_blocks if content_blocks else [{'type': 'text', 'text': '(empty response)'}],
+                'api_content': api_raw if api_raw else None,
                 'thinking_content': '\n\n'.join(thinking_parts) if thinking_parts else None,
                 'model': data.get('model', ''),
                 'usage': data.get('usage', {}),
@@ -1039,11 +1065,12 @@ marked.setOptions({ breaks: true, gfm: true });","True","#D4A574","#EFEBE5","Ful
                 'context_management': data.get('context_management'),
             }
 except Exception as e:
+    logger.exception('[claude-chat webapp 128] Send Chat Message endpoint error')
     result = {'role': 'assistant', 'content': '', 'error': str(e)}"
 "","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","__export__.mcp_webapp_endpoint_62_087094b5","List Files","files","GET","try:
     api_rec = env['mcp.api.key'].sudo().search([('name', '=', 'anthropic-api')], limit=1)
     if not api_rec or not api_rec.api_key:
-        result = {'error': 'API key not configured'}
+        result = {'error': 'Anthropic API key not configured. Create an mcp.api.key record named anthropic-api.'}
     else:
         headers = {
             'x-api-key': api_rec.api_key,
@@ -1055,21 +1082,31 @@ except Exception as e:
             headers=headers,
             timeout=60,
         )
-        data = json.loads(resp.text)
+        try:
+            data = json.loads(resp.text)
+        except Exception:
+            raise Exception('Anthropic API returned HTTP %s with non-JSON body: %s' % (resp.status_code, (resp.text or '')[:300]))
+        if not isinstance(data, dict):
+            raise Exception('Anthropic API returned unexpected response shape (HTTP %s)' % resp.status_code)
         if resp.status_code >= 400:
-            result = {'error': data.get('error', {}).get('message', str(data))}
+            err = data.get('error')
+            msg = err.get('message', str(err)) if isinstance(err, dict) else (str(err) if err else str(data)[:300])
+            result = {'error': msg}
         else:
-            result = {'files': data.get('data', [])}
+            result = {'files': data.get('data') or []}
 except Exception as e:
+    logger.exception('[claude-chat webapp 128] List Files endpoint error')
     result = {'error': str(e)}"
 "","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","__export__.mcp_webapp_endpoint_61_c0a7cfe0","Download File","files/download","GET","try:
     api_rec = env['mcp.api.key'].sudo().search([('name', '=', 'anthropic-api')], limit=1)
     if not api_rec or not api_rec.api_key:
-        result = {'error': 'API key not configured'}
+        result = {'error': 'Anthropic API key not configured. Create an mcp.api.key record named anthropic-api.'}
     else:
         file_id = query_params.get('file_id')
         if not file_id:
             result = {'error': 'file_id parameter required'}
+        elif not all(c.isalnum() or c in '-_' for c in file_id):
+            result = {'error': 'Invalid file_id'}
         else:
             headers = {
                 'x-api-key': api_rec.api_key,
@@ -1082,19 +1119,37 @@ except Exception as e:
                 timeout=120,
             )
             if resp.status_code >= 400:
-                result = {'error': 'Download failed: ' + str(resp.status_code)}
+                err_msg = 'HTTP ' + str(resp.status_code)
+                try:
+                    err_data = json.loads(resp.text)
+                    if isinstance(err_data, dict):
+                        err_body = err_data.get('error')
+                        if isinstance(err_body, dict):
+                            err_msg = err_body.get('message', err_msg)
+                        elif err_body:
+                            err_msg = str(err_body)
+                except Exception:
+                    pass
+                result = {'error': 'Download failed: ' + err_msg}
             else:
+                cd = resp.headers.get('content-disposition', '') or ''
+                filename = file_id
+                if 'filename=' in cd:
+                    part = cd.split('filename=', 1)[1].split(';', 1)[0].strip().strip('""').strip(""'"")
+                    if part:
+                        filename = part
                 result = {
                     'content': b64encode(resp.content).decode('utf-8'),
                     'content_type': resp.headers.get('content-type', 'application/octet-stream'),
-                    'filename': file_id,
+                    'filename': filename,
                 }
 except Exception as e:
+    logger.exception('[claude-chat webapp 128] Download File endpoint error')
     result = {'error': str(e)}"
 "","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","__export__.mcp_webapp_endpoint_60_c8f0083d","Upload File","files/upload","POST","try:
     api_rec = env['mcp.api.key'].sudo().search([('name', '=', 'anthropic-api')], limit=1)
     if not api_rec or not api_rec.api_key:
-        result = {'error': 'API key not configured'}
+        result = {'error': 'Anthropic API key not configured. Create an mcp.api.key record named anthropic-api.'}
     else:
         file_data = body.get('file_data')
         filename = body.get('filename', 'file')
@@ -1102,7 +1157,10 @@ except Exception as e:
         if not file_data:
             result = {'error': 'No file_data provided'}
         else:
-            file_bytes = b64decode(file_data)
+            try:
+                file_bytes = b64decode(file_data)
+            except Exception:
+                raise Exception('file_data is not valid base64')
             headers = {
                 'x-api-key': api_rec.api_key,
                 'anthropic-version': '2023-06-01',
@@ -1114,9 +1172,16 @@ except Exception as e:
                 files={'file': (filename, file_bytes, mime_type)},
                 timeout=120,
             )
-            data = json.loads(resp.text)
+            try:
+                data = json.loads(resp.text)
+            except Exception:
+                raise Exception('Anthropic API returned HTTP %s with non-JSON body: %s' % (resp.status_code, (resp.text or '')[:300]))
+            if not isinstance(data, dict):
+                raise Exception('Anthropic API returned unexpected response shape (HTTP %s)' % resp.status_code)
             if resp.status_code >= 400:
-                result = {'error': data.get('error', {}).get('message', str(data))}
+                err = data.get('error')
+                msg = err.get('message', str(err)) if isinstance(err, dict) else (str(err) if err else str(data)[:300])
+                result = {'error': msg}
             else:
                 result = {
                     'file_id': data.get('id'),
@@ -1125,10 +1190,11 @@ except Exception as e:
                     'mime_type': data.get('mime_type'),
                 }
 except Exception as e:
+    logger.exception('[claude-chat webapp 128] Upload File endpoint error')
     result = {'error': str(e)}"
 "","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","__export__.mcp_webapp_endpoint_59_f04a8d32","List Models","models","GET","api_rec = env['mcp.api.key'].sudo().search([('name', '=', 'anthropic-api')], limit=1)
 if not api_rec or not api_rec.api_key:
-    result = {'models': [{'id': 'claude-sonnet-4-6', 'name': 'Claude Sonnet 4.6'}, {'id': 'claude-haiku-4-5-20251001', 'name': 'Claude Haiku 4.5'}]}
+    result = {'models': [{'id': 'claude-opus-4-7', 'name': 'Claude Opus 4.7'}, {'id': 'claude-sonnet-4-6', 'name': 'Claude Sonnet 4.6'}, {'id': 'claude-haiku-4-5-20251001', 'name': 'Claude Haiku 4.5'}]}
 else:
     resp = requests.get(
         'https://api.anthropic.com/v1/models',
