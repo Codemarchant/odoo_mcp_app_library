@@ -1,5 +1,5 @@
-﻿"id","name","slug","description","thumbnail","track_viewcount","data_code","global_state_code","shared_components","shared_styles","router_mode","tailwind_enabled","cdn_dependencies","custom_imports","pwa_enabled","pwa_theme_color","pwa_background_color","pwa_display","page_ids/id","page_ids/name","page_ids/route_path","page_ids/page_title","page_ids/sequence","page_ids/data_code","page_ids/component_code","page_ids/component_file_ids/id","page_ids/component_file_ids/name","page_ids/component_file_ids/code","page_ids/component_file_ids/sequence","endpoint_ids/id","endpoint_ids/name","endpoint_ids/endpoint_path","endpoint_ids/method","endpoint_ids/handler_code"
-"__export__.mcp_webapp_91_59817af3","Claude Chat","claude-chat","Claude AI chatbot with Odoo MCP tool access. Requires mcp.api.key records: anthropic-api (Anthropic key) and claude-bot (MCP auth key).","iVBORw0KGgoAAAANSUhEUgAAAEUAAAA6CAYAAADm+ZQ9AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAAEnQAABJ0Ad5mH3gAAAK/SURBVGhD7ZpdS1RRFIb7JxEFEX3gTYgJBUERlBdGkEEa3UgXBZFdDAhBQRhKE0U/QhkhmYsZJSYrEoyoC1EYUhhIpaGJ8SesfA+cYZp5Z9Rzzl57xHXxwOHsr7Uf9vnYH4e2Kpti/I9JIZgUgkkhmBSCSSGYFEJHSPm6uBDA0nzQEVKePZ8IYGk+8C5l7eeKXLhyPQDXLI823qVMTk7J4RPdAbhmebTxKqW8UZJbd+7VpOAa91heTbxK+TT/QY6d6a1JwTXusbyaeJNSKf+S4fsjNSEhuIc0VkYLb1IWvnyW413nm6TgHtJYGS28SMFIePh4tElICNJ8jhYvUnK5nBw52UOFALxbCoX3tKwG6lLWS6vSf/MulVEP8iAvq8M1qlKqfzbkZfoNlcBAXpRhdblEVUpmerrtY9MI8qIMq8slalKy2Sz92uzEqbMXJZ/P0zpd4VxKdXv4T2UycvT0Odrp3QCZ72Zm1B4lp1Lwy/5i4hXtaBRQl8Y0wJmU798W5XLfAO1cHK723w7qZm0mReJSiitL8uBRinYoSdAG2mIxxCUxKctLP1RkNII20TaLKSqxpPwtr8vc3GwwpFnAmgwMDcvH+UIQE4t1L0SSghWy9Ou30tVziQboE8SE2EprRRr7bogkBQ12upQ4S5uxHx8M2Ws3BmmAmiAGr48Pw160bdD6JI+knshqcZnGEJfEpYTgB8vFV2lf/rzVk+RvPmbMeIFWfrtfkXMqBVS3J3GYzEWZIYegLGbZrH4XOJcSguk/lgFYp9uBMviqsDpdoSYF2CITobrH5Ui8Q1CG1eUSVSnAFq5bgO2L+u3SRg7cFgewzbAW2LYpASOBbbD7HiXAmxTQ+G458EcxgB3aaYEd7yLYQcAWpEafyth4mqb5oCOk2OHifYBJIZgUgkkhmBSCSSGYFIJJIZiUJjblH6WMsMl7FBDjAAAAAElFTkSuQmCC","","","{}","",".markdown-content h1 { font-size: 1.25rem; font-weight: 700; margin: 0.75rem 0 0.25rem; }
+﻿"id","name","slug","is_homepage","description","thumbnail","track_viewcount","data_code","global_state_code","shared_components","shared_styles","router_mode","tailwind_enabled","lazy_pages","cdn_dependencies","custom_imports","pwa_enabled","pwa_theme_color","pwa_background_color","pwa_display","page_ids/id","page_ids/name","page_ids/route_path","page_ids/page_title","page_ids/seo_description","page_ids/seo_content","page_ids/sequence","page_ids/data_code","page_ids/component_code","page_ids/component_file_ids/id","page_ids/component_file_ids/name","page_ids/component_file_ids/code","page_ids/component_file_ids/sequence","endpoint_ids/id","endpoint_ids/name","endpoint_ids/endpoint_path","endpoint_ids/method","endpoint_ids/handler_code"
+"__export__.mcp_webapp_91_59817af3","Claude Chat","claude-chat","","Claude AI chatbot with Odoo MCP tool access. Requires mcp.api.key records: anthropic-api (Anthropic key) and claude-bot (MCP auth key).","iVBORw0KGgoAAAANSUhEUgAAAEUAAAA6CAYAAADm+ZQ9AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAAEnQAABJ0Ad5mH3gAAAK/SURBVGhD7ZpdS1RRFIb7JxEFEX3gTYgJBUERlBdGkEEa3UgXBZFdDAhBQRhKE0U/QhkhmYsZJSYrEoyoC1EYUhhIpaGJ8SesfA+cYZp5Z9Rzzl57xHXxwOHsr7Uf9vnYH4e2Kpti/I9JIZgUgkkhmBSCSSGYFEJHSPm6uBDA0nzQEVKePZ8IYGk+8C5l7eeKXLhyPQDXLI823qVMTk7J4RPdAbhmebTxKqW8UZJbd+7VpOAa91heTbxK+TT/QY6d6a1JwTXusbyaeJNSKf+S4fsjNSEhuIc0VkYLb1IWvnyW413nm6TgHtJYGS28SMFIePh4tElICNJ8jhYvUnK5nBw52UOFALxbCoX3tKwG6lLWS6vSf/MulVEP8iAvq8M1qlKqfzbkZfoNlcBAXpRhdblEVUpmerrtY9MI8qIMq8slalKy2Sz92uzEqbMXJZ/P0zpd4VxKdXv4T2UycvT0Odrp3QCZ72Zm1B4lp1Lwy/5i4hXtaBRQl8Y0wJmU798W5XLfAO1cHK723w7qZm0mReJSiitL8uBRinYoSdAG2mIxxCUxKctLP1RkNII20TaLKSqxpPwtr8vc3GwwpFnAmgwMDcvH+UIQE4t1L0SSghWy9Ou30tVziQboE8SE2EprRRr7bogkBQ12upQ4S5uxHx8M2Ws3BmmAmiAGr48Pw160bdD6JI+knshqcZnGEJfEpYTgB8vFV2lf/rzVk+RvPmbMeIFWfrtfkXMqBVS3J3GYzEWZIYegLGbZrH4XOJcSguk/lgFYp9uBMviqsDpdoSYF2CITobrH5Ui8Q1CG1eUSVSnAFq5bgO2L+u3SRg7cFgewzbAW2LYpASOBbbD7HiXAmxTQ+G458EcxgB3aaYEd7yLYQcAWpEafyth4mqb5oCOk2OHifYBJIZgUgkkhmBSCSSGYFIJJIZiUJjblH6WMsMl7FBDjAAAAAElFTkSuQmCC","","","{}","",".markdown-content h1 { font-size: 1.25rem; font-weight: 700; margin: 0.75rem 0 0.25rem; }
 .markdown-content h2 { font-size: 1.125rem; font-weight: 700; margin: 0.75rem 0 0.25rem; }
 .markdown-content h3 { font-size: 1rem; font-weight: 600; margin: 0.5rem 0 0.25rem; }
 .markdown-content p { margin: 0.25rem 0; line-height: 1.6; }
@@ -24,8 +24,8 @@
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: #94a3b8; }","Hash Router","True","{""marked"": ""https://esm.sh/marked@15""}","import { marked } from ""marked"";
-marked.setOptions({ breaks: true, gfm: true });","True","#D4A574","#EFEBE5","Fullscreen","__export__.mcp_webapp_page_197_3c8b4a15","Chat","/","Claude Chat","10","","function ChatPage({api, storage, user}) {
+::-webkit-scrollbar-thumb:hover { background: #94a3b8; }","Hash Router","True","","{""marked"": ""https://esm.sh/marked@15""}","import { marked } from ""marked"";
+marked.setOptions({ breaks: true, gfm: true });","True","#D4A574","#EFEBE5","Fullscreen","__export__.mcp_webapp_page_197_3c8b4a15","Chat","/","Claude Chat","","","10","","function ChatPage({api, storage, user}) {
   const THEMES = {
     claude: {
       name: 'Claude', swatch: '#D4A574',
@@ -927,7 +927,7 @@ marked.setOptions({ breaks: true, gfm: true });","True","#D4A574","#EFEBE5","Ful
             'https://api.anthropic.com/v1/messages',
             headers=headers,
             json=payload,
-            timeout=300,
+            timeout=1800,
         )
         data = json.loads(resp.text)
         if data.get('error'):
@@ -1040,7 +1040,7 @@ marked.setOptions({ breaks: true, gfm: true });","True","#D4A574","#EFEBE5","Ful
             }
 except Exception as e:
     result = {'role': 'assistant', 'content': '', 'error': str(e)}"
-"","","","","","","","","","","","","","","","","","","","","","","","","","","","","","__export__.mcp_webapp_endpoint_62_087094b5","List Files","files","GET","try:
+"","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","__export__.mcp_webapp_endpoint_62_087094b5","List Files","files","GET","try:
     api_rec = env['mcp.api.key'].sudo().search([('name', '=', 'anthropic-api')], limit=1)
     if not api_rec or not api_rec.api_key:
         result = {'error': 'API key not configured'}
@@ -1062,7 +1062,7 @@ except Exception as e:
             result = {'files': data.get('data', [])}
 except Exception as e:
     result = {'error': str(e)}"
-"","","","","","","","","","","","","","","","","","","","","","","","","","","","","","__export__.mcp_webapp_endpoint_61_c0a7cfe0","Download File","files/download","GET","try:
+"","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","__export__.mcp_webapp_endpoint_61_c0a7cfe0","Download File","files/download","GET","try:
     api_rec = env['mcp.api.key'].sudo().search([('name', '=', 'anthropic-api')], limit=1)
     if not api_rec or not api_rec.api_key:
         result = {'error': 'API key not configured'}
@@ -1091,7 +1091,7 @@ except Exception as e:
                 }
 except Exception as e:
     result = {'error': str(e)}"
-"","","","","","","","","","","","","","","","","","","","","","","","","","","","","","__export__.mcp_webapp_endpoint_60_c8f0083d","Upload File","files/upload","POST","try:
+"","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","__export__.mcp_webapp_endpoint_60_c8f0083d","Upload File","files/upload","POST","try:
     api_rec = env['mcp.api.key'].sudo().search([('name', '=', 'anthropic-api')], limit=1)
     if not api_rec or not api_rec.api_key:
         result = {'error': 'API key not configured'}
@@ -1126,7 +1126,7 @@ except Exception as e:
                 }
 except Exception as e:
     result = {'error': str(e)}"
-"","","","","","","","","","","","","","","","","","","","","","","","","","","","","","__export__.mcp_webapp_endpoint_59_f04a8d32","List Models","models","GET","api_rec = env['mcp.api.key'].sudo().search([('name', '=', 'anthropic-api')], limit=1)
+"","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","__export__.mcp_webapp_endpoint_59_f04a8d32","List Models","models","GET","api_rec = env['mcp.api.key'].sudo().search([('name', '=', 'anthropic-api')], limit=1)
 if not api_rec or not api_rec.api_key:
     result = {'models': [{'id': 'claude-sonnet-4-6', 'name': 'Claude Sonnet 4.6'}, {'id': 'claude-haiku-4-5-20251001', 'name': 'Claude Haiku 4.5'}]}
 else:
