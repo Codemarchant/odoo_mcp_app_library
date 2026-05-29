@@ -1,4 +1,4 @@
-﻿"id","name","slug","is_homepage","description","thumbnail","track_viewcount","data_code","global_state_code","shared_components","shared_styles","router_mode","tailwind_enabled","lazy_pages","cdn_dependencies","custom_imports","pwa_enabled","pwa_theme_color","pwa_background_color","pwa_display","page_ids/id","page_ids/name","page_ids/route_path","page_ids/page_title","page_ids/seo_description","page_ids/seo_content","page_ids/sequence","page_ids/data_code","page_ids/component_code","page_ids/component_file_ids/id","page_ids/component_file_ids/name","page_ids/component_file_ids/code","page_ids/component_file_ids/sequence","endpoint_ids/id","endpoint_ids/name","endpoint_ids/endpoint_path","endpoint_ids/method","endpoint_ids/handler_code"
+﻿"id","name","slug","is_homepage","description","thumbnail","track_viewcount","data_code","global_state_code","shared_components","shared_styles","head_extras","viewport_content","router_mode","tailwind_enabled","lazy_pages","cdn_dependencies","custom_imports","pwa_enabled","pwa_theme_color","pwa_background_color","pwa_display","page_ids/id","page_ids/name","page_ids/route_path","page_ids/page_title","page_ids/seo_description","page_ids/seo_content","page_ids/sequence","page_ids/data_code","page_ids/component_code","page_ids/head_extras","page_ids/component_file_ids/id","page_ids/component_file_ids/name","page_ids/component_file_ids/code","page_ids/component_file_ids/sequence","endpoint_ids/id","endpoint_ids/name","endpoint_ids/endpoint_path","endpoint_ids/method","endpoint_ids/handler_code","asset_ids/id","asset_ids/name","asset_ids/datas","asset_ids/res_model","asset_ids/res_field"
 "__export__.mcp_webapp_91_59817af3","Claude Chat","claude-chat","","Claude AI chatbot with Odoo MCP tool access. Requires mcp.api.key records: anthropic-api (Anthropic key) and claude-bot (MCP auth key).","iVBORw0KGgoAAAANSUhEUgAAAEUAAAA6CAYAAADm+ZQ9AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAAEnQAABJ0Ad5mH3gAAAK/SURBVGhD7ZpdS1RRFIb7JxEFEX3gTYgJBUERlBdGkEEa3UgXBZFdDAhBQRhKE0U/QhkhmYsZJSYrEoyoC1EYUhhIpaGJ8SesfA+cYZp5Z9Rzzl57xHXxwOHsr7Uf9vnYH4e2Kpti/I9JIZgUgkkhmBSCSSGYFEJHSPm6uBDA0nzQEVKePZ8IYGk+8C5l7eeKXLhyPQDXLI823qVMTk7J4RPdAbhmebTxKqW8UZJbd+7VpOAa91heTbxK+TT/QY6d6a1JwTXusbyaeJNSKf+S4fsjNSEhuIc0VkYLb1IWvnyW413nm6TgHtJYGS28SMFIePh4tElICNJ8jhYvUnK5nBw52UOFALxbCoX3tKwG6lLWS6vSf/MulVEP8iAvq8M1qlKqfzbkZfoNlcBAXpRhdblEVUpmerrtY9MI8qIMq8slalKy2Sz92uzEqbMXJZ/P0zpd4VxKdXv4T2UycvT0Odrp3QCZ72Zm1B4lp1Lwy/5i4hXtaBRQl8Y0wJmU798W5XLfAO1cHK723w7qZm0mReJSiitL8uBRinYoSdAG2mIxxCUxKctLP1RkNII20TaLKSqxpPwtr8vc3GwwpFnAmgwMDcvH+UIQE4t1L0SSghWy9Ou30tVziQboE8SE2EprRRr7bogkBQ12upQ4S5uxHx8M2Ws3BmmAmiAGr48Pw160bdD6JI+knshqcZnGEJfEpYTgB8vFV2lf/rzVk+RvPmbMeIFWfrtfkXMqBVS3J3GYzEWZIYegLGbZrH4XOJcSguk/lgFYp9uBMviqsDpdoSYF2CITobrH5Ui8Q1CG1eUSVSnAFq5bgO2L+u3SRg7cFgewzbAW2LYpASOBbbD7HiXAmxTQ+G458EcxgB3aaYEd7yLYQcAWpEafyth4mqb5oCOk2OHifYBJIZgUgkkhmBSCSSGYFIJJIZiUJjblH6WMsMl7FBDjAAAAAElFTkSuQmCC","","","{}","",".markdown-content h1 { font-size: 1.25rem; font-weight: 700; margin: 0.75rem 0 0.25rem; }
 .markdown-content h2 { font-size: 1.125rem; font-weight: 700; margin: 0.75rem 0 0.25rem; }
 .markdown-content h3 { font-size: 1rem; font-weight: 600; margin: 0.5rem 0 0.25rem; }
@@ -24,7 +24,7 @@
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: #94a3b8; }","Hash Router","True","","{""marked"": ""https://esm.sh/marked@15""}","import { marked } from ""marked"";
+::-webkit-scrollbar-thumb:hover { background: #94a3b8; }","","width=device-width, initial-scale=1.0","Hash Router","True","","{""marked"": ""https://esm.sh/marked@15""}","import { marked } from ""marked"";
 marked.setOptions({ breaks: true, gfm: true });","True","#D4A574","#EFEBE5","Fullscreen","__export__.mcp_webapp_page_197_3c8b4a15","Chat","/","Claude Chat","","","10","","function ChatPage({api, storage, user}) {
   const THEMES = {
     claude: {
@@ -850,7 +850,7 @@ marked.setOptions({ breaks: true, gfm: true });","True","#D4A574","#EFEBE5","Ful
       </div>
     </div>
   );
-}","","","","","__export__.mcp_webapp_endpoint_58_d679849f","Send Chat Message","chat","POST","try:
+}","","","","","","__export__.mcp_webapp_endpoint_58_d679849f","Send Chat Message","chat","POST","try:
     def _cap(s, n):
         s = str(s or '')
         return s if len(s) <= n else s[:n] + '\n\n[... truncated %d chars]' % (len(s) - n)
@@ -863,6 +863,14 @@ marked.setOptions({ breaks: true, gfm: true });","True","#D4A574","#EFEBE5","Ful
         db_name = env.cr.dbname
         msgs = body.get('messages', [])
         mdl = body.get('model', 'claude-sonnet-4-6')
+        # Model capability detection (future-proof: newer models auto-get the latest params)
+        _mv = re.match(r'claude-(opus|sonnet|haiku)-(\d+)-(\d+)', mdl or '')
+        _family = _mv.group(1) if _mv else ''
+        _ver = (int(_mv.group(2)), int(_mv.group(3))) if _mv else (0, 0)
+        # Modern = context-management / compaction / newest dated tool versions (Claude 4.6+)
+        is_modern = _ver >= (4, 6)
+        # Adaptive = adaptive thinking + effort-based output (Opus 4.7+, or any next-gen 5.x+)
+        is_adaptive_model = (_family == 'opus' and _ver >= (4, 7)) or _ver[0] >= 5
         use_thinking = body.get('thinking', False)
         use_mcp = body.get('mcp_enabled', True)
         use_web = body.get('web_search', False)
@@ -878,7 +886,6 @@ marked.setOptions({ breaks: true, gfm: true });","True","#D4A574","#EFEBE5","Ful
         payload = {'model': mdl, 'max_tokens': 16000, 'messages': msgs, 'cache_control': {'type': 'ephemeral'}}
         if full_system:
             payload['system'] = [{'type': 'text', 'text': full_system, 'cache_control': {'type': 'ephemeral'}}]
-        is_adaptive_model = mdl.startswith('claude-opus-4-7')
         if is_adaptive_model:
             payload['max_tokens'] = 32000
         if use_thinking:
@@ -891,31 +898,30 @@ marked.setOptions({ breaks: true, gfm: true });","True","#D4A574","#EFEBE5","Ful
                 payload['max_tokens'] = 32000
         if container_id and use_code:
             payload['container'] = container_id
-        cm_models = ('claude-opus-4-6', 'claude-sonnet-4-6', 'claude-opus-4-7')
         tools = []
         if use_mcp and mcp_rec and mcp_rec.api_key:
             payload['mcp_servers'] = [{'type': 'url', 'url': base_url + '/' + db_name + '/mcp', 'name': 'odoo', 'authorization_token': mcp_rec.api_key}]
             tools.append({'type': 'mcp_toolset', 'mcp_server_name': 'odoo'})
         if use_web:
-            ws_type = 'web_search_20260209' if mdl in cm_models else 'web_search_20250305'
-            wf_type = 'web_fetch_20260209' if mdl in cm_models else 'web_fetch_20250910'
+            ws_type = 'web_search_20260209' if is_modern else 'web_search_20250305'
+            wf_type = 'web_fetch_20260209' if is_modern else 'web_fetch_20250910'
             tools.append({'type': ws_type, 'name': 'web_search', 'max_uses': 10})
             tools.append({'type': wf_type, 'name': 'web_fetch', 'max_uses': 10})
-        if use_code and not (use_web and mdl in cm_models):
+        if use_code and not (use_web and is_modern):
             tools.append({'type': 'code_execution_20250825', 'name': 'code_execution'})
         if tools:
             payload['tools'] = tools
         cm_edits = []
-        if use_thinking and mdl in cm_models:
+        if use_thinking and is_modern:
             cm_edits.append({'type': 'clear_thinking_20251015', 'keep': {'type': 'thinking_turns', 'value': 2}})
-        if tools and mdl in cm_models:
+        if tools and is_modern:
             cm_edits.append({'type': 'clear_tool_uses_20250919', 'trigger': {'type': 'input_tokens', 'value': 80000}, 'keep': {'type': 'tool_uses', 'value': 8}, 'clear_at_least': {'type': 'input_tokens', 'value': 20000}})
-        if mdl in cm_models:
+        if is_modern:
             cm_edits.append({'type': 'compact_20260112', 'trigger': {'type': 'input_tokens', 'value': 100000}})
         if cm_edits:
             payload['context_management'] = {'edits': cm_edits}
         betas = []
-        if mdl in cm_models:
+        if is_modern:
             betas.extend(['compact-2026-01-12', 'context-management-2025-06-27'])
         if use_mcp and mcp_rec and mcp_rec.api_key:
             betas.append('mcp-client-2025-11-20')
@@ -1066,8 +1072,8 @@ marked.setOptions({ breaks: true, gfm: true });","True","#D4A574","#EFEBE5","Ful
             }
 except Exception as e:
     logger.exception('[claude-chat webapp Send Chat Message endpoint error')
-    result = {'role': 'assistant', 'content': '', 'error': str(e)}"
-"","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","__export__.mcp_webapp_endpoint_62_087094b5","List Files","files","GET","try:
+    result = {'role': 'assistant', 'content': '', 'error': str(e)}","","","","",""
+"","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","__export__.mcp_webapp_endpoint_62_087094b5","List Files","files","GET","try:
     api_rec = env['mcp.api.key'].sudo().search([('name', '=', 'anthropic-api')], limit=1)
     if not api_rec or not api_rec.api_key:
         result = {'error': 'Anthropic API key not configured. Create an mcp.api.key record named anthropic-api.'}
@@ -1096,8 +1102,8 @@ except Exception as e:
             result = {'files': data.get('data') or []}
 except Exception as e:
     logger.exception('[claude-chat webapp 128] List Files endpoint error')
-    result = {'error': str(e)}"
-"","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","__export__.mcp_webapp_endpoint_61_c0a7cfe0","Download File","files/download","GET","try:
+    result = {'error': str(e)}","","","","",""
+"","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","__export__.mcp_webapp_endpoint_61_c0a7cfe0","Download File","files/download","GET","try:
     api_rec = env['mcp.api.key'].sudo().search([('name', '=', 'anthropic-api')], limit=1)
     if not api_rec or not api_rec.api_key:
         result = {'error': 'Anthropic API key not configured. Create an mcp.api.key record named anthropic-api.'}
@@ -1145,8 +1151,8 @@ except Exception as e:
                 }
 except Exception as e:
     logger.exception('[claude-chat webapp 128] Download File endpoint error')
-    result = {'error': str(e)}"
-"","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","__export__.mcp_webapp_endpoint_60_c8f0083d","Upload File","files/upload","POST","try:
+    result = {'error': str(e)}","","","","",""
+"","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","__export__.mcp_webapp_endpoint_60_c8f0083d","Upload File","files/upload","POST","try:
     api_rec = env['mcp.api.key'].sudo().search([('name', '=', 'anthropic-api')], limit=1)
     if not api_rec or not api_rec.api_key:
         result = {'error': 'Anthropic API key not configured. Create an mcp.api.key record named anthropic-api.'}
@@ -1191,10 +1197,10 @@ except Exception as e:
                 }
 except Exception as e:
     logger.exception('[claude-chat webapp 128] Upload File endpoint error')
-    result = {'error': str(e)}"
-"","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","__export__.mcp_webapp_endpoint_59_f04a8d32","List Models","models","GET","api_rec = env['mcp.api.key'].sudo().search([('name', '=', 'anthropic-api')], limit=1)
+    result = {'error': str(e)}","","","","",""
+"","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","__export__.mcp_webapp_endpoint_59_f04a8d32","List Models","models","GET","api_rec = env['mcp.api.key'].sudo().search([('name', '=', 'anthropic-api')], limit=1)
 if not api_rec or not api_rec.api_key:
-    result = {'models': [{'id': 'claude-opus-4-7', 'name': 'Claude Opus 4.7'}, {'id': 'claude-sonnet-4-6', 'name': 'Claude Sonnet 4.6'}, {'id': 'claude-haiku-4-5-20251001', 'name': 'Claude Haiku 4.5'}]}
+    result = {'models': [{'id': 'claude-opus-4-8', 'name': 'Claude Opus 4.8'}, {'id': 'claude-opus-4-7', 'name': 'Claude Opus 4.7'}, {'id': 'claude-sonnet-4-6', 'name': 'Claude Sonnet 4.6'}, {'id': 'claude-haiku-4-5-20251001', 'name': 'Claude Haiku 4.5'}]}
 else:
     resp = requests.get(
         'https://api.anthropic.com/v1/models',
@@ -1203,4 +1209,4 @@ else:
         timeout=30,
     )
     data = resp.json()
-    result = {'models': [{'id': m['id'], 'name': m.get('display_name', m['id'])} for m in data.get('data', [])]}"
+    result = {'models': [{'id': m['id'], 'name': m.get('display_name', m['id'])} for m in data.get('data', [])]}","","","","",""
