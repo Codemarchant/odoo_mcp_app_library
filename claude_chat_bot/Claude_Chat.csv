@@ -96,6 +96,10 @@ marked.setOptions({ breaks: true, gfm: true });","True","#D4A574","#EFEBE5","Ful
   const [mcpEnabled, setMcpEnabled] = useState(true);
   const [webSearch, setWebSearch] = useState(true);
   const [codeExec, setCodeExec] = useState(true);
+  const [memoryEnabled, setMemoryEnabled] = useState(false);
+  const [showMemory, setShowMemory] = useState(false);
+  const [memoryFiles, setMemoryFiles] = useState({});
+  const [expandedMemory, setExpandedMemory] = useState({});
   const [expandedThinking, setExpandedThinking] = useState({});
   const [expandedTools, setExpandedTools] = useState({});
   const [attachments, setAttachments] = useState([]);
@@ -114,6 +118,7 @@ marked.setOptions({ breaks: true, gfm: true });","True","#D4A574","#EFEBE5","Ful
   const inputRef = useRef(null);
   const fileInputRef = useRef(null);
   const settingsRef = useRef(null);
+  const memoryRef = useRef(null);
 
   const t = THEMES[theme] || THEMES.claude;
 
@@ -160,6 +165,8 @@ marked.setOptions({ breaks: true, gfm: true });","True","#D4A574","#EFEBE5","Ful
       setWebSearch(ws);
       const ce = await storage.get('code_exec', true);
       setCodeExec(ce);
+      const memEn = await storage.get('memory_enabled', false);
+      setMemoryEnabled(memEn);
       const sp = await storage.get('system_preset', 'none');
       setSystemPreset(sp);
       const spr = await storage.get('system_prompt', '');
@@ -188,6 +195,12 @@ marked.setOptions({ breaks: true, gfm: true });","True","#D4A574","#EFEBE5","Ful
     document.addEventListener('mousedown', h);
     return () => document.removeEventListener('mousedown', h);
   }, [showSettings]);
+
+  useEffect(() => {
+    const hm = (e) => { if (showMemory && memoryRef.current && !memoryRef.current.contains(e.target)) setShowMemory(false); };
+    document.addEventListener('mousedown', hm);
+    return () => document.removeEventListener('mousedown', hm);
+  }, [showMemory]);
 
   const genId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
   const fmtSize = (b) => b < 1024 ? b + ' B' : b < 1048576 ? (b/1024).toFixed(1) + ' KB' : (b/1048576).toFixed(1) + ' MB';
@@ -323,7 +336,7 @@ marked.setOptions({ breaks: true, gfm: true });","True","#D4A574","#EFEBE5","Ful
     try {
       const res = await api.post('chat', {
         messages: apiMsgs, model, thinking,
-        mcp_enabled: mcpEnabled, web_search: webSearch, code_exec: codeExec,
+        mcp_enabled: mcpEnabled, web_search: webSearch, code_exec: codeExec, memory_enabled: memoryEnabled,
         system_prompt: systemPrompt || undefined,
         container_id: containerId || undefined,
       });
@@ -351,6 +364,10 @@ marked.setOptions({ breaks: true, gfm: true });","True","#D4A574","#EFEBE5","Ful
   const toggleMcp = async () => { const v = !mcpEnabled; setMcpEnabled(v); await storage.set('mcp_enabled', v); };
   const toggleWebSearch = async () => { const v = !webSearch; setWebSearch(v); await storage.set('web_search', v); };
   const toggleCodeExec = async () => { const v = !codeExec; setCodeExec(v); await storage.set('code_exec', v); };
+  const toggleMemory = async () => { const v = !memoryEnabled; setMemoryEnabled(v); await storage.set('memory_enabled', v); };
+  const openMemoryPanel = async () => { const m = await storage.get('claude_memory', {}); setMemoryFiles(m || {}); setShowMemory(true); };
+  const deleteMemoryFile = async (path) => { const m = {...memoryFiles}; delete m[path]; await storage.set('claude_memory', m); setMemoryFiles(m); };
+  const clearAllMemory = async () => { if (!confirm('Clear all memory? Claude will forget everything it has stored.')) return; await storage.delete('claude_memory'); setMemoryFiles({}); };
   const changeTheme = async (key) => { setTheme(key); await storage.set('theme', key); };
 
   const onPresetChange = async (p) => {
@@ -689,6 +706,49 @@ marked.setOptions({ breaks: true, gfm: true });","True","#D4A574","#EFEBE5","Ful
             className=""px-2 py-1.5 rounded-lg text-xs border transition-colors shrink-0"" style={toggleBtnStyle(mcpEnabled)}>⚙ MCP</button>
           <button onClick={toggleThinking} title={thinking ? 'Extended thinking enabled' : 'Extended thinking disabled'}
             className=""px-2 py-1.5 rounded-lg text-xs border transition-colors shrink-0"" style={toggleBtnStyle(thinking)}>🧠 Think</button>
+          <div className=""relative"" ref={memoryRef}>
+            <button onClick={() => showMemory ? setShowMemory(false) : openMemoryPanel()} title={memoryEnabled ? 'Memory enabled — click to manage' : 'Memory disabled — click to enable'}
+              className=""px-2 py-1.5 rounded-lg text-xs border transition-colors shrink-0"" style={toggleBtnStyle(memoryEnabled)}>🗃 Memory</button>
+            {showMemory && (
+              <div className=""fixed sm:absolute inset-x-3 sm:inset-x-auto sm:right-0 top-14 sm:top-full sm:mt-1.5 w-auto sm:w-96 rounded-xl shadow-2xl border p-4 z-40 max-h-[80vh] overflow-y-auto"" style={{background: t.assistantBg, borderColor: t.assistantBorder, color: t.text}}>
+                <div className=""flex items-center justify-between mb-1"">
+                  <h3 className=""font-semibold text-sm"">Memory</h3>
+                  <button onClick={toggleMemory} title={memoryEnabled ? 'Disable' : 'Enable'} className=""relative inline-flex h-5 w-9 items-center rounded-full transition-colors shrink-0"" style={{background: memoryEnabled ? t.accent : t.btnBorder}}>
+                    <span className=""inline-block h-4 w-4 transform rounded-full bg-white transition-transform"" style={{transform: memoryEnabled ? 'translateX(18px)' : 'translateX(2px)'}}/>
+                  </button>
+                </div>
+                <p className=""text-xs mb-3"" style={{color: t.textSecondary}}>{memoryEnabled ? 'Claude can store and recall notes across all your chats.' : 'Enable to let Claude remember things across your chats.'}</p>
+                <div className=""space-y-1.5 mb-3 max-h-60 overflow-y-auto"">
+                  {Object.keys(memoryFiles).length === 0 ? (
+                    <div className=""text-xs text-center py-4"" style={{color: t.textSecondary}}>No memories stored yet</div>
+                  ) : Object.entries(memoryFiles).map(([path, content]) => {
+                    const memOpen = expandedMemory[path] || false;
+                    return (
+                    <div key={path} className=""rounded-lg text-sm overflow-hidden"" style={{background: t.btnBg, border: '1px solid ' + t.btnBorder}}>
+                      <div className=""flex items-center gap-2 px-3 py-2"">
+                        <button onClick={() => setExpandedMemory(s => ({...s, [path]: !s[path]}))} className=""flex-1 min-w-0 flex items-center gap-2 text-left hover:opacity-80"">
+                          <span className=""text-[10px] shrink-0"" style={{color: t.textSecondary}}>{memOpen ? '▼' : '▶'}</span>
+                          <span className=""flex-1 min-w-0"">
+                            <span className=""font-medium truncate text-xs block"" style={{color: t.text}}>{path.replace('/memories/', '')}</span>
+                            <span className=""text-[11px] block"" style={{color: t.textSecondary}}>{String(content || '').length} chars</span>
+                          </span>
+                        </button>
+                        <button onClick={() => deleteMemoryFile(path)} title=""Delete"" className=""hover:text-red-500 transition-colors shrink-0 text-xs p-1"" style={{color: t.textSecondary}}>✕</button>
+                      </div>
+                      {memOpen && (
+                        <div className=""max-h-52 overflow-y-auto px-3 py-2 text-xs font-mono whitespace-pre-wrap break-words"" style={{background: t.codeBg, color: t.codeText, borderTop: '1px solid ' + t.btnBorder}}>{String(content || '') || '(empty file)'}</div>
+                      )}
+                    </div>
+                    );
+                  })}
+                </div>
+                <div className=""flex justify-between items-center pt-2"" style={{borderTop: '1px solid ' + t.assistantBorder}}>
+                  {Object.keys(memoryFiles).length > 0 ? <button onClick={clearAllMemory} className=""text-xs hover:text-red-500"" style={{color: t.textSecondary}}>Clear all</button> : <span/>}
+                  <button onClick={() => setShowMemory(false)} className=""text-sm font-medium"" style={{color: t.accent}}>Done</button>
+                </div>
+              </div>
+            )}
+          </div>
           <div className=""relative"" ref={settingsRef}>
             <button onClick={() => setShowSettings(!showSettings)} title=""System prompt""
               className=""px-2 py-1.5 rounded-lg text-xs border transition-colors shrink-0"" style={toggleBtnStyle(!!systemPrompt)}>📝 Prompt</button>
@@ -767,6 +827,7 @@ marked.setOptions({ breaks: true, gfm: true });","True","#D4A574","#EFEBE5","Ful
                   {codeExec && <span className=""text-xs px-2 py-1 rounded-full"" style={{background: t.btnActiveBg, color: t.accent}}>⌘ Code</span>}
                   {mcpEnabled && <span className=""text-xs px-2 py-1 rounded-full"" style={{background: t.btnActiveBg, color: t.accent}}>⚙ MCP</span>}
                   {thinking && <span className=""text-xs px-2 py-1 rounded-full"" style={{background: t.btnActiveBg, color: t.accent}}>🧠 Thinking</span>}
+                  {memoryEnabled && <span className=""text-xs px-2 py-1 rounded-full"" style={{background: t.btnActiveBg, color: t.accent}}>🗃 Memory</span>}
                   {systemPrompt && <span className=""text-xs px-2 py-1 rounded-full"" style={{background: t.btnActiveBg, color: t.accent}}>📝 {systemPreset !== 'none' && allPresets[systemPreset] ? allPresets[systemPreset].label : 'Custom'}</span>}
                 </div>
               </div>
@@ -854,6 +915,17 @@ marked.setOptions({ breaks: true, gfm: true });","True","#D4A574","#EFEBE5","Ful
     def _cap(s, n):
         s = str(s or '')
         return s if len(s) <= n else s[:n] + '\n\n[... truncated %d chars]' % (len(s) - n)
+    def _hsize(n):
+        if n < 1024:
+            return '%dB' % n
+        if n < 1048576:
+            return '%.1fK' % (n / 1024.0)
+        return '%.1fM' % (n / 1048576.0)
+    def _mem_norm(p):
+        p = str(p or '')
+        if not p.startswith('/memories') or '..' in p:
+            return None
+        return p
     api_rec = env['mcp.api.key'].sudo().search([('name', '=', 'anthropic-api')], limit=1)
     if not api_rec or not api_rec.api_key:
         result = {'error': 'Anthropic API key not configured. Create an mcp.api.key record named anthropic-api.'}
@@ -863,18 +935,16 @@ marked.setOptions({ breaks: true, gfm: true });","True","#D4A574","#EFEBE5","Ful
         db_name = env.cr.dbname
         msgs = body.get('messages', [])
         mdl = body.get('model', 'claude-sonnet-4-6')
-        # Model capability detection (future-proof: newer models auto-get the latest params)
         _mv = re.match(r'claude-(opus|sonnet|haiku)-(\d+)-(\d+)', mdl or '')
         _family = _mv.group(1) if _mv else ''
         _ver = (int(_mv.group(2)), int(_mv.group(3))) if _mv else (0, 0)
-        # Modern = context-management / compaction / newest dated tool versions (Claude 4.6+)
         is_modern = _ver >= (4, 6)
-        # Adaptive = adaptive thinking + effort-based output (Opus 4.7+, or any next-gen 5.x+)
         is_adaptive_model = (_family == 'opus' and _ver >= (4, 7)) or _ver[0] >= 5
         use_thinking = body.get('thinking', False)
         use_mcp = body.get('mcp_enabled', True)
         use_web = body.get('web_search', False)
         use_code = body.get('code_exec', True)
+        use_memory = body.get('memory_enabled', False)
         if use_mcp and (not mcp_rec or not mcp_rec.api_key):
             raise Exception('MCP tools are enabled but the claude-bot API key is not configured. Create an mcp.api.key record named ""claude-bot"", or disable the MCP toggle in chat settings.')
         system_prompt = body.get('system_prompt', '')
@@ -883,6 +953,19 @@ marked.setOptions({ breaks: true, gfm: true });","True","#D4A574","#EFEBE5","Ful
         if use_code:
             code_instructions = '\n\nIMPORTANT: When you create, modify, or generate files that the user may want to download, ALWAYS copy the final file to the $OUTPUT_DIR directory (e.g. `cp /tmp/result.csv $OUTPUT_DIR/result.csv`). Files placed in $OUTPUT_DIR are automatically made available for download in the UI. Do NOT provide raw file paths — the app handles download buttons automatically for any files in $OUTPUT_DIR.'
             full_system = (full_system + code_instructions) if full_system else code_instructions.strip()
+        if use_memory:
+            memory_instructions = '\n\nMEMORY: You have a persistent memory directory at /memories backed by per-user storage. ALWAYS use the memory tool view command on /memories at the START of a task to recall earlier context. Record durable facts, user preferences, and progress as you work. Keep memory organized and up to date: update or delete stale files instead of creating duplicates, and only store information worth remembering across conversations.'
+            full_system = (full_system + memory_instructions) if full_system else memory_instructions.strip()
+        mem_store = None
+        mem_data = {}
+        if use_memory:
+            _Storage = env['mcp.webapp.user.storage'].sudo()
+            _u = env.user
+            if _u._is_public():
+                mem_store = _Storage.get_storage(mcp_webapp_id, session_id=request.session.sid)
+            else:
+                mem_store = _Storage.get_storage(mcp_webapp_id, user_id=_u.id)
+            mem_data = dict(mem_store.get_value('claude_memory') or {})
         payload = {'model': mdl, 'max_tokens': 16000, 'messages': msgs, 'cache_control': {'type': 'ephemeral'}}
         if full_system:
             payload['system'] = [{'type': 'text', 'text': full_system, 'cache_control': {'type': 'ephemeral'}}]
@@ -909,6 +992,8 @@ marked.setOptions({ breaks: true, gfm: true });","True","#D4A574","#EFEBE5","Ful
             tools.append({'type': wf_type, 'name': 'web_fetch', 'max_uses': 10})
         if use_code and not (use_web and is_modern):
             tools.append({'type': 'code_execution_20250825', 'name': 'code_execution'})
+        if use_memory:
+            tools.append({'type': 'memory_20250818', 'name': 'memory'})
         if tools:
             payload['tools'] = tools
         cm_edits = []
@@ -937,33 +1022,41 @@ marked.setOptions({ breaks: true, gfm: true });","True","#D4A574","#EFEBE5","Ful
                 break
         if has_files or use_code:
             betas.append('files-api-2025-04-14')
-        headers = {
-            'x-api-key': api_rec.api_key,
-            'anthropic-version': '2023-06-01',
-            'content-type': 'application/json',
-        }
+        headers = {'x-api-key': api_rec.api_key, 'anthropic-version': '2023-06-01', 'content-type': 'application/json'}
         if betas:
             headers['anthropic-beta'] = ','.join(betas)
-        resp = requests.post(
-            'https://api.anthropic.com/v1/messages',
-            headers=headers,
-            json=payload,
-            timeout=600,
-        )
-        try:
-            data = json.loads(resp.text)
-        except Exception:
-            raise Exception('Anthropic API returned HTTP %s with non-JSON body: %s' % (resp.status_code, (resp.text or '')[:300]))
-        if not isinstance(data, dict):
-            raise Exception('Anthropic API returned unexpected response shape (HTTP %s)' % resp.status_code)
-        err = data.get('error')
-        if err:
-            msg = err.get('message', str(err)) if isinstance(err, dict) else str(err)
-            result = {'role': 'assistant', 'content': '', 'error': msg}
-        else:
-            content_blocks = []
-            thinking_parts = []
-            for block in (data.get('content') or []):
+        content_blocks = []
+        thinking_parts = []
+        last_raw = None
+        final_usage = {}
+        agg_out = 0
+        res_container = {}
+        stop_reason = ''
+        ctx_mgmt = None
+        data = {}
+        loop_msgs = list(msgs)
+        result = None
+        max_iters = 16 if use_memory else 1
+        for _iter in range(max_iters):
+            payload['messages'] = loop_msgs
+            resp = requests.post('https://api.anthropic.com/v1/messages', headers=headers, json=payload, timeout=600)
+            try:
+                data = json.loads(resp.text)
+            except Exception:
+                raise Exception('Anthropic API returned HTTP %s with non-JSON body: %s' % (resp.status_code, (resp.text or '')[:300]))
+            if not isinstance(data, dict):
+                raise Exception('Anthropic API returned unexpected response shape (HTTP %s)' % resp.status_code)
+            err = data.get('error')
+            if err:
+                msg = err.get('message', str(err)) if isinstance(err, dict) else str(err)
+                if content_blocks:
+                    content_blocks.append({'type': 'text', 'text': 'Error: ' + msg})
+                else:
+                    result = {'role': 'assistant', 'content': '', 'error': msg}
+                break
+            raw = data.get('content') or []
+            last_raw = raw
+            for block in raw:
                 if not isinstance(block, dict):
                     continue
                 btype = block.get('type', '')
@@ -1033,12 +1126,7 @@ marked.setOptions({ breaks: true, gfm: true });","True","#D4A574","#EFEBE5","Ful
                         for f in (c.get('content') or []):
                             if isinstance(f, dict) and f.get('file_id'):
                                 files_out.append({'file_id': f['file_id'], 'filename': f.get('filename', 'download')})
-                        block_data = {
-                            'type': 'code_exec_result',
-                            'stdout': _cap(c.get('stdout'), 500000),
-                            'stderr': _cap(c.get('stderr'), 100000),
-                            'return_code': c.get('return_code', -1),
-                        }
+                        block_data = {'type': 'code_exec_result', 'stdout': _cap(c.get('stdout'), 500000), 'stderr': _cap(c.get('stderr'), 100000), 'return_code': c.get('return_code', -1)}
                         if files_out:
                             block_data['files'] = files_out
                         content_blocks.append(block_data)
@@ -1049,26 +1137,166 @@ marked.setOptions({ breaks: true, gfm: true });","True","#D4A574","#EFEBE5","Ful
                 elif btype == 'text_editor_code_execution_tool_result':
                     c = block.get('content', {})
                     if isinstance(c, dict):
-                        content_blocks.append({
-                            'type': 'file_editor_result',
-                            'content': _cap(c.get('content') or json.dumps(c, default=str), 300000),
-                            'file_type': c.get('file_type', ''),
-                            'is_update': c.get('is_file_update', False),
-                        })
+                        content_blocks.append({'type': 'file_editor_result', 'content': _cap(c.get('content') or json.dumps(c, default=str), 300000), 'file_type': c.get('file_type', ''), 'is_update': c.get('is_file_update', False)})
                     else:
                         content_blocks.append({'type': 'file_editor_result', 'content': _cap(c, 300000)})
-            res_container = data.get('container', {})
-            api_raw = data.get('content') or []
+            u = data.get('usage', {}) or {}
+            final_usage = u
+            agg_out += u.get('output_tokens', 0) or 0
+            _rc = data.get('container', {})
+            if _rc:
+                res_container = _rc
+            stop_reason = data.get('stop_reason', '')
+            if data.get('context_management'):
+                ctx_mgmt = data.get('context_management')
+            mem_calls = [b for b in raw if isinstance(b, dict) and b.get('type') == 'tool_use' and b.get('name') == 'memory'] if use_memory else []
+            if use_memory and stop_reason == 'tool_use' and mem_calls:
+                tool_results = []
+                for b in mem_calls:
+                    inp = b.get('input') or {}
+                    command = inp.get('command')
+                    path = inp.get('path')
+                    p = _mem_norm(path)
+                    out_str = ''
+                    is_err = False
+                    if command == 'view':
+                        if p is None:
+                            out_str = 'The path %s does not exist. Please provide a valid path.' % path
+                        elif p in mem_data:
+                            content = mem_data.get(p, '')
+                            flines = content.split('\n')
+                            vr = inp.get('view_range')
+                            start = 1
+                            if isinstance(vr, list) and len(vr) == 2:
+                                start = max(1, vr[0])
+                                end = vr[1] if vr[1] != -1 else len(flines)
+                                sel = flines[start - 1:end]
+                            else:
+                                sel = flines
+                            out_lines = [""Here's the content of %s with line numbers:"" % p]
+                            for _li in range(len(sel)):
+                                out_lines.append('%6d\t%s' % (start + _li, sel[_li]))
+                            out_str = '\n'.join(out_lines)
+                        else:
+                            pref = p.rstrip('/')
+                            children = {k: mem_data[k] for k in mem_data if pref == '/memories' or k == pref or k.startswith(pref + '/')}
+                            if not children and pref != '/memories':
+                                out_str = 'The path %s does not exist. Please provide a valid path.' % path
+                            else:
+                                total = 0
+                                for _v in children.values():
+                                    total += len((_v or '').encode('utf-8'))
+                                list_lines = [""Here're the files and directories up to 2 levels deep in %s, excluding hidden items and node_modules:"" % p, '%s\t%s' % (_hsize(total), pref or '/memories')]
+                                for k in sorted(children.keys()):
+                                    list_lines.append('%s\t%s' % (_hsize(len((children[k] or '').encode('utf-8'))), k))
+                                out_str = '\n'.join(list_lines)
+                    elif command == 'create':
+                        if p is None:
+                            out_str = 'Error: Invalid path. Paths must be within /memories.'
+                            is_err = True
+                        else:
+                            mem_data[p] = inp.get('file_text', '')
+                            out_str = 'File created successfully at: %s' % p
+                    elif command == 'str_replace':
+                        if p is None or p not in mem_data:
+                            out_str = 'Error: The path %s does not exist. Please provide a valid path.' % path
+                            is_err = True
+                        else:
+                            content = mem_data[p]
+                            old = inp.get('old_str', '')
+                            new = inp.get('new_str', '')
+                            cnt = content.count(old)
+                            if cnt == 0:
+                                out_str = 'No replacement was performed, old_str `%s` did not appear verbatim in %s.' % (old, p)
+                                is_err = True
+                            elif cnt > 1:
+                                locs = []
+                                _cl = content.split('\n')
+                                for _i in range(len(_cl)):
+                                    if old in _cl[_i]:
+                                        locs.append(str(_i + 1))
+                                out_str = 'No replacement was performed. Multiple occurrences of old_str `%s` in lines: %s. Please ensure it is unique' % (old, ', '.join(locs))
+                                is_err = True
+                            else:
+                                mem_data[p] = content.replace(old, new)
+                                out_str = 'The memory file has been edited.'
+                    elif command == 'insert':
+                        if p is None or p not in mem_data:
+                            out_str = 'Error: The path %s does not exist' % path
+                            is_err = True
+                        else:
+                            ilines = mem_data[p].split('\n')
+                            il = inp.get('insert_line', 0)
+                            if not isinstance(il, int) or il < 0 or il > len(ilines):
+                                out_str = 'Error: Invalid `insert_line` parameter: %s. It should be within the range of lines of the file: [0, %d]' % (il, len(ilines))
+                                is_err = True
+                            else:
+                                ins = inp.get('insert_text', '')
+                                mem_data[p] = '\n'.join(ilines[:il] + ins.split('\n') + ilines[il:])
+                                out_str = 'The file %s has been edited.' % p
+                    elif command == 'delete':
+                        if p is None:
+                            out_str = 'Error: The path %s does not exist' % path
+                            is_err = True
+                        else:
+                            pref = p.rstrip('/')
+                            new_mem = {k: mem_data[k] for k in mem_data if not (k == p or k == pref or k.startswith(pref + '/'))}
+                            if len(new_mem) == len(mem_data):
+                                out_str = 'Error: The path %s does not exist' % path
+                                is_err = True
+                            else:
+                                mem_data = new_mem
+                                out_str = 'Successfully deleted %s' % p
+                    elif command == 'rename':
+                        op = _mem_norm(inp.get('old_path'))
+                        np = _mem_norm(inp.get('new_path'))
+                        op_pref = op.rstrip('/') if op else ''
+                        has_src = bool(op) and (op in mem_data or any(k.startswith(op_pref + '/') for k in mem_data))
+                        if not has_src:
+                            out_str = 'Error: The path %s does not exist' % inp.get('old_path')
+                            is_err = True
+                        elif np is None:
+                            out_str = 'Error: Invalid destination path. Paths must be within /memories.'
+                            is_err = True
+                        elif np in mem_data:
+                            out_str = 'Error: The destination %s already exists' % np
+                            is_err = True
+                        else:
+                            if op in mem_data:
+                                mem_data[np] = mem_data.pop(op)
+                            else:
+                                np_pref = np.rstrip('/')
+                                for k in list(mem_data.keys()):
+                                    if k == op_pref or k.startswith(op_pref + '/'):
+                                        mem_data[np_pref + k[len(op_pref):]] = mem_data.pop(k)
+                            out_str = 'Successfully renamed %s to %s' % (inp.get('old_path'), inp.get('new_path'))
+                    else:
+                        out_str = 'Error: Unknown memory command: %s' % command
+                        is_err = True
+                    content_blocks.append({'type': 'tool_call', 'name': 'memory.' + str(command or ''), 'input': inp, 'server': 'memory'})
+                    content_blocks.append({'type': 'tool_result', 'content': _cap(out_str, 100000), 'is_error': is_err})
+                    tool_results.append({'type': 'tool_result', 'tool_use_id': b.get('id'), 'content': out_str, 'is_error': is_err})
+                try:
+                    mem_store.set_value('claude_memory', mem_data)
+                except Exception:
+                    logger.exception('[claude-chat] failed to persist memory')
+                loop_msgs = loop_msgs + [{'role': 'assistant', 'content': raw}, {'role': 'user', 'content': tool_results}]
+                continue
+            break
+        if result is None:
+            if use_memory and stop_reason == 'tool_use':
+                last_raw = None
+                content_blocks.append({'type': 'text', 'text': '⚠️ Memory operation limit reached for this turn.'})
             result = {
                 'role': 'assistant',
                 'content': content_blocks if content_blocks else [{'type': 'text', 'text': '(empty response)'}],
-                'api_content': api_raw if api_raw else None,
+                'api_content': last_raw if last_raw else None,
                 'thinking_content': '\n\n'.join(thinking_parts) if thinking_parts else None,
                 'model': data.get('model', ''),
-                'usage': data.get('usage', {}),
-                'stop_reason': data.get('stop_reason', ''),
+                'usage': dict(final_usage, output_tokens=agg_out) if final_usage else {},
+                'stop_reason': stop_reason,
                 'container_id': res_container.get('id') if isinstance(res_container, dict) else None,
-                'context_management': data.get('context_management'),
+                'context_management': ctx_mgmt,
             }
 except Exception as e:
     logger.exception('[claude-chat webapp Send Chat Message endpoint error')

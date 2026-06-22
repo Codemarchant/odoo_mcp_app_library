@@ -9,6 +9,7 @@ This is an exportable web application built with the **Odoo MCP Studio** webapp 
 - **Multi-model support** — Switch between Claude Opus, Sonnet, and Haiku
 - **Conversation management** — Multiple chat threads with persistent history
 - **Tool integration** — Web search, code execution, and MCP tools (connect back to your own Odoo instance)
+- **Persistent memory** — Optional per-user memory: Claude can store and recall notes across conversations using Anthropic's memory tool, backed by Odoo user storage (no server filesystem), with an in-app panel to view and manage what's remembered
 - **File uploads with OCR** — Upload images, PDFs, and documents via the Anthropic Files API with built-in OCR for text extraction
 - **Theme system** — Multiple color themes (Claude, Midnight, Ocean, Forest, Sunset)
 - **Mobile responsive** — Works on desktop and mobile browsers
@@ -66,6 +67,20 @@ These features use the `compact-2026-01-12` and `context-management-2025-06-27` 
 ### Model-Specific Tool Versions
 
 Opus 4.6 and Sonnet 4.6 automatically use the latest tool versions (`web_search_20260209`, `web_fetch_20260209`), while other models fall back to stable versions (`web_search_20250305`, `web_fetch_20250910`).
+
+### Persistent Memory
+
+When the **Memory** toggle is enabled, Claude gains access to Anthropic's [memory tool](https://platform.claude.com/docs/en/agents-and-tools/tool-use/memory-tool) (`memory_20250818`) — a `/memories` directory it can read, write, and update to carry knowledge across conversations (preferences, project context, prior decisions, in-progress work).
+
+Unlike the reference implementation, **memory is not stored on the server filesystem**. Instead, the endpoint handler implements the memory tool's commands (`view`, `create`, `str_replace`, `insert`, `delete`, `rename`) against the **Odoo user storage model** (`mcp.webapp.user.storage`). Key properties:
+
+- **Per-user, cross-chat** — Memory is keyed to the logged-in user (or session for anonymous users) and shared across *all* of that user's chat threads — that's the point of cross-conversation memory. Different users never see each other's memory.
+- **Server-side tool loop** — The memory tool is a *client-side* tool, so the endpoint runs an agentic loop: when Claude calls a memory command it executes the operation against storage, returns the result, and continues until Claude produces its final answer — all within a single request from the browser's perspective.
+- **Sandboxed paths** — All operations are validated to stay within `/memories`; path-traversal attempts are rejected.
+- **Pairs with context editing** — Memory works alongside the tool-result clearing and compaction described above: transient memory results can be cleared from context while the durable copy persists in storage.
+- **Built-in management panel** — The 🗃 **Memory** button in the header opens a panel to enable/disable memory, browse stored files (expand each to view its content), delete individual entries, or clear everything. The panel reads and writes the same user storage directly.
+
+Memory shares the per-user storage record (5 MB cap) with the app's chat history. Memory requires a Claude 4-class model (the defaults qualify).
 
 ---
 
@@ -147,10 +162,11 @@ Configure who can access the chat bot via the webapp's **Sharing** tab:
 
 ### Tool Toggles
 
-The chat interface includes three tool toggles:
+The chat interface includes four tool toggles:
 - **Web** — Enables web search and web fetch (Claude can search the internet)
 - **Code** — Enables code execution (Claude can run Python code in a sandboxed container — generate Word documents, PowerPoint presentations, Excel spreadsheets, PDFs, charts, data analysis, and more with downloadable output files)
 - **MCP** — Enables MCP tools (Claude can interact with your Odoo instance)
+- **Memory** — Enables persistent per-user memory backed by Odoo user storage (Claude can remember context across conversations). See [Persistent Memory](#persistent-memory). The 🗃 button also opens a panel to view and manage stored memories.
 
 Note: On Opus 4.6 and Sonnet 4.6, when both Web and Code are enabled, code execution is auto-injected by the newer web tool versions, so only one code execution tool instance is registered.
 
