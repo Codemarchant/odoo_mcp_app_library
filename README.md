@@ -52,6 +52,11 @@ odoo_mcp_app_library/
 - Odoo 16+
 - [Odoo MCP Studio - AI App & EChart Builder](https://apps.odoo.com/apps/modules/19.0/odoo_remote_mcp) v3.0+
 
+## ☕ Support
+
+If these apps saved you time or made you smile, you can
+[buy me a coffee](https://buymeacoffee.com/codemarchant).
+
 ## License
 
 See [LICENSE](LICENSE) for details.
